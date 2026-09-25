@@ -1,0 +1,21 @@
+{
+    "key": "modern",
+    "name": "Modern Bold",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Big type, full-bleed cover image and an optional highlight video. Great for launches, parties and corporate events.",
+    "category": "corporate",
+    "tags": ["bold", "sans-serif", "dark", "video"],
+    "price": 29900,
+    "currency": "INR",
+    "display_price": "₹299",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Cover image",
+        "video_1": "Highlight video",
+        "bg_music": "Background music"
+    },
+    "sort_order": 2
+}

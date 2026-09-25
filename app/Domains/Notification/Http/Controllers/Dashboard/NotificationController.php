@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Domains\Notification\Http\Controllers\Dashboard;
+
+use App\Core\Http\Controllers\InertiaController;
+use App\Domains\Event\Http\Resources\EventResource;
+use App\Domains\Event\Models\Event;
+use App\Domains\Notification\Contracts\NotificationQueryServiceInterface;
+use App\Domains\Notification\Http\Resources\NotificationResource;
+use App\Domains\Notification\Models\Notification;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class NotificationController extends InertiaController
+{
+    public function __construct(
+        private readonly NotificationQueryServiceInterface $notifications,
+    ) {}
+
+    public function index(Event $event): Response
+    {
+        $this->authorize('view', $event);
+
+        return Inertia::render('client/notifications/index', [
+            'event' => EventResource::make($event),
+            'notifications' => NotificationResource::collection($this->notifications->forEvent($event)),
+        ]);
+    }
+
+    public function show(Notification $notification): Response
+    {
+        $this->authorize('view', $notification);
+
+        return Inertia::render('client/notifications/show', [
+            'event' => EventResource::make($notification->event),
+            'notification' => NotificationResource::make($notification->load(['guest', 'deliveries'])),
+        ]);
+    }
+}

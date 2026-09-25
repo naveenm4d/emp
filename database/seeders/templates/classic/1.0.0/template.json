@@ -1,0 +1,20 @@
+{
+    "key": "classic",
+    "name": "Classic Elegance",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Timeless cream-and-gold card with a serif script title. One portrait photo and optional background music.",
+    "category": "wedding",
+    "tags": ["elegant", "serif", "gold", "minimal"],
+    "price": 0,
+    "currency": "INR",
+    "display_price": "Free",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Great+Vibes&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Portrait photo",
+        "bg_music": "Background music"
+    },
+    "sort_order": 1
+}
