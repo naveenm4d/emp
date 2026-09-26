@@ -12,7 +12,7 @@ final readonly class CreateEventData extends DataTransferObject
         public string $template_id,
         public ?string $description = null,
         public int $max_capacity = 0,
-        public bool $require_approval = false,
+        public string $registration_type = 'guest_list_only',
         public ?string $event_type = null,
         public ?string $location_name = null,
         public ?string $location_address = null,
@@ -20,6 +20,11 @@ final readonly class CreateEventData extends DataTransferObject
         public ?string $event_date = null,
         public ?string $start_time = null,
         public ?string $end_time = null,
+        public ?string $invitation_message = null,
+        public ?string $reminder_message = null,
+        public bool $auto_reminders = false,
+        public int $remind_after_days = 3,
+        public int $remind_before_days = 2,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -31,7 +36,7 @@ final readonly class CreateEventData extends DataTransferObject
             template_id: $data['template_id'],
             description: $data['description'] ?? null,
             max_capacity: (int) ($data['max_capacity'] ?? 0),
-            require_approval: (bool) ($data['require_approval'] ?? false),
+            registration_type: $data['registration_type'] ?? 'guest_list_only',
             event_type: $data['event_type'] ?? null,
             location_name: $data['location_name'] ?? null,
             location_address: $data['location_address'] ?? null,
@@ -39,6 +44,11 @@ final readonly class CreateEventData extends DataTransferObject
             event_date: $data['event_date'] ?? null,
             start_time: $data['start_time'] ?? null,
             end_time: $data['end_time'] ?? null,
+            invitation_message: $data['invitation_message'] ?? null,
+            reminder_message: $data['reminder_message'] ?? null,
+            auto_reminders: (bool) ($data['auto_reminders'] ?? false),
+            remind_after_days: (int) ($data['remind_after_days'] ?? 3),
+            remind_before_days: (int) ($data['remind_before_days'] ?? 2),
         );
     }
 }

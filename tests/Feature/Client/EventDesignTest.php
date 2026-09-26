@@ -66,8 +66,12 @@ it('uploads media into a slot and renders its link into the invitation', functio
     $media = EventMedia::sole();
     Storage::disk('public')->assertExists($media->path);
 
+    $directory = "{$this->template->category->value}/{$this->event->id}";
+
     expect($media->slot_key)->toBe('img_1')
         ->and($media->type)->toBe(MediaType::Image)
+        ->and($media->path)->toStartWith("events/{$directory}/media/")
+        ->and($this->event->fresh()->rendered_path)->toStartWith("invitations/{$directory}/")
         ->and(($this->renderedHtml)())->toContain('class="hero" src="'.$media->url().'"')
         ->not->toContain('class="extra"')
         ->toContain('{{ guest.name }}');

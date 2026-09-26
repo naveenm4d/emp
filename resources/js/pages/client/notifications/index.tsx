@@ -40,7 +40,7 @@ export default function NotificationsIndex({
                     <EmptyState
                         icon={MessageSquare}
                         title="No messages yet"
-                        description="Messages appear here once you send invitations."
+                        description="Messages appear here once you send RSVP links."
                     />
                 ) : (
                     <Table>

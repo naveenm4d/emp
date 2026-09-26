@@ -1,0 +1,70 @@
+{
+    "key": "balloon-bash",
+    "name": "Balloon Bash",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Playful kids' party card with floating balloons and a three-photo strip.",
+    "category": "birthday",
+    "tags": [
+        "kids",
+        "balloons",
+        "playful",
+        "gallery"
+    ],
+    "price": 69000,
+    "currency": "LKR",
+    "display_price": "Rs. 690",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Main photo",
+        "img_2": "Photo strip 1",
+        "img_3": "Photo strip 2"
+    },
+    "sort_order": 7,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "You're invited to a party for"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Get directions"
+            },
+            "greeting": {
+                "label": "Greeting",
+                "default": "Dear"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#ff7a59"
+            },
+            "paper": {
+                "label": "Card",
+                "default": "#fffdf5"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#1f3a5f"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            },
+            "map": {
+                "label": "Directions link",
+                "default": true
+            },
+            "photo_strip": {
+                "label": "Photo strip",
+                "default": true
+            }
+        }
+    }
+}

@@ -2,12 +2,10 @@
 
 namespace App\Domains\Event\Services;
 
-use App\Core\Exceptions\NotFoundException;
 use App\Domains\Client\Models\Client;
 use App\Domains\Event\Contracts\EventQueryServiceInterface;
 use App\Domains\Event\Contracts\EventRepositoryInterface;
 use App\Domains\Event\DTOs\EventFilters;
-use App\Domains\Event\Enums\EventState;
 use App\Domains\Event\Models\Event;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
@@ -27,15 +25,9 @@ class EventQueryService implements EventQueryServiceInterface
         return $this->events->paginateAll($filters, config('emp.per_page'));
     }
 
-    public function findPublishedBySlug(string $slug): Event
+    public function findLatestBySlug(string $slug): ?Event
     {
-        $event = $this->events->findBySlug($slug);
-
-        if (! $event || $event->state !== EventState::Published) {
-            throw new NotFoundException('Event not found.');
-        }
-
-        return $event;
+        return $this->events->findBySlug($slug);
     }
 
     public function findAndLock(string $id): Event

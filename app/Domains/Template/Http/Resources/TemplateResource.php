@@ -36,6 +36,10 @@ class TemplateResource extends JsonResource
             'is_free' => $this->isFree(),
             'type' => $this->type->value,
             'thumbnail_url' => $this->thumbnail_url,
+            'is_active' => $this->is_active,
+            'sort_order' => $this->sort_order,
+            'versions_count' => $this->whenCounted('versions'),
+            'client' => $this->whenLoaded('client', fn () => $this->client ? ['id' => $this->client->id, 'name' => $this->client->name] : null),
             'version' => $this->latestVersion?->version,
             'slots' => array_map(fn (MediaSlot $slot) => $slot->toArray(), $slots),
             'media_summary' => [

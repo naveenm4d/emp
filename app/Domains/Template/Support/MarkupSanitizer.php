@@ -16,7 +16,8 @@ final class MarkupSanitizer
 {
     /** @var array<string, string> pattern => reason */
     private const MARKUP_RULES = [
-        '/<\s*\/?\s*(script|iframe|frame|frameset|object|embed|applet|base|meta|link|form|style|noscript|template)\b/i' => 'contains a forbidden tag (<$1>)',
+        '/<\s*\/?\s*(script)\b/i' => 'contains a <$1> tag (put scripts in js/*.js instead)',
+        '/<\s*\/?\s*(iframe|frame|frameset|object|embed|applet|base|meta|link|form|style|noscript|template)\b/i' => 'contains a forbidden tag (<$1>)',
         '/[\s\/"\']on[a-z]+\s*=/i' => 'contains an inline event handler (on…=)',
         '/\b(javascript|vbscript|livescript)\s*:/i' => 'contains a script URL',
         '/data\s*:\s*(text\/html|application|image\/svg)/i' => 'contains an active data: URL',
@@ -36,12 +37,13 @@ final class MarkupSanitizer
 
     public function assertSafeMarkup(string $markup): void
     {
-        $this->check($markup, self::MARKUP_RULES, 'template.html');
+        $this->check($markup, self::MARKUP_RULES, 'index.html');
     }
 
-    public function assertSafeStyles(string $styles): void
+    /** @param  string  $file  the package path, for the error message */
+    public function assertSafeStyles(string $styles, string $file = 'css'): void
     {
-        $this->check($styles, self::STYLE_RULES, 'styles.css');
+        $this->check($styles, self::STYLE_RULES, $file);
     }
 
     /** @param array<string, string> $rules */

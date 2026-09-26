@@ -1,110 +1,206 @@
 import { router } from '@inertiajs/react';
-import { Check, Clock, Pencil, Send, Trash2, X } from 'lucide-react';
+import {
+    BellRing,
+    Check,
+    Clock,
+    Copy,
+    MoreHorizontal,
+    Pencil,
+    RotateCw,
+    Send,
+    Trash2,
+    X,
+} from 'lucide-react';
+import type { ReactNode } from 'react';
 
+import { rsvpDisplayStatus } from '@/components/rsvps/rsvp-status';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { approve, destroy, reject, waitlist } from '@/routes/client/guests';
-import { store as createInvitation } from '@/routes/client/guests/invitations';
-import { resend, send } from '@/routes/client/invitations';
-import type { Guest } from '@/types';
+import { store as createRsvp } from '@/routes/client/guests/rsvps';
+import { remind, resend, send } from '@/routes/client/rsvps';
+import type { Guest, RegistrationType } from '@/types';
 
-type GuestActionsProps = { guest: Guest; onEdit: () => void };
+type GuestActionsProps = {
+    guest: Guest;
+    /** Decides the approval actions: all of them for approval_required, none for guest_list_only. */
+    registrationType: RegistrationType;
+    onEdit: () => void;
+};
 
-/** Per-row actions: approval, invitation delivery, edit and delete. */
-export function GuestActions({ guest, onEdit }: GuestActionsProps) {
+/**
+ * Per-row actions: the one next step for the guest as a button (approve,
+ * invite, send or remind), everything else in a ⋯ menu.
+ */
+export function GuestActions({
+    guest,
+    registrationType,
+    onEdit,
+}: GuestActionsProps) {
+    const requiresApproval = registrationType === 'approval_required';
+    // Guest-list-only events have no approval; everyone on the list is approved.
+    const allowsApproval = registrationType !== 'guest_list_only';
+
     const post = (url: string, data: Record<string, boolean> = {}) =>
         router.post(url, data, { preserveScroll: true });
-    const invitation = guest.latest_invitation;
-    const canInvite = guest.approval_status === 'approved';
+
+    const rsvp = guest.latest_rsvp;
+    const status = rsvp ? rsvpDisplayStatus(rsvp) : null;
+    const isApproved = guest.approval_status === 'approved';
+    const canInvite =
+        isApproved &&
+        (!status || ['accepted', 'declined', 'expired'].includes(status));
+    const noPhone = !guest.phone;
+    const noPhoneHint = 'Add a phone number to send on WhatsApp';
+
+    // Pending requests are approved from the button; waitlisted / rejected
+    // guests (and leftovers after the type changed) from the menu.
+    const approveIsPrimary =
+        allowsApproval &&
+        !isApproved &&
+        (guest.approval_status === 'pending' || !requiresApproval);
+
+    let primary: ReactNode = null;
+
+    if (approveIsPrimary) {
+        primary = (
+            <Button
+                size="sm"
+                variant="outline"
+                onClick={() => post(approve.url(guest))}
+            >
+                <Check className="text-emerald-600" /> Approve
+            </Button>
+        );
+    } else if (canInvite) {
+        primary = (
+            <Button
+                size="sm"
+                variant="outline"
+                title={
+                    noPhone
+                        ? noPhoneHint
+                        : 'Create and send an RSVP link on WhatsApp'
+                }
+                disabled={noPhone}
+                onClick={() => post(createRsvp.url(guest), { send: true })}
+            >
+                <Send /> Invite
+            </Button>
+        );
+    } else if (rsvp && status === 'pending') {
+        primary = (
+            <Button
+                size="sm"
+                variant="outline"
+                title={noPhone ? noPhoneHint : 'Send the RSVP link on WhatsApp'}
+                disabled={noPhone}
+                onClick={() => post(send.url(rsvp))}
+            >
+                <Send /> Send
+            </Button>
+        );
+    } else if (rsvp && status === 'sent') {
+        primary = (
+            <Button
+                size="sm"
+                variant="outline"
+                title={noPhone ? noPhoneHint : 'Remind the guest to reply'}
+                disabled={noPhone}
+                onClick={() => post(remind.url(rsvp))}
+            >
+                <BellRing /> Remind
+            </Button>
+        );
+    }
+
+    const linkActive = status === 'pending' || status === 'sent';
+    const approvalItems = [
+        allowsApproval && !isApproved && !approveIsPrimary && (
+            <DropdownMenuItem
+                key="approve"
+                onClick={() => post(approve.url(guest))}
+            >
+                <Check className="text-emerald-600" /> Approve
+            </DropdownMenuItem>
+        ),
+        requiresApproval && guest.approval_status !== 'waitlisted' && (
+            <DropdownMenuItem
+                key="waitlist"
+                onClick={() => post(waitlist.url(guest))}
+            >
+                <Clock className="text-violet-600" /> Waitlist
+            </DropdownMenuItem>
+        ),
+        requiresApproval && guest.approval_status !== 'rejected' && (
+            <DropdownMenuItem
+                key="reject"
+                onClick={() => post(reject.url(guest))}
+            >
+                <X className="text-red-600" /> Reject
+            </DropdownMenuItem>
+        ),
+    ].filter(Boolean);
 
     return (
         <div className="flex items-center justify-end gap-1">
-            {guest.approval_status !== 'approved' && (
-                <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    title="Approve"
-                    onClick={() => post(approve.url(guest))}
+            {primary}
+            <DropdownMenu>
+                <DropdownMenuTrigger
+                    aria-label={`More actions for ${guest.name}`}
+                    className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none data-popup-open:bg-muted"
                 >
-                    <Check className="text-emerald-600" />
-                </Button>
-            )}
-            {guest.approval_status !== 'waitlisted' && (
-                <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    title="Waitlist"
-                    onClick={() => post(waitlist.url(guest))}
-                >
-                    <Clock className="text-violet-600" />
-                </Button>
-            )}
-            {guest.approval_status !== 'rejected' && (
-                <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    title="Reject"
-                    onClick={() => post(reject.url(guest))}
-                >
-                    <X className="text-red-600" />
-                </Button>
-            )}
+                    <MoreHorizontal className="size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    {rsvp && status === 'sent' && (
+                        <DropdownMenuItem
+                            disabled={noPhone}
+                            onClick={() => post(resend.url(rsvp))}
+                        >
+                            <RotateCw /> Resend invitation
+                        </DropdownMenuItem>
+                    )}
+                    {rsvp && linkActive && (
+                        <DropdownMenuItem
+                            onClick={() =>
+                                navigator.clipboard.writeText(
+                                    guest.link_url ?? rsvp.rsvp_url,
+                                )
+                            }
+                        >
+                            <Copy /> Copy RSVP link
+                        </DropdownMenuItem>
+                    )}
+                    {rsvp && linkActive && <DropdownMenuSeparator />}
 
-            {canInvite &&
-                (!invitation ||
-                    ['accepted', 'declined', 'expired'].includes(
-                        invitation.status,
-                    )) && (
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        title="Create and send a WhatsApp invitation"
+                    {approvalItems}
+                    {approvalItems.length > 0 && <DropdownMenuSeparator />}
+
+                    <DropdownMenuItem onClick={onEdit}>
+                        <Pencil /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        variant="destructive"
                         onClick={() =>
-                            post(createInvitation.url(guest), { send: true })
+                            confirm(
+                                `Remove ${guest.name} from the guest list?`,
+                            ) &&
+                            router.delete(destroy.url(guest), {
+                                preserveScroll: true,
+                            })
                         }
-                        disabled={!guest.phone}
                     >
-                        <Send /> Invite
-                    </Button>
-                )}
-            {invitation?.status === 'pending' && (
-                <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => post(send.url(invitation))}
-                    disabled={!guest.phone}
-                >
-                    <Send /> Send
-                </Button>
-            )}
-            {invitation?.status === 'sent' && (
-                <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => post(resend.url(invitation))}
-                >
-                    <Send /> Resend
-                </Button>
-            )}
-
-            <Button
-                size="icon-sm"
-                variant="ghost"
-                title="Edit"
-                onClick={onEdit}
-            >
-                <Pencil />
-            </Button>
-            <Button
-                size="icon-sm"
-                variant="ghost"
-                title="Remove"
-                onClick={() =>
-                    confirm(`Remove ${guest.name} from the guest list?`) &&
-                    router.delete(destroy.url(guest), { preserveScroll: true })
-                }
-            >
-                <Trash2 />
-            </Button>
+                        <Trash2 /> Remove
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     );
 }

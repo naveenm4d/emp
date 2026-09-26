@@ -1,36 +1,47 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
     CalendarDays,
     Clock,
+    Copy,
     ExternalLink,
     MapPin,
-    Pencil,
     Trash2,
     Users,
 } from 'lucide-react';
 
+import { EventForm } from '@/components/events/event-form';
+import { RegistrationTypeDetails } from '@/components/events/registration-type-picker';
 import { EventTabs } from '@/components/events/event-tabs';
 import { MetricCard } from '@/components/shared/metric-card';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ClientLayout from '@/layouts/client-layout';
 import { formatDate } from '@/lib/format';
-import { destroy, edit, state } from '@/routes/client/events';
+import { showsApproval } from '@/lib/guests';
+import { cn } from '@/lib/utils';
+import { mapPreview } from '@/routes/client';
+import { destroy, state, update } from '@/routes/client/events';
 import { close, open } from '@/routes/client/events/registration';
 import type {
     Event,
     EventState,
     GuestSummary,
-    InvitationSummary,
+    Option,
+    RegistrationTypeOption,
     Resource,
+    RsvpSummary,
 } from '@/types';
 
 type Props = {
     event: Resource<Event>;
     guestSummary: GuestSummary;
-    invitationSummary: InvitationSummary;
+    rsvpSummary: RsvpSummary;
+    eventTypes: Option[];
+    registrationTypes: RegistrationTypeOption[];
+    defaultInvitationMessage: string;
+    defaultReminderMessage: string;
 };
 
 const transitionLabels: Record<EventState, string> = {
@@ -42,8 +53,14 @@ const transitionLabels: Record<EventState, string> = {
 export default function ShowEvent({
     event: { data: event },
     guestSummary,
-    invitationSummary,
+    rsvpSummary,
+    eventTypes,
+    registrationTypes,
+    defaultInvitationMessage,
+    defaultReminderMessage,
 }: Props) {
+    const approval = showsApproval(event, guestSummary);
+
     const transition = (next: EventState) => {
         if (
             next === 'cancelled' &&
@@ -77,15 +94,17 @@ export default function ShowEvent({
                 description={
                     <span className="flex items-center gap-2">
                         <StatusBadge status={event.state} />
-                        <a
-                            href={event.public_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 hover:text-foreground"
-                        >
-                            {event.public_url}{' '}
-                            <ExternalLink className="h-3 w-3" />
-                        </a>
+                        {event.public_url && (
+                            <a
+                                href={event.public_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 hover:text-foreground"
+                            >
+                                {event.public_url}{' '}
+                                <ExternalLink className="h-3 w-3" />
+                            </a>
+                        )}
                     </span>
                 }
                 actions={
@@ -105,16 +124,6 @@ export default function ShowEvent({
                                 {transitionLabels[next]}
                             </Button>
                         ))}
-                        {event.state !== 'cancelled' && (
-                            <Link
-                                href={edit.url(event)}
-                                className={buttonVariants({
-                                    variant: 'outline',
-                                })}
-                            >
-                                <Pencil /> Edit
-                            </Link>
-                        )}
                         <Button
                             variant="ghost"
                             onClick={remove}
@@ -128,7 +137,12 @@ export default function ShowEvent({
 
             <EventTabs event={event} />
 
-            <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div
+                className={cn(
+                    'mb-6 grid gap-4 sm:grid-cols-2',
+                    approval ? 'xl:grid-cols-4' : 'xl:grid-cols-3',
+                )}
+            >
                 <MetricCard
                     title="Guests"
                     value={guestSummary.total}
@@ -139,19 +153,21 @@ export default function ShowEvent({
                             : 'Unlimited capacity'
                     }
                 />
+                {approval && (
+                    <MetricCard
+                        title="Pending approval"
+                        value={guestSummary.pending}
+                        description={`${guestSummary.waitlisted} waitlisted`}
+                    />
+                )}
                 <MetricCard
-                    title="Pending approval"
-                    value={guestSummary.pending}
-                    description={`${guestSummary.waitlisted} waitlisted`}
-                />
-                <MetricCard
-                    title="Invitations sent"
+                    title="RSVP links sent"
                     value={
-                        invitationSummary.sent +
-                        invitationSummary.accepted +
-                        invitationSummary.declined
+                        rsvpSummary.sent +
+                        rsvpSummary.accepted +
+                        rsvpSummary.declined
                     }
-                    description={`${invitationSummary.pending} not sent yet`}
+                    description={`${rsvpSummary.pending} not sent yet`}
                 />
                 <MetricCard
                     title="Confirmed"
@@ -160,66 +176,147 @@ export default function ShowEvent({
                 />
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-3">
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle>About</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <p className="whitespace-pre-line text-muted-foreground">
-                            {event.description || 'No description yet.'}
-                        </p>
-                        <dl className="grid gap-3 text-sm sm:grid-cols-3">
-                            <Detail
-                                icon={CalendarDays}
-                                label="Date"
-                                value={formatDate(event.event_date)}
-                            />
-                            <Detail
-                                icon={Clock}
-                                label="Time"
-                                value={
-                                    event.start_time
-                                        ? `${event.start_time}${event.end_time ? ` – ${event.end_time}` : ''}`
-                                        : '—'
-                                }
-                            />
-                            <Detail
-                                icon={MapPin}
-                                label="Venue"
-                                value={
-                                    event.map_url ? (
-                                        <a
-                                            href={event.map_url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="text-primary hover:underline"
-                                        >
-                                            {event.location_name || 'Map'}
-                                        </a>
-                                    ) : (
-                                        event.location_name || '—'
-                                    )
-                                }
-                            />
-                        </dl>
-                    </CardContent>
-                </Card>
+            {event.state === 'cancelled' ? (
+                <div className="grid gap-6 lg:grid-cols-3">
+                    <EventSummary event={event} />
+                    <RegistrationCard
+                        event={event}
+                        registrationTypes={registrationTypes}
+                    />
+                </div>
+            ) : (
+                <EventForm
+                    key={event.updated_at}
+                    event={event}
+                    eventTypes={eventTypes}
+                    registrationTypes={registrationTypes}
+                    defaultInvitationMessage={defaultInvitationMessage}
+                    defaultReminderMessage={defaultReminderMessage}
+                    mapPreviewUrl={(url) => mapPreview.url({ query: { url } })}
+                    submitLabel="Save changes"
+                    onSubmit={(form) =>
+                        form.patch(update.url(event), { preserveScroll: true })
+                    }
+                    aside={
+                        <RegistrationCard
+                            event={event}
+                            registrationTypes={registrationTypes}
+                        />
+                    }
+                />
+            )}
+        </ClientLayout>
+    );
+}
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Public registration</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3 text-sm">
-                        <p className="text-muted-foreground">
+/** Read-only details, for events that can no longer be edited. */
+function EventSummary({ event }: { event: Event }) {
+    return (
+        <Card className="lg:col-span-2">
+            <CardHeader>
+                <CardTitle>About</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <p className="whitespace-pre-line text-muted-foreground">
+                    {event.description || 'No description yet.'}
+                </p>
+                <dl className="grid gap-3 text-sm sm:grid-cols-3">
+                    <Detail
+                        icon={CalendarDays}
+                        label="Date"
+                        value={formatDate(event.event_date)}
+                    />
+                    <Detail
+                        icon={Clock}
+                        label="Time"
+                        value={
+                            event.start_time
+                                ? `${event.start_time}${event.end_time ? ` – ${event.end_time}` : ''}`
+                                : '—'
+                        }
+                    />
+                    <Detail
+                        icon={MapPin}
+                        label="Venue"
+                        value={event.location_name || '—'}
+                    />
+                </dl>
+            </CardContent>
+        </Card>
+    );
+}
+
+/** The event's registration type (what it means) and, when it has public registration, the open/close switch. */
+function RegistrationCard({
+    event,
+    registrationTypes,
+}: {
+    event: Event;
+    registrationTypes: RegistrationTypeOption[];
+}) {
+    const option = registrationTypes.find(
+        (type) => type.value === event.registration_type,
+    );
+    const hasPublicRegistration = event.registration_type !== 'guest_list_only';
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Registration</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+                <div>
+                    <p className="font-medium">
+                        {event.registration_type_label}
+                    </p>
+                    {option && (
+                        <p className="text-xs text-muted-foreground">
+                            {option.description}
+                        </p>
+                    )}
+                </div>
+                {option && <RegistrationTypeDetails option={option} />}
+                {hasPublicRegistration && (
+                    <>
+                        {event.public_url && (
+                            <div className="space-y-1 border-t border-border pt-3">
+                                <p className="text-xs font-medium">
+                                    Public link
+                                </p>
+                                <div className="flex items-center gap-1">
+                                    <code className="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1 text-xs">
+                                        {event.public_url}
+                                    </code>
+                                    <Button
+                                        type="button"
+                                        size="icon-sm"
+                                        variant="ghost"
+                                        title="Copy public link"
+                                        onClick={() =>
+                                            navigator.clipboard.writeText(
+                                                event.public_url ?? '',
+                                            )
+                                        }
+                                    >
+                                        <Copy />
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Share it anywhere. Opened{' '}
+                                    {event.public_link_open_count ?? 0} times.
+                                </p>
+                            </div>
+                        )}
+                        <p className="border-t border-border pt-3 text-muted-foreground">
                             {event.registration_open
                                 ? event.state === 'published'
                                     ? 'Guests can register through the public event page.'
                                     : 'Registration is open, but guests can only register once the event is published.'
-                                : 'Guests cannot register themselves right now.'}
+                                : 'Registration is paused: guests cannot register themselves right now.'}
                         </p>
                         {event.registration_open ? (
                             <Button
+                                type="button"
                                 variant="outline"
                                 className="w-full"
                                 onClick={() =>
@@ -234,6 +331,7 @@ export default function ShowEvent({
                             </Button>
                         ) : (
                             <Button
+                                type="button"
                                 className="w-full"
                                 disabled={event.state === 'cancelled'}
                                 onClick={() =>
@@ -247,15 +345,10 @@ export default function ShowEvent({
                                 Open registration
                             </Button>
                         )}
-                        {event.require_approval && (
-                            <p className="text-xs text-muted-foreground">
-                                New registrations need your approval.
-                            </p>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-        </ClientLayout>
+                    </>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 

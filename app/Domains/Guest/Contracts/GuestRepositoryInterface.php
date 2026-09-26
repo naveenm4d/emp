@@ -18,6 +18,9 @@ interface GuestRepositoryInterface extends RepositoryInterface
     /** Guests occupying a seat (pending + approved). */
     public function countActive(string $eventId): int;
 
+    /** Sets every not-yet-approved guest of the event to approved; returns how many changed. */
+    public function approveAllForEvent(string $eventId): int;
+
     public function emailExists(string $eventId, string $email, ?string $exceptId = null): bool;
 
     public function phoneExists(string $eventId, string $phone, ?string $exceptId = null): bool;

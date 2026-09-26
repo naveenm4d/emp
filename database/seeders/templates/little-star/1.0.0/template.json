@@ -1,0 +1,64 @@
+{
+    "key": "little-star",
+    "name": "Little Star",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Dreamy night-sky baby shower card with twinkling stars.",
+    "category": "baby_shower",
+    "tags": [
+        "baby shower",
+        "stars",
+        "pastel",
+        "animated"
+    ],
+    "price": 89000,
+    "currency": "LKR",
+    "display_price": "Rs. 890",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&family=Pacifico&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Parents-to-be photo"
+    },
+    "sort_order": 8,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "Twinkle twinkle little star"
+            },
+            "lead": {
+                "label": "Invitation line",
+                "default": "A little one is on the way — come shower them with love."
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Get directions"
+            },
+            "greeting": {
+                "label": "Greeting",
+                "default": "Dear"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#8e7dbe"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#2d3561"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            },
+            "map": {
+                "label": "Directions link",
+                "default": true
+            }
+        }
+    }
+}

@@ -6,12 +6,12 @@ use App\Domains\Client\Models\Client;
 use App\Domains\Event\Contracts\EventDesignServiceInterface;
 use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Enums\ApprovalStatus;
+use App\Domains\Guest\Enums\GuestRsvpStatus;
 use App\Domains\Guest\Enums\GuestSource;
-use App\Domains\Guest\Enums\RsvpStatus;
 use App\Domains\Guest\Models\Guest;
-use App\Domains\Invitation\Enums\InvitationStatus;
-use App\Domains\Invitation\Models\Invitation;
 use App\Domains\Notification\Models\Notification;
+use App\Domains\Rsvp\Enums\RsvpStatus;
+use App\Domains\Rsvp\Models\Rsvp;
 use App\Domains\Staff\Enums\StaffRole;
 use App\Domains\Staff\Models\StaffMember;
 use App\Domains\Template\Enums\MediaType;
@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
     /**
      * Demo data. Every account's password is "password".
      *
-     *  Staff:   admin@emp.test (super_admin), viewer@emp.test (viewer)  -> /internal
+     *  Staff:   admin@emp.test (super_admin), viewer@emp.test (viewer)  -> /admin
      *  Client:  client@emp.test                                         -> /app
      */
     public function run(EventDesignServiceInterface $designs): void
@@ -65,15 +65,15 @@ class DatabaseSeeder extends Seeder
         Guest::factory()->for($gala)->status(ApprovalStatus::Waitlisted)->create();
 
         foreach ($guests->take(6) as $index => $guest) {
-            $invitation = Invitation::factory()->for($guest)->for($gala)->sent()->create(
-                $index < 2 ? ['status' => InvitationStatus::Accepted, 'responded_at' => now()] : [],
+            $rsvp = Rsvp::factory()->for($guest)->for($gala)->sent()->create(
+                $index < 2 ? ['status' => RsvpStatus::Accepted, 'responded_at' => now()] : [],
             );
 
-            $guest->update(['rsvp_status' => $index < 2 ? RsvpStatus::Confirmed : RsvpStatus::Pending]);
+            $guest->update(['rsvp_status' => $index < 2 ? GuestRsvpStatus::Confirmed : GuestRsvpStatus::Pending]);
 
             Notification::factory()->for($guest)->for($gala)->create([
                 'recipient' => $guest->phone,
-                'message' => "Hi {$guest->name}, you're invited to {$gala->title}! Please RSVP here: {$invitation->rsvpUrl()}",
+                'message' => "Hi {$guest->name}, you're invited to {$gala->title}! Please RSVP here: {$rsvp->rsvpUrl()}",
                 'status' => 'sent',
                 'sent_at' => now(),
                 'provider_message_id' => 'mock-wamid-seed-'.$index,
@@ -125,7 +125,7 @@ class DatabaseSeeder extends Seeder
         $contents = (string) ob_get_clean();
 
         $disk = (string) config('emp.media_disk');
-        $path = "events/{$event->id}/media/".Str::uuid().'.jpg';
+        $path = "events/{$event->storageDirectory()}/media/".Str::uuid().'.jpg';
         Storage::disk($disk)->put($path, $contents);
 
         $event->media()->create([

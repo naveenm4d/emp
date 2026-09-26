@@ -34,6 +34,15 @@ class NotificationRepository extends BaseRepository implements NotificationRepos
             ->withQueryString();
     }
 
+    public function forGuest(string $guestId): Collection
+    {
+        return $this->query()
+            ->where('guest_id', $guestId)
+            ->with('deliveries')
+            ->latest()
+            ->get();
+    }
+
     public function paginateByStatus(NotificationStatus $status, int $perPage): LengthAwarePaginator
     {
         return $this->query()

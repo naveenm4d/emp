@@ -5,6 +5,7 @@ namespace App\Domains\Notification\Models;
 use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Models\Guest;
 use App\Domains\Notification\Enums\NotificationChannel;
+use App\Domains\Notification\Enums\NotificationKind;
 use App\Domains\Notification\Enums\NotificationStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\NotificationFactory;
@@ -22,7 +23,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $id
  * @property string $event_id
  * @property string|null $guest_id
+ * @property string|null $rsvp_id the RSVP link this message was sent for
  * @property NotificationChannel $channel
+ * @property NotificationKind|null $kind what the message was sent for (null for older messages)
  * @property NotificationStatus $status
  * @property string $recipient
  * @property string $message
@@ -31,13 +34,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $attempts
  * @property CarbonImmutable|null $sent_at
  * @property CarbonImmutable|null $delivered_at
+ * @property CarbonImmutable|null $read_at
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  */
 #[UseFactory(NotificationFactory::class)]
 #[Fillable([
-    'event_id', 'guest_id', 'channel', 'status', 'recipient', 'message',
-    'provider_message_id', 'error', 'attempts', 'sent_at', 'delivered_at',
+    'event_id', 'guest_id', 'rsvp_id', 'channel', 'kind', 'status', 'recipient', 'message',
+    'provider_message_id', 'error', 'attempts', 'sent_at', 'delivered_at', 'read_at',
 ])]
 class Notification extends Model
 {
@@ -54,10 +58,12 @@ class Notification extends Model
     {
         return [
             'channel' => NotificationChannel::class,
+            'kind' => NotificationKind::class,
             'status' => NotificationStatus::class,
             'attempts' => 'integer',
             'sent_at' => 'datetime',
             'delivered_at' => 'datetime',
+            'read_at' => 'datetime',
         ];
     }
 

@@ -97,6 +97,9 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Same zone as the app (config/app.php): Laravel writes timestamps without an
+            // offset, so the session zone must match for timestamptz columns to be right.
+            'timezone' => env('APP_TIMEZONE', 'Asia/Colombo'),
         ],
 
         'sqlsrv' => [

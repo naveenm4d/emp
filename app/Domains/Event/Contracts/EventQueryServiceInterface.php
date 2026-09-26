@@ -15,8 +15,8 @@ interface EventQueryServiceInterface
     /** @return LengthAwarePaginator<int, Event> */
     public function all(EventFilters $filters): LengthAwarePaginator;
 
-    /** Public lookup: only published events are visible. */
-    public function findPublishedBySlug(string $slug): Event;
+    /** The newest event with this slug (slugs are not unique); only for redirecting old /e/{slug} links. */
+    public function findLatestBySlug(string $slug): ?Event;
 
     /** Loads the event with a row lock. Must be called inside a transaction. */
     public function findAndLock(string $id): Event;

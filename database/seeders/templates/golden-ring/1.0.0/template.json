@@ -1,0 +1,69 @@
+{
+    "key": "golden-ring",
+    "name": "Golden Ring",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Champagne engagement card with a live countdown to the big day.",
+    "category": "engagement",
+    "tags": [
+        "engagement",
+        "countdown",
+        "champagne",
+        "elegant"
+    ],
+    "price": 139000,
+    "currency": "LKR",
+    "display_price": "Rs. 1,390",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=Italiana&family=Jost:wght@300;400;500&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Couple photo",
+        "bg_music": "Background music"
+    },
+    "sort_order": 5,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "We said yes"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Get directions"
+            },
+            "greeting": {
+                "label": "Greeting",
+                "default": "Dear"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#b08d57"
+            },
+            "paper": {
+                "label": "Card",
+                "default": "#fffdf8"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#2f2a24"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            },
+            "map": {
+                "label": "Directions link",
+                "default": true
+            },
+            "countdown": {
+                "label": "Countdown",
+                "default": true
+            }
+        }
+    }
+}

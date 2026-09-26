@@ -19,6 +19,8 @@ class StoreGuestRequest extends FormRequest
         return [
             ...GuestRules::contact(),
             'notes' => ['nullable', 'string', 'max:2000'],
+            'invitation_message' => ['nullable', 'string', 'max:1000'],
+            'reminder_message' => ['nullable', 'string', 'max:1000'],
         ];
     }
 

@@ -26,7 +26,7 @@ class TemplateFactory extends Factory
             'category' => fake()->randomElement(TemplateCategory::cases()),
             'tags' => [],
             'price' => 0,
-            'currency' => 'INR',
+            'currency' => 'LKR',
             'type' => TemplateType::Predefined,
             'is_active' => true,
         ];

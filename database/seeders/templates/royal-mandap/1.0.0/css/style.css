@@ -1,0 +1,90 @@
+:host { display: block; }
+
+.inv {
+    --ink: var(--emp-color-ink, #3d0f12);
+    --muted: #8a5a3c;
+    --accent: var(--emp-color-accent, #b8862b);
+    --paper: var(--emp-color-paper, #fff8ec);
+
+    min-height: 100vh;
+    padding: 32px 16px;
+    box-sizing: border-box;
+    background: radial-gradient(circle at top, #7a1420 0%, #4a0a12 70%);
+    color: var(--ink);
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.55;
+}
+
+.inv *, .inv *::before, .inv *::after { box-sizing: border-box; }
+
+.card {
+    position: relative;
+    max-width: 540px;
+    margin: 0 auto;
+    padding: 44px 28px;
+    background: var(--paper);
+    border-radius: 220px 220px 18px 18px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+    text-align: center;
+    overflow: hidden;
+}
+
+.eyebrow {
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.title {
+    margin: 14px 0 6px;
+    font-family: 'Cinzel Decorative', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(38px, 9vw, 58px);
+    line-height: 1.1;
+    color: var(--accent);
+}
+
+.greeting { margin: 18px 0 0; font-style: italic; color: var(--muted); }
+
+.photo { margin: 26px 0 0; }
+.photo img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.details { margin-top: 26px; }
+.date { margin: 0; font-size: 20px; font-weight: 600; }
+.time { margin: 4px 0 0; color: var(--muted); }
+.venue { margin-top: 18px; }
+.venue__name { margin: 0; font-weight: 600; }
+.venue__address { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+.venue__map {
+    display: inline-block;
+    margin-top: 10px;
+    color: var(--accent);
+    font-size: 14px;
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+}
+.description { margin: 22px 0 0; white-space: normal; }
+
+.rsvp { margin-top: 30px; }
+
+.card { border: 2px solid var(--accent); padding-top: 80px; }
+.arch {
+    position: absolute;
+    inset: 14px 14px auto;
+    height: 120px;
+    border: 1px solid rgba(184, 134, 43, 0.6);
+    border-bottom: 0;
+    border-radius: 200px 200px 0 0;
+}
+.title { font-size: clamp(30px, 7vw, 44px); }
+.lead { margin: 16px auto 0; max-width: 360px; color: var(--muted); font-style: italic; }
+.photo--small img { aspect-ratio: 16 / 9; }

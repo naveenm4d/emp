@@ -23,15 +23,7 @@ class EventRepository extends BaseRepository implements EventRepositoryInterface
 
     public function findBySlug(string $slug): ?Event
     {
-        return $this->query()->where('slug', mb_strtolower(trim($slug)))->first();
-    }
-
-    public function slugExists(string $slug, ?string $exceptId = null): bool
-    {
-        return $this->query()
-            ->where('slug', $slug)
-            ->when($exceptId, fn (Builder $query, string $id) => $query->whereKeyNot($id))
-            ->exists();
+        return $this->query()->where('slug', mb_strtolower(trim($slug)))->latest()->first();
     }
 
     public function findAndLock(string $id): Event

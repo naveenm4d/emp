@@ -8,16 +8,21 @@ use App\Domains\Event\Contracts\EventQueryServiceInterface;
 use App\Domains\Event\Contracts\EventServiceInterface;
 use App\Domains\Event\DTOs\EventFilters;
 use App\Domains\Event\Enums\EventState;
+use App\Domains\Event\Enums\EventType;
+use App\Domains\Event\Enums\RegistrationType;
 use App\Domains\Event\Http\Requests\Dashboard\StoreEventRequest;
 use App\Domains\Event\Http\Requests\Dashboard\UpdateEventRequest;
 use App\Domains\Event\Http\Resources\EventResource;
 use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Contracts\GuestQueryServiceInterface;
-use App\Domains\Invitation\Contracts\InvitationQueryServiceInterface;
+use App\Domains\Rsvp\Contracts\RsvpQueryServiceInterface;
+use App\Domains\Rsvp\Support\RsvpMessage;
 use App\Domains\Template\Contracts\TemplateQueryServiceInterface;
+use App\Domains\Template\Exceptions\TemplateNotAvailableException;
 use App\Domains\Template\Http\Resources\TemplateResource;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -42,8 +47,16 @@ class EventController extends InertiaController
 
     public function create(Request $request): Response
     {
+        $client = $this->client($request);
+
         return Inertia::render('client/events/create', [
-            'templates' => TemplateResource::collection($this->templates->available($this->client($request))),
+            'templates' => TemplateResource::collection($this->templates->available($client)),
+            'eventTypes' => EventType::options(),
+            'registrationTypes' => RegistrationType::detailedOptions(),
+            'defaultInvitationMessage' => RsvpMessage::DEFAULT,
+            'defaultReminderMessage' => RsvpMessage::DEFAULT_REMINDER,
+            // Arriving from the Templates page with a design already chosen.
+            'selectedTemplateId' => $this->selectableTemplateId($request->query('template'), $client),
         ]);
     }
 
@@ -57,27 +70,28 @@ class EventController extends InertiaController
     public function show(
         Event $event,
         GuestQueryServiceInterface $guests,
-        InvitationQueryServiceInterface $invitations,
+        RsvpQueryServiceInterface $rsvps,
     ): Response {
         $this->authorize('view', $event);
-        $event->load('templateVersion.template.latestVersion');
+        $event->load(['templateVersion.template.latestVersion', 'publicLink']);
 
         return Inertia::render('client/events/show', [
             'event' => EventResource::make($event),
             'guestSummary' => $guests->summary($event),
-            'invitationSummary' => $invitations->summary($event),
+            'rsvpSummary' => $rsvps->summary($event),
+            'eventTypes' => EventType::options(),
+            'registrationTypes' => RegistrationType::detailedOptions(),
+            'defaultInvitationMessage' => RsvpMessage::DEFAULT,
+            'defaultReminderMessage' => RsvpMessage::DEFAULT_REMINDER,
         ]);
     }
 
-    public function edit(Request $request, Event $event): Response
+    /** Details are edited on the overview now; the design on the Design tab. */
+    public function edit(Event $event): RedirectResponse
     {
         $this->authorize('update', $event);
-        $event->load('templateVersion.template.latestVersion');
 
-        return Inertia::render('client/events/edit', [
-            'event' => EventResource::make($event),
-            'templates' => TemplateResource::collection($this->templates->available($this->client($request))),
-        ]);
+        return to_route('client.events.show', $event);
     }
 
     public function update(UpdateEventRequest $request, Event $event): RedirectResponse
@@ -94,6 +108,19 @@ class EventController extends InertiaController
         $this->events->delete($event);
 
         return $this->toRouteWithSuccess('client.events.index', 'Event deleted.');
+    }
+
+    private function selectableTemplateId(mixed $templateId, Client $client): ?string
+    {
+        if (! is_string($templateId) || ! Str::isUuid($templateId)) {
+            return null;
+        }
+
+        try {
+            return $this->templates->findSelectable($templateId, $client)->id;
+        } catch (TemplateNotAvailableException) {
+            return null;
+        }
     }
 
     private function client(Request $request): Client

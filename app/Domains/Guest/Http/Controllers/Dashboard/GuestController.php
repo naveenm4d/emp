@@ -9,12 +9,13 @@ use App\Domains\Guest\Contracts\GuestQueryServiceInterface;
 use App\Domains\Guest\Contracts\GuestServiceInterface;
 use App\Domains\Guest\DTOs\GuestFilters;
 use App\Domains\Guest\Enums\ApprovalStatus;
+use App\Domains\Guest\Enums\GuestRsvpStatus;
 use App\Domains\Guest\Enums\GuestSource;
-use App\Domains\Guest\Enums\RsvpStatus;
 use App\Domains\Guest\Http\Requests\Dashboard\StoreGuestRequest;
 use App\Domains\Guest\Http\Requests\Dashboard\UpdateGuestRequest;
 use App\Domains\Guest\Http\Resources\GuestResource;
 use App\Domains\Guest\Models\Guest;
+use App\Domains\Rsvp\Support\RsvpMessage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -38,10 +39,12 @@ class GuestController extends InertiaController
             'guests' => GuestResource::collection($this->guestQueries->forEvent($event, $filters)),
             'summary' => $this->guestQueries->summary($event),
             'filters' => $filters->toArray(),
+            'defaultInvitationMessage' => RsvpMessage::DEFAULT,
+            'defaultReminderMessage' => RsvpMessage::DEFAULT_REMINDER,
             'options' => [
                 'sources' => GuestSource::options(),
                 'approval_statuses' => ApprovalStatus::options(),
-                'rsvp_statuses' => RsvpStatus::options(),
+                'rsvp_statuses' => GuestRsvpStatus::options(),
             ],
         ]);
     }

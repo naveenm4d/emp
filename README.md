@@ -8,7 +8,7 @@ The EMP event management platform as a single Laravel 13 + Inertia v3 + React 19
 | -------------------------------------- | ------------------------- | ------------------------------------------------------------- | ----------------------------------- |
 | Subscribed customer who creates events | **Client**                | Client dashboard, `/app`                                      | session guard `client`              |
 | EMP platform staff                     | **Staff** (`StaffMember`) | Internal console, `/internal`                                 | session guard `staff` + permissions |
-| Event attendee                         | **Guest** (no account)    | Site: `/`, `/e/{slug}`, `/rsvp/{token}`, `/preview/{event}`   | none: public slug or RSVP token     |
+| Event attendee                         | **Guest** (no account)    | Site: `/`, `/{slug}/{code}`, `/preview/{event}`               | none: short link code               |
 
 ## Layout
 
@@ -62,10 +62,10 @@ Public Inertia pages with their own root view (`resources/views/site.blade.php`)
 | Method   | Path                                   |                                                                      |
 | -------- | -------------------------------------- | -------------------------------------------------------------------- |
 | GET      | `/`                                    | marketing homepage; its CTAs lead to `/app`                          |
-| GET      | `/e/{slug}`                            | published event page with self-registration                          |
-| POST     | `/e/{slug}/register`                   | public registration (capacity, duplicates, approval)                 |
-| GET      | `/rsvp/{token}`                        | the guest's invitation (the link sent over WhatsApp)                 |
-| POST     | `/rsvp/{token}/accept` · `/decline`    | idempotent; an expired invitation flashes an error                   |
+| GET      | `/{slug}/{code}`                       | short link: the event's public page, or a guest's invitation + RSVP  |
+| POST     | `/{slug}/{code}/register`              | public registration (capacity, duplicates, approval)                 |
+| POST     | `/{slug}/{code}/accept` · `/decline`   | idempotent; an expired invitation flashes an error                   |
+| GET      | `/e/{slug}`, `/rsvp/{token}`           | older link formats; 301 to the short link                            |
 | GET      | `/preview/{event}`                     | client preview of the invitation; needs the dashboard's signed link  |
 | GET/POST | `/webhooks/whatsapp`                   | Meta verification; HMAC-signed status callbacks (no session / CSRF)  |
 

@@ -5,9 +5,14 @@
     "author": "EMP Studio",
     "description": "Timeless cream-and-gold card with a serif script title. One portrait photo and optional background music.",
     "category": "wedding",
-    "tags": ["elegant", "serif", "gold", "minimal"],
+    "tags": [
+        "elegant",
+        "serif",
+        "gold",
+        "minimal"
+    ],
     "price": 0,
-    "currency": "INR",
+    "currency": "LKR",
     "display_price": "Free",
     "fonts": [
         "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Great+Vibes&display=swap"
@@ -16,5 +21,41 @@
         "img_1": "Portrait photo",
         "bg_music": "Background music"
     },
-    "sort_order": 1
+    "sort_order": 1,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "You are invited to"
+            },
+            "lead": {
+                "label": "Invitation line",
+                "default": "we request the pleasure of your company"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "View on map"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#b08d57"
+            },
+            "paper": {
+                "label": "Card",
+                "default": "#fbf6ec"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#3b3226"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            }
+        }
+    }
 }

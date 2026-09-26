@@ -22,6 +22,11 @@ use App\Domains\Template\Support\Nodes\VariableNode;
  *   event.*                                      event details (see EVENT_FIELDS)
  *   guest.name                                   filled per guest when viewed
  *   rsvp                                         mount point for the RSVP buttons
+ *   text.<key>                                   wording the client can edit
+ *   section.<key>                                only in {{#if}}: a block the client can hide
+ *
+ * text.* and section.* keys (and colours, used in CSS as var(--emp-color-<key>))
+ * are declared in the "editable" block of template.json; see EditableSchema.
  */
 final class PlaceholderSyntax
 {
@@ -36,6 +41,10 @@ final class PlaceholderSyntax
     public const GUEST_FIELDS = ['guest.name'];
 
     public const ASSET_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif'];
+
+    private const TEXT_PATTERN = '/^text\.[a-z][a-z0-9_]{0,31}$/';
+
+    private const SECTION_PATTERN = '/^section\.[a-z][a-z0-9_]{0,31}$/';
 
     private const MEDIA_PATTERN = '/^(?:(?:img|video)_[1-9][0-9]{0,2}|bg_music)$/';
 
@@ -130,17 +139,23 @@ final class PlaceholderSyntax
             in_array($name, self::EVENT_FIELDS, true) => 'event',
             in_array($name, self::GUEST_FIELDS, true) => 'guest',
             $name === self::RSVP => 'rsvp',
+            (bool) preg_match(self::TEXT_PATTERN, $name) => 'text',
+            (bool) preg_match(self::SECTION_PATTERN, $name) => 'section',
             default => throw new InvalidTemplateException("Unknown placeholder {{ {$name} }}."),
         };
 
+        if ($kind === 'section' && ! $conditional) {
+            throw new InvalidTemplateException("{{ {$name} }} can only be used as {{#if {$name}}} … {{/if}}.");
+        }
+
         $allowed = match ($context) {
-            PlaceholderContext::Markup => $conditional ? ['media', 'event', 'guest'] : ['media', 'event', 'guest', 'rsvp'],
+            PlaceholderContext::Markup => $conditional ? ['media', 'event', 'guest', 'text', 'section'] : ['media', 'event', 'guest', 'rsvp', 'text'],
             PlaceholderContext::Styles => [],
             PlaceholderContext::Guest => ['guest'],
         };
 
         if (! in_array($kind, $allowed, true)) {
-            $where = $context === PlaceholderContext::Styles ? 'styles.css (only {{ asset:… }} is allowed there)' : 'this position';
+            $where = $context === PlaceholderContext::Styles ? 'CSS (only {{ asset:… }} is allowed there)' : 'this position';
 
             throw new InvalidTemplateException("{{ {$name} }} cannot be used in {$where}.");
         }

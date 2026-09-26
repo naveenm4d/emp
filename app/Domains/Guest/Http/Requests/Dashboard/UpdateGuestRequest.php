@@ -16,7 +16,7 @@ class UpdateGuestRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        return collect([...GuestRules::contact(), 'notes' => ['nullable', 'string', 'max:2000']])
+        return collect([...GuestRules::contact(), 'notes' => ['nullable', 'string', 'max:2000'], 'invitation_message' => ['nullable', 'string', 'max:1000'], 'reminder_message' => ['nullable', 'string', 'max:1000']])
             ->map(fn (array $rules) => ['sometimes', ...$rules])
             ->all();
     }

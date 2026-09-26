@@ -97,10 +97,16 @@ class NotificationService extends BaseService implements NotificationServiceInte
         }
 
         $this->transaction(function () use ($notification, $update) {
+            // Meta may send callbacks out of order: a late "delivered" never downgrades "read".
             $attributes = match ($update->status) {
-                'delivered', 'read' => $notification->delivered_at ? [] : [
+                'delivered' => $notification->delivered_at || $notification->status === NotificationStatus::Read ? [] : [
                     'status' => NotificationStatus::Delivered,
                     'delivered_at' => $update->occurredAt ?? now(),
+                ],
+                'read' => $notification->status === NotificationStatus::Read ? [] : [
+                    'status' => NotificationStatus::Read,
+                    'delivered_at' => $notification->delivered_at ?? $update->occurredAt ?? now(),
+                    'read_at' => $update->occurredAt ?? now(),
                 ],
                 'failed' => [
                     'status' => NotificationStatus::Failed,

@@ -12,9 +12,8 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  */
 interface EventRepositoryInterface extends RepositoryInterface
 {
+    /** The newest event with this slug; slugs are not unique. */
     public function findBySlug(string $slug): ?Event;
-
-    public function slugExists(string $slug, ?string $exceptId = null): bool;
 
     /** Loads the event with a row lock. Must be called inside a transaction. */
     public function findAndLock(string $id): Event;

@@ -3,11 +3,12 @@
 namespace App\Domains\Guest\Models;
 
 use App\Domains\Event\Models\Event;
+use App\Domains\Event\Models\EventLink;
 use App\Domains\Guest\Enums\ApprovalStatus;
 use App\Domains\Guest\Enums\CheckInStatus;
+use App\Domains\Guest\Enums\GuestRsvpStatus;
 use App\Domains\Guest\Enums\GuestSource;
-use App\Domains\Guest\Enums\RsvpStatus;
-use App\Domains\Invitation\Models\Invitation;
+use App\Domains\Rsvp\Models\Rsvp;
 use Carbon\CarbonImmutable;
 use Database\Factories\GuestFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -26,19 +27,24 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $event_id
  * @property GuestSource $source
  * @property ApprovalStatus $approval_status
- * @property RsvpStatus $rsvp_status
+ * @property GuestRsvpStatus $rsvp_status
  * @property CheckInStatus $check_in_status
  * @property string $name
  * @property string|null $email
  * @property string|null $phone
  * @property string|null $notes
+ * @property string|null $invitation_message replaces the event's invitation message for this guest
+ * @property string|null $reminder_message replaces the event's reminder message for this guest
+ * @property CarbonImmutable|null $approval_status_changed_at
+ * @property-read EventLink|null $link
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  */
 #[UseFactory(GuestFactory::class)]
 #[Fillable([
     'event_id', 'source', 'approval_status', 'rsvp_status', 'check_in_status',
-    'name', 'email', 'phone', 'notes',
+    'name', 'email', 'phone', 'notes', 'invitation_message', 'reminder_message',
+    'approval_status_changed_at',
 ])]
 class Guest extends Model
 {
@@ -56,8 +62,9 @@ class Guest extends Model
         return [
             'source' => GuestSource::class,
             'approval_status' => ApprovalStatus::class,
-            'rsvp_status' => RsvpStatus::class,
+            'rsvp_status' => GuestRsvpStatus::class,
             'check_in_status' => CheckInStatus::class,
+            'approval_status_changed_at' => 'datetime',
         ];
     }
 
@@ -67,18 +74,28 @@ class Guest extends Model
         return $this->belongsTo(Event::class);
     }
 
-    /** @return HasMany<Invitation, $this> */
-    public function invitations(): HasMany
+    /** @return HasMany<Rsvp, $this> */
+    public function rsvps(): HasMany
     {
-        return $this->hasMany(Invitation::class);
+        return $this->hasMany(Rsvp::class);
     }
 
-    /** @return HasOne<Invitation, $this> */
-    public function latestInvitation(): HasOne
+    /**
+     * The guest's personal RSVP link (domain/{slug}/{code}).
+     *
+     * @return HasOne<EventLink, $this>
+     */
+    public function link(): HasOne
+    {
+        return $this->hasOne(EventLink::class);
+    }
+
+    /** @return HasOne<Rsvp, $this> */
+    public function latestRsvp(): HasOne
     {
         // latestOfMany() tie-breaks with MAX(id), which Postgres lacks for
         // uuid. An ordered hasOne works because eager loading keeps the
         // first match per guest.
-        return $this->hasOne(Invitation::class)->latest();
+        return $this->hasOne(Rsvp::class)->latest();
     }
 }

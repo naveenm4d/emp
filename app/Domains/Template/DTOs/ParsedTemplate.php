@@ -10,7 +10,7 @@ final readonly class ParsedTemplate
 {
     /**
      * @param  list<MediaSlot>  $slots
-     * @param  list<string>  $fields  event.* / guest.* names used
+     * @param  list<string>  $fields  event.* / guest.* / text.* / section.* names used
      * @param  list<string>  $assets  asset paths used (relative to assets/)
      */
     public function __construct(
@@ -44,5 +44,17 @@ final readonly class ParsedTemplate
             'assets' => $this->assets,
             'has_rsvp' => $this->hasRsvp,
         ];
+    }
+
+    /**
+     * @param  'text'|'section'  $kind
+     * @return list<string> the keys of text.* or section.* placeholders used
+     */
+    public function editableKeys(string $kind): array
+    {
+        return array_values(array_map(
+            fn (string $field) => substr($field, strlen($kind) + 1),
+            array_filter($this->fields, fn (string $field) => str_starts_with($field, "{$kind}.")),
+        ));
     }
 }

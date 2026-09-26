@@ -5,9 +5,11 @@ namespace App\Domains\Template\Services;
 use App\Domains\Client\Models\Client;
 use App\Domains\Template\Contracts\TemplateQueryServiceInterface;
 use App\Domains\Template\Contracts\TemplateRepositoryInterface;
+use App\Domains\Template\DTOs\TemplateFilters;
 use App\Domains\Template\Enums\TemplateType;
 use App\Domains\Template\Exceptions\TemplateNotAvailableException;
 use App\Domains\Template\Models\Template;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class TemplateQueryService implements TemplateQueryServiceInterface
@@ -41,5 +43,15 @@ class TemplateQueryService implements TemplateQueryServiceInterface
     public function count(): int
     {
         return $this->templates->count();
+    }
+
+    public function search(TemplateFilters $filters): LengthAwarePaginator
+    {
+        return $this->templates->search($filters, config('emp.per_page'));
+    }
+
+    public function versions(Template $template): Collection
+    {
+        return $this->templates->versionsWithUsage($template);
     }
 }

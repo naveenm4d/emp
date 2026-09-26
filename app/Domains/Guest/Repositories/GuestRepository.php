@@ -6,7 +6,7 @@ use App\Core\Repositories\BaseRepository;
 use App\Domains\Guest\Contracts\GuestRepositoryInterface;
 use App\Domains\Guest\DTOs\GuestFilters;
 use App\Domains\Guest\Enums\ApprovalStatus;
-use App\Domains\Guest\Enums\RsvpStatus;
+use App\Domains\Guest\Enums\GuestRsvpStatus;
 use App\Domains\Guest\Models\Guest;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,7 +25,7 @@ class GuestRepository extends BaseRepository implements GuestRepositoryInterface
     {
         return $this->query()
             ->where('event_id', $eventId)
-            ->with('latestInvitation')
+            ->with(['link.event', 'latestRsvp.latestNotification', 'latestRsvp.guest.link.event'])
             ->when($filters->source, fn (Builder $q, $v) => $q->where('source', $v))
             ->when($filters->approvalStatus, fn (Builder $q, $v) => $q->where('approval_status', $v))
             ->when($filters->rsvpStatus, fn (Builder $q, $v) => $q->where('rsvp_status', $v))
@@ -35,7 +35,9 @@ class GuestRepository extends BaseRepository implements GuestRepositoryInterface
                     ->orWhereLike('email', "%{$search}%", caseSensitive: false)
                     ->orWhereLike('phone', "%{$search}%"),
             ))
-            ->oldest()
+            // Alphabetical, with the id as a tiebreaker so rows never shift after an update.
+            ->orderByRaw('lower(name)')
+            ->orderBy('id')
             ->paginate($perPage)
             ->withQueryString();
     }
@@ -46,6 +48,14 @@ class GuestRepository extends BaseRepository implements GuestRepositoryInterface
             ->where('event_id', $eventId)
             ->whereIn('approval_status', ApprovalStatus::capacityStatuses())
             ->count();
+    }
+
+    public function approveAllForEvent(string $eventId): int
+    {
+        return $this->query()
+            ->where('event_id', $eventId)
+            ->where('approval_status', '!=', ApprovalStatus::Approved)
+            ->update(['approval_status' => ApprovalStatus::Approved, 'approval_status_changed_at' => now()]);
     }
 
     public function emailExists(string $eventId, string $email, ?string $exceptId = null): bool
@@ -76,7 +86,7 @@ class GuestRepository extends BaseRepository implements GuestRepositoryInterface
             $bindings[] = $status->value;
         }
 
-        foreach ([RsvpStatus::Confirmed, RsvpStatus::Declined] as $status) {
+        foreach ([GuestRsvpStatus::Confirmed, GuestRsvpStatus::Declined] as $status) {
             $select[] = "count(*) filter (where rsvp_status = ?) as rsvp_{$status->value}";
             $bindings[] = $status->value;
         }

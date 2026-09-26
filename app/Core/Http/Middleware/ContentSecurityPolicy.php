@@ -4,6 +4,7 @@ namespace App\Core\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -22,17 +23,18 @@ class ContentSecurityPolicy
         $response = $next($request);
 
         $media = config('csp.media_origins');
+        $scripts = [...$this->templateDiskOrigin(), ...config('csp.script_origins')];
         $dev = Vite::isRunningHot() ? $this->devServerOrigins() : [];
 
         $directives = [
             'default-src' => ["'self'"],
-            'script-src' => ["'self'", "'nonce-{$nonce}'", ...$dev],
+            'script-src' => ["'self'", "'nonce-{$nonce}'", ...$scripts, ...$dev],
             // Templates bring their own <style> (inside a shadow root).
             'style-src' => ["'self'", "'unsafe-inline'", ...config('csp.font_style_origins'), ...$dev],
             'font-src' => ["'self'", 'data:', ...config('csp.font_origins'), ...$dev],
             'img-src' => ["'self'", 'data:', 'blob:', ...$media],
             'media-src' => ["'self'", 'blob:', ...$media],
-            'connect-src' => ["'self'", ...$dev],
+            'connect-src' => ["'self'", ...config('csp.script_origins'), ...$dev],
             'object-src' => ["'none'"],
             'base-uri' => ["'self'"],
             'form-action' => ["'self'"],
@@ -46,6 +48,22 @@ class ContentSecurityPolicy
         $response->headers->set('X-Content-Type-Options', 'nosniff');
 
         return $response;
+    }
+
+    /** @return list<string> where templates' js/ files are served from (it may not be 'self', e.g. S3) */
+    private function templateDiskOrigin(): array
+    {
+        $url = Storage::disk((string) config('emp.template_disk'))->url('templates');
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if (! $scheme || ! $host) {
+            return [];
+        }
+
+        $port = parse_url($url, PHP_URL_PORT);
+
+        return ["{$scheme}://{$host}".($port ? ":{$port}" : '')];
     }
 
     /** @return list<string> the Vite dev server (http + ws) while `npm run dev` is running */

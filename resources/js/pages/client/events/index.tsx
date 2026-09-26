@@ -124,9 +124,12 @@ export default function EventsIndex({ events, filters, states }: Props) {
                                         {formatDate(event.event_date)}
                                     </TableCell>
                                     <TableCell className="text-muted-foreground">
-                                        {event.registration_open
-                                            ? 'Open'
-                                            : 'Closed'}
+                                        {event.registration_type ===
+                                        'guest_list_only'
+                                            ? 'Guest list only'
+                                            : event.registration_open
+                                              ? 'Open'
+                                              : 'Closed'}
                                     </TableCell>
                                     <TableCell className="pr-4 text-right tabular-nums">
                                         {event.guests_count}

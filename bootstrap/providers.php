@@ -3,8 +3,8 @@
 use App\Domains\Client\Providers\ClientServiceProvider;
 use App\Domains\Event\Providers\EventServiceProvider;
 use App\Domains\Guest\Providers\GuestServiceProvider;
-use App\Domains\Invitation\Providers\InvitationServiceProvider;
 use App\Domains\Notification\Providers\NotificationServiceProvider;
+use App\Domains\Rsvp\Providers\RsvpServiceProvider;
 use App\Domains\Staff\Providers\StaffServiceProvider;
 use App\Domains\Template\Providers\TemplateServiceProvider;
 use App\Providers\AppServiceProvider;
@@ -18,6 +18,6 @@ return [
     TemplateServiceProvider::class,
     EventServiceProvider::class,
     GuestServiceProvider::class,
-    InvitationServiceProvider::class,
+    RsvpServiceProvider::class,
     NotificationServiceProvider::class,
 ];

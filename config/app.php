@@ -61,11 +61,13 @@ return [
     |
     | Here you may specify the default timezone for your application, which
     | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | Sri Lanka time (Asia/Colombo): event dates, "today" checks, reminder
+    | scheduling and displayed times all use it. The dashboard formats times
+    | in the same zone (APP_TIME_ZONE in resources/js/lib/format.ts).
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Colombo'),
 
     /*
     |--------------------------------------------------------------------------

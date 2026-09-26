@@ -3,7 +3,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import { design, show } from '@/routes/client/events';
 import { index as guestsIndex } from '@/routes/client/events/guests';
-import { index as invitationsIndex } from '@/routes/client/events/invitations';
+import { index as rsvpsIndex } from '@/routes/client/events/rsvps';
 import { index as notificationsIndex } from '@/routes/client/events/notifications';
 import type { Event } from '@/types';
 
@@ -15,7 +15,7 @@ export function EventTabs({ event }: { event: Event }) {
         { label: 'Overview', href: show.url(event) },
         { label: 'Design', href: design.url(event) },
         { label: 'Guests', href: guestsIndex.url(event) },
-        { label: 'Invitations', href: invitationsIndex.url(event) },
+        { label: 'RSVPs', href: rsvpsIndex.url(event) },
         { label: 'Messages', href: notificationsIndex.url(event) },
     ];
 

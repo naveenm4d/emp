@@ -8,10 +8,10 @@ namespace App\Domains\Template\Support;
  */
 enum PlaceholderContext
 {
-    /** template.html: media, event and guest fields, the RSVP mount, assets. */
+    /** index.html: media, event and guest fields, the RSVP mount, assets. */
     case Markup;
 
-    /** styles.css: template assets only. */
+    /** css/*.css: template assets only. */
     case Styles;
 
     /** An already rendered invitation: only the per-guest fields remain. */

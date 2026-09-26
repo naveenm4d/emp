@@ -1,0 +1,66 @@
+{
+    "key": "silver-years",
+    "name": "Silver Years",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Refined silver anniversary card with a then-and-now photo pair.",
+    "category": "anniversary",
+    "tags": [
+        "anniversary",
+        "silver",
+        "classic",
+        "photos"
+    ],
+    "price": 119000,
+    "currency": "LKR",
+    "display_price": "Rs. 1,190",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;1,500&family=Source+Sans+3:wght@300;400&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Then (wedding photo)",
+        "img_2": "Now",
+        "bg_music": "Our song"
+    },
+    "sort_order": 9,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "Celebrating a lifetime together"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Get directions"
+            },
+            "greeting": {
+                "label": "Greeting",
+                "default": "Dear"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#7c8594"
+            },
+            "paper": {
+                "label": "Card",
+                "default": "#fbfcfd"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#2e3440"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            },
+            "map": {
+                "label": "Directions link",
+                "default": true
+            }
+        }
+    }
+}

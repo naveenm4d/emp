@@ -4,13 +4,12 @@ namespace Database\Factories;
 
 use App\Domains\Template\Models\Template;
 use App\Domains\Template\Models\TemplateVersion;
-use App\Domains\Template\Support\PlaceholderParser;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Writes the version's code to the template disk (faked in tests).
+ * Writes the version's package to the template disk (faked in tests).
  *
  * @extends Factory<TemplateVersion>
  */
@@ -28,12 +27,8 @@ class TemplateVersionFactory extends Factory
         return [
             'template_id' => Template::factory(),
             'version' => '1.0.0',
-            'disk' => fn () => config('emp.template_disk'),
             'path' => fn () => self::publish(self::MARKUP),
             'checksum' => fn () => hash('sha256', Str::random(32)),
-            'fonts' => [],
-            'slot_labels' => [],
-            'placeholders' => fn () => app(PlaceholderParser::class)->parse(self::MARKUP)->toArray(),
             'published_at' => now(),
         ];
     }
@@ -50,10 +45,36 @@ class TemplateVersionFactory extends Factory
 
     public function withCode(string $markup, string $styles = ''): static
     {
-        return $this->state(fn () => [
-            'path' => self::publish($markup, $styles),
-            'placeholders' => app(PlaceholderParser::class)->parse($markup, $styles)->toArray(),
-        ]);
+        return $this->state(fn () => ['path' => self::publish($markup, $styles)]);
+    }
+
+    /**
+     * Replaces the version's template.json, e.g. to declare fonts, slot_labels or editable.
+     *
+     * @param  array<string, mixed>  $manifest
+     */
+    public function withManifest(array $manifest): static
+    {
+        return $this->afterCreating(fn (TemplateVersion $version) => self::writeManifest($version->path, $manifest));
+    }
+
+    /** Adds js/main.js to the version's files. */
+    public function withScript(string $code = 'window.empInvitation.root;'): static
+    {
+        return $this->afterCreating(
+            fn (TemplateVersion $version) => Storage::disk((string) config('emp.template_disk'))->put("{$version->path}/js/main.js", $code),
+        );
+    }
+
+    /**
+     * Writes template.json for a version. Call it before the version's files are
+     * first read: they are cached forever per id and checksum.
+     *
+     * @param  array<string, mixed>  $manifest
+     */
+    public static function writeManifest(string $path, array $manifest): void
+    {
+        Storage::disk((string) config('emp.template_disk'))->put("{$path}/template.json", (string) json_encode((object) $manifest));
     }
 
     private static function publish(string $markup, string $styles = ''): string
@@ -61,8 +82,9 @@ class TemplateVersionFactory extends Factory
         $path = 'templates/factory-'.Str::lower(Str::random(10)).'/1.0.0';
         $disk = Storage::disk((string) config('emp.template_disk'));
 
-        $disk->put("{$path}/template.html", $markup);
-        $disk->put("{$path}/styles.css", $styles);
+        self::writeManifest($path, []);
+        $disk->put("{$path}/index.html", $markup);
+        $disk->put("{$path}/css/style.css", $styles);
 
         return $path;
     }

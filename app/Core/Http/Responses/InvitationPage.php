@@ -7,7 +7,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Renders site/invitation/show (RSVP and client preview). Link-preview
+ * Renders web/invitation/show (RSVP and client preview). Link-preview
  * meta tags (WhatsApp, iMessage…) go into the server-rendered <head>
  * because crawlers do not run JS.
  */
@@ -22,7 +22,7 @@ final class InvitationPage
     {
         $title = (string) ($event['title'] ?? 'Invitation');
 
-        return Inertia::render('site/invitation/show', [
+        return Inertia::render('web/invitation/show', [
             ...$props,
             'event' => $event,
             'design' => $design,

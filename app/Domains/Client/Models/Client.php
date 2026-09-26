@@ -27,7 +27,7 @@ use Illuminate\Notifications\Notifiable;
  * @property CarbonImmutable $updated_at
  */
 #[UseFactory(ClientFactory::class)]
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'email_verified_at', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class Client extends Authenticatable implements CanResetPasswordContract
 {

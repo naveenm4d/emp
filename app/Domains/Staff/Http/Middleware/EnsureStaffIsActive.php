@@ -23,7 +23,7 @@ class EnsureStaffIsActive
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return to_route('internal.login')->with('error', 'Your account has been deactivated.');
+            return to_route('admin.login')->with('error', 'Your account has been deactivated.');
         }
 
         return $next($request);

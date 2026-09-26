@@ -1,0 +1,64 @@
+{
+    "key": "confetti-pop",
+    "name": "Confetti Pop",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Bright birthday card that bursts into confetti when it opens.",
+    "category": "birthday",
+    "tags": [
+        "birthday",
+        "colorful",
+        "fun",
+        "animated"
+    ],
+    "price": 0,
+    "currency": "LKR",
+    "display_price": "Free",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;600&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Birthday star photo"
+    },
+    "sort_order": 6,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "Let's party!"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Get directions"
+            },
+            "greeting": {
+                "label": "Greeting",
+                "default": "Dear"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#ff5a8a"
+            },
+            "paper": {
+                "label": "Card",
+                "default": "#ffffff"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#2b2140"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            },
+            "map": {
+                "label": "Directions link",
+                "default": true
+            }
+        }
+    }
+}

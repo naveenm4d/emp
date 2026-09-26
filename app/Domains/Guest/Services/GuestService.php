@@ -3,15 +3,18 @@
 namespace App\Domains\Guest\Services;
 
 use App\Core\Services\BaseService;
+use App\Domains\Event\Contracts\EventLinkServiceInterface;
 use App\Domains\Event\Contracts\EventQueryServiceInterface;
+use App\Domains\Event\Enums\RegistrationType;
 use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Contracts\GuestRepositoryInterface;
 use App\Domains\Guest\Contracts\GuestServiceInterface;
 use App\Domains\Guest\DTOs\GuestData;
 use App\Domains\Guest\DTOs\UpdateGuestData;
 use App\Domains\Guest\Enums\ApprovalStatus;
+use App\Domains\Guest\Enums\GuestRsvpStatus;
 use App\Domains\Guest\Enums\GuestSource;
-use App\Domains\Guest\Enums\RsvpStatus;
+use App\Domains\Guest\Exceptions\ApprovalNotRequiredException;
 use App\Domains\Guest\Exceptions\EventAtCapacityException;
 use App\Domains\Guest\Exceptions\GuestEmailConflictException;
 use App\Domains\Guest\Exceptions\GuestPhoneConflictException;
@@ -24,6 +27,7 @@ class GuestService extends BaseService implements GuestServiceInterface
     public function __construct(
         private readonly GuestRepositoryInterface $guests,
         private readonly EventQueryServiceInterface $events,
+        private readonly EventLinkServiceInterface $links,
     ) {}
 
     public function add(Event $event, GuestData $data): Guest
@@ -31,10 +35,8 @@ class GuestService extends BaseService implements GuestServiceInterface
         return $this->createGuest($event->id, $data, GuestSource::Manual);
     }
 
-    public function registerPublic(string $slug, GuestData $data): Guest
+    public function registerPublic(Event $event, GuestData $data): Guest
     {
-        $event = $this->events->findPublishedBySlug($slug);
-
         if (! $event->acceptsPublicRegistrations()) {
             throw new RegistrationClosedException;
         }
@@ -62,20 +64,34 @@ class GuestService extends BaseService implements GuestServiceInterface
 
     public function approve(Guest $guest): Guest
     {
+        // Guest-list-only events have no approval; their guests are always approved.
+        if ($guest->event->registration_type === RegistrationType::GuestListOnly) {
+            throw new ApprovalNotRequiredException;
+        }
+
         return $this->changeApproval($guest, ApprovalStatus::Approved);
+    }
+
+    public function approveEveryone(Event $event): int
+    {
+        return $this->guests->approveAllForEvent($event->id);
     }
 
     public function reject(Guest $guest): Guest
     {
+        $this->ensureApprovalRequired($guest);
+
         return $this->changeApproval($guest, ApprovalStatus::Rejected);
     }
 
     public function waitlist(Guest $guest): Guest
     {
+        $this->ensureApprovalRequired($guest);
+
         return $this->changeApproval($guest, ApprovalStatus::Waitlisted);
     }
 
-    public function setRsvpStatus(string $guestId, RsvpStatus $status): void
+    public function setRsvpStatus(string $guestId, GuestRsvpStatus $status): void
     {
         $this->guests->update($this->guests->findOrFail($guestId), ['rsvp_status' => $status]);
     }
@@ -89,14 +105,23 @@ class GuestService extends BaseService implements GuestServiceInterface
             $this->ensureCapacity($event);
             $this->ensureUniqueContact($event->id, $data->email, $data->phone);
 
-            /** @var Guest */
-            return $this->persist(fn () => $this->guests->create([
+            /** @var Guest $guest */
+            $guest = $this->persist(fn () => $this->guests->create([
                 ...$data->toArray(),
                 'event_id' => $event->id,
                 'source' => $source,
-                'approval_status' => $event->require_approval ? ApprovalStatus::Pending : ApprovalStatus::Approved,
-                'rsvp_status' => RsvpStatus::NotSent,
+                // Only public requests wait for approval; guests the client adds are approved.
+                'approval_status' => $source === GuestSource::PublicLink && $event->requiresApproval()
+                    ? ApprovalStatus::Pending
+                    : ApprovalStatus::Approved,
+                'approval_status_changed_at' => now(),
+                'rsvp_status' => GuestRsvpStatus::NotSent,
             ]));
+
+            // The guest's personal RSVP link (domain/{slug}/{code}).
+            $this->links->createForGuest($guest);
+
+            return $guest;
         });
     }
 
@@ -113,8 +138,16 @@ class GuestService extends BaseService implements GuestServiceInterface
             }
 
             /** @var Guest */
-            return $this->guests->update($guest, ['approval_status' => $status]);
+            return $this->guests->update($guest, ['approval_status' => $status, 'approval_status_changed_at' => now()]);
         });
+    }
+
+    /** Waitlisting and rejecting only apply to events whose registrations need approval. */
+    private function ensureApprovalRequired(Guest $guest): void
+    {
+        if (! $guest->event->requiresApproval()) {
+            throw new ApprovalNotRequiredException;
+        }
     }
 
     private function ensureCapacity(Event $event): void

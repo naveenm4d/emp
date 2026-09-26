@@ -21,7 +21,7 @@ class PublicEventResource extends JsonResource
             'title' => $this->title,
             'slug' => $this->slug,
             'description' => $this->description,
-            'event_type' => $this->event_type,
+            'event_type' => $this->event_type?->label(),
             'location_name' => $this->location_name,
             'location_address' => $this->location_address,
             'map_url' => $this->map_url,
@@ -29,7 +29,7 @@ class PublicEventResource extends JsonResource
             'start_time' => $this->start_time ? substr($this->start_time, 0, 5) : null,
             'end_time' => $this->end_time ? substr($this->end_time, 0, 5) : null,
             'registration_open' => $this->acceptsPublicRegistrations(),
-            'require_approval' => $this->require_approval,
+            'requires_approval' => $this->requiresApproval(),
         ];
     }
 }

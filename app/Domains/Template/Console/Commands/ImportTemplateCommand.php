@@ -26,7 +26,7 @@ class ImportTemplateCommand extends Command
         $slots = collect($version->slots())->map(fn ($slot) => $slot->key.($slot->required ? '*' : ''))->implode(', ');
 
         $this->components->info("Imported {$version->template->name} ({$version->template->key}) v{$version->version}.");
-        $this->components->twoColumnDetail('Stored at', "{$version->disk}:{$version->path}");
+        $this->components->twoColumnDetail('Stored at', config('emp.template_disk').":{$version->path}");
         $this->components->twoColumnDetail('Media slots (* = required)', $slots ?: 'none');
 
         return self::SUCCESS;

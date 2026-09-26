@@ -56,9 +56,38 @@ it('rejects invalid template code', function (string $markup, string $message) {
     'asset not an image' => ['{{ asset:script.js }}', 'Invalid asset path'],
 ]);
 
+it('parses editable texts and sections', function () {
+    $parsed = (new PlaceholderParser)->parse('<p>{{ text.intro }}</p>{{#if section.gallery}}<img src="{{ img_2 }}">{{/if}}');
+
+    expect($parsed->editableKeys('text'))->toBe(['intro'])
+        ->and($parsed->editableKeys('section'))->toBe(['gallery'])
+        ->and($parsed->slots[0]->required)->toBeFalse();
+});
+
+it('only allows sections as {{#if}} blocks', function () {
+    expect(fn () => PlaceholderSyntax::parse('<p>{{ section.gallery }}</p>', PlaceholderContext::Markup))
+        ->toThrow(InvalidTemplateException::class, '{{ section.gallery }} can only be used as {{#if section.gallery}}');
+});
+
+it('tells a decorator whether a placeholder sits inside a tag', function () {
+    $seen = [];
+
+    (new TemplateRenderer)->render(
+        PlaceholderSyntax::parse('<p title="{{ text.a }}">{{ text.a }}</p>{{#if text.b}}<b>{{ text.b }}</b>{{/if}}', PlaceholderContext::Markup),
+        ['text.a' => 'A', 'text.b' => 'B'],
+        decorate: function (string $name, string $html, bool $insideTag) use (&$seen) {
+            $seen[] = [$name, $insideTag];
+
+            return $html;
+        },
+    );
+
+    expect($seen)->toBe([['text.a', true], ['text.a', false], ['text.b', false]]);
+});
+
 it('only allows assets in styles', function () {
     expect(fn () => (new PlaceholderParser)->parse('<p></p>', '.x { content: "{{ event.title }}" }'))
-        ->toThrow(InvalidTemplateException::class, 'styles.css');
+        ->toThrow(InvalidTemplateException::class, 'CSS (only');
 });
 
 it('fills values, escapes text and drops empty optional blocks', function () {

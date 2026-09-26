@@ -4,11 +4,11 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Invitations
+    | RSVP links
     |--------------------------------------------------------------------------
     */
 
-    'invitation_expiry_days' => (int) env('EMP_INVITATION_EXPIRY_DAYS', 7),
+    'rsvp_expiry_days' => (int) env('EMP_RSVP_EXPIRY_DAYS', 7),
 
     /*
     |--------------------------------------------------------------------------
@@ -30,7 +30,7 @@ return [
 
     'render_disk' => env('EMP_RENDER_DISK', 'local'),
 
-    'default_currency' => env('EMP_DEFAULT_CURRENCY', 'INR'),
+    'default_currency' => env('EMP_DEFAULT_CURRENCY', 'LKR'),
 
     'media' => [
         'image' => [

@@ -1,0 +1,64 @@
+{
+    "key": "garden-brunch",
+    "name": "Garden Brunch",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Fresh botanical card for brunches, get-togethers and garden parties.",
+    "category": "party",
+    "tags": [
+        "brunch",
+        "garden",
+        "green",
+        "casual"
+    ],
+    "price": 0,
+    "currency": "LKR",
+    "display_price": "Free",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Garden photo"
+    },
+    "sort_order": 12,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "Join us for brunch"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Get directions"
+            },
+            "greeting": {
+                "label": "Greeting",
+                "default": "Dear"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#2f7d4f"
+            },
+            "paper": {
+                "label": "Card",
+                "default": "#fbfaf3"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#1f3b2d"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            },
+            "map": {
+                "label": "Directions link",
+                "default": true
+            }
+        }
+    }
+}

@@ -12,7 +12,7 @@ return [
     |
     | EMP has two independent authenticated audiences:
     |  - client: subscribed customers who create and manage events (/app)
-    |  - staff:  EMP platform internal staff (/internal)
+    |  - staff:  EMP platform internal staff (/admin)
     |
     | Guests (event attendees) never authenticate; they use public slugs and
     | RSVP tokens against the JSON API.

@@ -1,0 +1,92 @@
+:host { display: block; }
+
+.inv {
+    --ink: var(--emp-color-ink, #14213d);
+    --muted: #5c6784;
+    --accent: var(--emp-color-accent, #c9a227);
+    --paper: var(--emp-color-paper, #ffffff);
+
+    min-height: 100vh;
+    padding: 32px 16px;
+    box-sizing: border-box;
+    background: linear-gradient(160deg, #14213d 0%, #1f3566 100%);
+    color: var(--ink);
+    font-family: 'Work Sans', system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.55;
+}
+
+.inv *, .inv *::before, .inv *::after { box-sizing: border-box; }
+
+.card {
+    position: relative;
+    max-width: 540px;
+    margin: 0 auto;
+    padding: 44px 28px;
+    background: var(--paper);
+    border-radius: 10px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+    text-align: center;
+    overflow: hidden;
+}
+
+.eyebrow {
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.title {
+    margin: 14px 0 6px;
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(38px, 9vw, 58px);
+    line-height: 1.1;
+    color: var(--accent);
+}
+
+.greeting { margin: 18px 0 0; font-style: italic; color: var(--muted); }
+
+.photo { margin: 26px 0 0; }
+.photo img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.details { margin-top: 26px; }
+.date { margin: 0; font-size: 20px; font-weight: 600; }
+.time { margin: 4px 0 0; color: var(--muted); }
+.venue { margin-top: 18px; }
+.venue__name { margin: 0; font-weight: 600; }
+.venue__address { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+.venue__map {
+    display: inline-block;
+    margin-top: 10px;
+    color: var(--accent);
+    font-size: 14px;
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+}
+.description { margin: 22px 0 0; white-space: normal; }
+
+.rsvp { margin-top: 30px; }
+
+.card { border-bottom: 8px solid var(--accent); }
+.seal {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 16px;
+    display: grid;
+    place-items: center;
+    font-size: 34px;
+    background: #14213d;
+    border: 3px solid var(--accent);
+    border-radius: 50%;
+}
+.title { color: var(--ink); font-size: clamp(30px, 7vw, 44px); }
+.photo img { aspect-ratio: 1; max-width: 260px; margin: 0 auto; border-radius: 50%; border: 4px solid var(--accent); }

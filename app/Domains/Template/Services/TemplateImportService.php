@@ -5,6 +5,8 @@ namespace App\Domains\Template\Services;
 use App\Core\Services\BaseService;
 use App\Domains\Template\Contracts\TemplateImportServiceInterface;
 use App\Domains\Template\Contracts\TemplateRepositoryInterface;
+use App\Domains\Template\DTOs\EditableSchema;
+use App\Domains\Template\DTOs\ParsedTemplate;
 use App\Domains\Template\Enums\TemplateCategory;
 use App\Domains\Template\Enums\TemplateType;
 use App\Domains\Template\Exceptions\InvalidTemplateException;
@@ -14,6 +16,7 @@ use App\Domains\Template\Models\TemplateVersion;
 use App\Domains\Template\Support\MarkupSanitizer;
 use App\Domains\Template\Support\PlaceholderParser;
 use App\Domains\Template\Support\PlaceholderSyntax;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -27,10 +30,13 @@ use ZipArchive;
  * Validates a template package and publishes it to the template disk:
  *
  *   template.json   metadata (key, name, version, author, category, price, …)
- *   template.html   markup with placeholders
- *   styles.css      optional
+ *   index.html      markup with placeholders
+ *   css/*.css       optional, concatenated in path order
+ *   js/*.js         optional, run in path order once the invitation is shown
  *   thumbnail.webp  optional (png/jpg/webp)
  *   assets/…        optional images the code references with {{ asset:… }}
+ *
+ * Packages are uploaded by EMP staff, so their JS is trusted and not sanitised.
  */
 class TemplateImportService extends BaseService implements TemplateImportServiceInterface
 {
@@ -55,20 +61,39 @@ class TemplateImportService extends BaseService implements TemplateImportService
         }
     }
 
+    public function importUploaded(UploadedFile $file): TemplateVersion
+    {
+        $directory = storage_path('app/tmp');
+        File::ensureDirectoryExists($directory);
+        $zip = $file->move($directory, Str::uuid().'.zip')->getPathname();
+
+        try {
+            return $this->import($zip);
+        } finally {
+            File::delete($zip);
+        }
+    }
+
     private function importDirectory(string $directory, bool $skipUnchanged): TemplateVersion
     {
         $manifest = $this->manifest($directory);
         $files = $this->packageFiles($directory);
 
-        if (! isset($files['template.html'])) {
-            throw new InvalidTemplateException('The package has no template.html.');
+        if (! isset($files['index.html'])) {
+            throw new InvalidTemplateException('The package has no index.html.');
         }
 
-        $markup = (string) file_get_contents($files['template.html']);
-        $styles = isset($files['styles.css']) ? (string) file_get_contents($files['styles.css']) : '';
+        $markup = (string) file_get_contents($files['index.html']);
+        $stylesheets = $this->filesIn($files, 'css/');
+        $scripts = $this->filesIn($files, 'js/');
 
         $this->sanitizer->assertSafeMarkup($markup);
-        $this->sanitizer->assertSafeStyles($styles);
+
+        foreach ($stylesheets as $stylesheet) {
+            $this->sanitizer->assertSafeStyles((string) file_get_contents($files[$stylesheet]), $stylesheet);
+        }
+
+        $styles = implode("\n", array_map(fn (string $stylesheet) => (string) file_get_contents($files[$stylesheet]), $stylesheets));
         $parsed = $this->parser->parse($markup, $styles);
 
         foreach ($parsed->assets as $asset) {
@@ -81,9 +106,11 @@ class TemplateImportService extends BaseService implements TemplateImportService
 
         foreach (array_keys($manifest['slot_labels']) as $key) {
             if (! in_array($key, $slotKeys, true)) {
-                throw new InvalidTemplateException("slot_labels.{$key} does not match any media placeholder in template.html.");
+                throw new InvalidTemplateException("slot_labels.{$key} does not match any media placeholder in index.html.");
             }
         }
+
+        $this->assertEditableMatches($manifest['editable'], $parsed);
 
         $checksum = $this->checksum($files);
         $template = $this->templates->findByKey($manifest['key']);
@@ -99,7 +126,7 @@ class TemplateImportService extends BaseService implements TemplateImportService
         }
 
         $disk = (string) config('emp.template_disk');
-        $path = "templates/{$manifest['key']}/{$manifest['version']}";
+        $path = "templates/{$manifest['category']}/{$manifest['key']}/{$manifest['version']}";
 
         // Leftovers from an earlier failed import have no database row.
         Storage::disk($disk)->deleteDirectory($path);
@@ -108,12 +135,8 @@ class TemplateImportService extends BaseService implements TemplateImportService
             Storage::disk($disk)->put("{$path}/{$relative}", (string) file_get_contents($absolute));
         }
 
-        if (! isset($files['styles.css'])) {
-            Storage::disk($disk)->put("{$path}/styles.css", '');
-        }
-
         try {
-            return $this->transaction(function () use ($template, $manifest, $disk, $path, $checksum, $parsed, $files) {
+            return $this->transaction(function () use ($template, $manifest, $disk, $path, $checksum, $files) {
                 $template ??= $this->templates->create([
                     ...$this->catalogueAttributes($manifest),
                     'key' => $manifest['key'],
@@ -124,12 +147,8 @@ class TemplateImportService extends BaseService implements TemplateImportService
                 $version = $this->templates->createVersion([
                     'template_id' => $template->id,
                     'version' => $manifest['version'],
-                    'disk' => $disk,
                     'path' => $path,
                     'checksum' => $checksum,
-                    'fonts' => $manifest['fonts'],
-                    'slot_labels' => $manifest['slot_labels'],
-                    'placeholders' => $parsed->toArray(),
                     'published_at' => now(),
                 ]);
 
@@ -155,7 +174,7 @@ class TemplateImportService extends BaseService implements TemplateImportService
     }
 
     /**
-     * @return array{key: string, name: string, version: string, author: string, description: string|null, category: string, tags: list<string>, price: int, currency: string, display_price: string|null, fonts: list<string>, slot_labels: array<string, string>, sort_order: int, is_active: bool}
+     * @return array{key: string, name: string, version: string, author: string, description: string|null, category: string, tags: list<string>, price: int, currency: string, display_price: string|null, fonts: list<string>, slot_labels: array<string, string>, editable: EditableSchema, sort_order: int, is_active: bool}
      */
     private function manifest(string $directory): array
     {
@@ -187,6 +206,18 @@ class TemplateImportService extends BaseService implements TemplateImportService
             'fonts.*' => ['string', 'url:https', 'max:2048'],
             'slot_labels' => ['array'],
             'slot_labels.*' => ['string', 'max:64'],
+            'editable' => ['array'],
+            'editable.texts' => ['array'],
+            'editable.texts.*.label' => ['required', 'string', 'max:64'],
+            'editable.texts.*.default' => ['present', 'nullable', 'string', 'max:2000'],
+            'editable.texts.*.multiline' => ['boolean'],
+            'editable.texts.*.max' => ['integer', 'min:1', 'max:2000'],
+            'editable.colors' => ['array'],
+            'editable.colors.*.label' => ['required', 'string', 'max:64'],
+            'editable.colors.*.default' => ['required', 'string', 'regex:'.EditableSchema::COLOR_PATTERN],
+            'editable.sections' => ['array'],
+            'editable.sections.*.label' => ['required', 'string', 'max:64'],
+            'editable.sections.*.default' => ['boolean'],
             'sort_order' => ['integer', 'min:0'],
             'is_active' => ['boolean'],
         ]);
@@ -208,6 +239,7 @@ class TemplateImportService extends BaseService implements TemplateImportService
             'display_price' => $data['display_price'] ?? null,
             'fonts' => array_values($data['fonts'] ?? []),
             'slot_labels' => $data['slot_labels'] ?? [],
+            'editable' => $this->editable($data['editable'] ?? []),
             'sort_order' => (int) ($data['sort_order'] ?? 0),
             'is_active' => (bool) ($data['is_active'] ?? true),
         ];
@@ -242,16 +274,15 @@ class TemplateImportService extends BaseService implements TemplateImportService
         foreach (File::allFiles($directory, hidden: false) as $file) {
             $relative = str_replace('\\', '/', $file->getRelativePathname());
 
-            if (in_array($relative, ['template.html', 'styles.css', 'template.json', ...self::THUMBNAILS], true)) {
-                $files[$relative] = $file->getPathname();
-
-                continue;
-            }
-
             $extension = strtolower($file->getExtension());
 
-            if (! str_starts_with($relative, 'assets/') || ! in_array($extension, PlaceholderSyntax::ASSET_EXTENSIONS, true)) {
-                throw new InvalidTemplateException("Unexpected file \"{$relative}\" in the package. Only template.json, template.html, styles.css, a thumbnail and images under assets/ are allowed.");
+            $allowed = in_array($relative, ['template.json', 'index.html', ...self::THUMBNAILS], true)
+                || (str_starts_with($relative, 'css/') && $extension === 'css')
+                || (str_starts_with($relative, 'js/') && $extension === 'js')
+                || (str_starts_with($relative, 'assets/') && in_array($extension, PlaceholderSyntax::ASSET_EXTENSIONS, true));
+
+            if (! $allowed) {
+                throw new InvalidTemplateException("Unexpected file \"{$relative}\" in the package. Only template.json, index.html, css/*.css, js/*.js, a thumbnail and images under assets/ are allowed.");
             }
 
             $files[$relative] = $file->getPathname();
@@ -260,6 +291,53 @@ class TemplateImportService extends BaseService implements TemplateImportService
         ksort($files);
 
         return $files;
+    }
+
+    /** @param array<string, mixed> $data the validated "editable" block of template.json */
+    private function editable(array $data): EditableSchema
+    {
+        foreach (['texts', 'colors', 'sections'] as $kind) {
+            foreach (array_keys($data[$kind] ?? []) as $key) {
+                if (! preg_match(EditableSchema::KEY_PATTERN, (string) $key)) {
+                    throw new InvalidTemplateException("template.json: editable.{$kind}.{$key} is not a valid key (lowercase letters, numbers and _, starting with a letter).");
+                }
+            }
+        }
+
+        $schema = EditableSchema::fromArray($data);
+
+        foreach ($schema->texts as $key => $text) {
+            if (mb_strlen($text['default']) > $text['max']) {
+                throw new InvalidTemplateException("template.json: the default of editable.texts.{$key} is longer than its max ({$text['max']}).");
+            }
+        }
+
+        return $schema;
+    }
+
+    /** Every text/section the markup uses must be declared, and every declared one used. */
+    private function assertEditableMatches(EditableSchema $schema, ParsedTemplate $parsed): void
+    {
+        foreach (['text' => $schema->texts, 'section' => $schema->sections] as $kind => $declared) {
+            $used = $parsed->editableKeys($kind);
+
+            foreach (array_diff($used, array_keys($declared)) as $key) {
+                throw new InvalidTemplateException("{{ {$kind}.{$key} }} is used in index.html but not declared in editable.{$kind}s of template.json.");
+            }
+
+            foreach (array_diff(array_keys($declared), $used) as $key) {
+                throw new InvalidTemplateException("editable.{$kind}s.{$key} is declared in template.json but not used in index.html.");
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, string>  $files  relative path => absolute path, sorted
+     * @return list<string> the relative paths under $prefix, in path order
+     */
+    private function filesIn(array $files, string $prefix): array
+    {
+        return array_values(array_filter(array_keys($files), fn (string $relative) => str_starts_with($relative, $prefix)));
     }
 
     /** @param array<string, string> $files */

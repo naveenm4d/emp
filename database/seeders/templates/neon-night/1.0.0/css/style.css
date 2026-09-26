@@ -1,0 +1,87 @@
+:host { display: block; }
+
+.inv {
+    --ink: var(--emp-color-ink, #f5f3ff);
+    --muted: #a78bfa;
+    --accent: var(--emp-color-accent, #f472b6);
+    --paper: var(--emp-color-paper, #12071f);
+
+    min-height: 100vh;
+    padding: 32px 16px;
+    box-sizing: border-box;
+    background: radial-gradient(circle at 50% 0%, #3b0764 0%, #09020f 70%);
+    color: var(--ink);
+    font-family: 'Rubik', system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.55;
+}
+
+.inv *, .inv *::before, .inv *::after { box-sizing: border-box; }
+
+.card {
+    position: relative;
+    max-width: 540px;
+    margin: 0 auto;
+    padding: 44px 28px;
+    background: var(--paper);
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+    text-align: center;
+    overflow: hidden;
+}
+
+.eyebrow {
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.title {
+    margin: 14px 0 6px;
+    font-family: 'Monoton', system-ui, sans-serif;
+    font-weight: 400;
+    font-size: clamp(38px, 9vw, 58px);
+    line-height: 1.1;
+    color: var(--accent);
+}
+
+.greeting { margin: 18px 0 0; font-style: italic; color: var(--muted); }
+
+.photo { margin: 26px 0 0; }
+.photo img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.details { margin-top: 26px; }
+.date { margin: 0; font-size: 20px; font-weight: 600; }
+.time { margin: 4px 0 0; color: var(--muted); }
+.venue { margin-top: 18px; }
+.venue__name { margin: 0; font-weight: 600; }
+.venue__address { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+.venue__map {
+    display: inline-block;
+    margin-top: 10px;
+    color: var(--accent);
+    font-size: 14px;
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+}
+.description { margin: 22px 0 0; white-space: normal; }
+
+.rsvp { margin-top: 30px; }
+
+.card { border: 1px solid rgba(244, 114, 182, 0.4); box-shadow: 0 0 40px rgba(168, 85, 247, 0.35); }
+.title {
+    font-size: clamp(30px, 8vw, 48px);
+    text-shadow: 0 0 6px #f472b6, 0 0 18px #f472b6, 0 0 36px #a855f7;
+    transition: opacity 0.05s;
+}
+.title.is-off { opacity: 0.35; text-shadow: none; }
+.photo img { border: 2px solid #a855f7; box-shadow: 0 0 24px rgba(168, 85, 247, 0.5); }
+.venue__map { color: #67e8f9; }

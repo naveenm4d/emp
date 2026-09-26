@@ -5,8 +5,8 @@ namespace App\Domains\Staff\Services;
 use App\Domains\Client\Contracts\ClientQueryServiceInterface;
 use App\Domains\Event\Contracts\EventQueryServiceInterface;
 use App\Domains\Guest\Contracts\GuestQueryServiceInterface;
-use App\Domains\Invitation\Contracts\InvitationQueryServiceInterface;
 use App\Domains\Notification\Contracts\NotificationQueryServiceInterface;
+use App\Domains\Rsvp\Contracts\RsvpQueryServiceInterface;
 use App\Domains\Staff\Contracts\PlatformStatsServiceInterface;
 use App\Domains\Staff\DTOs\PlatformStats;
 
@@ -20,7 +20,7 @@ class PlatformStatsService implements PlatformStatsServiceInterface
         private readonly ClientQueryServiceInterface $clients,
         private readonly EventQueryServiceInterface $events,
         private readonly GuestQueryServiceInterface $guests,
-        private readonly InvitationQueryServiceInterface $invitations,
+        private readonly RsvpQueryServiceInterface $rsvps,
         private readonly NotificationQueryServiceInterface $notifications,
     ) {}
 
@@ -31,7 +31,7 @@ class PlatformStatsService implements PlatformStatsServiceInterface
             events: $this->events->count(),
             eventsByState: $this->events->countByState(),
             guests: $this->guests->count(),
-            invitations: $this->invitations->count(),
+            rsvps: $this->rsvps->count(),
             notifications: $this->notifications->count(),
             failedNotifications: $this->notifications->countFailed(),
         );

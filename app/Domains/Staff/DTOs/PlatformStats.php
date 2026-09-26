@@ -12,7 +12,7 @@ final readonly class PlatformStats extends DataTransferObject
         public int $events,
         public array $eventsByState,
         public int $guests,
-        public int $invitations,
+        public int $rsvps,
         public int $notifications,
         public int $failedNotifications,
     ) {}

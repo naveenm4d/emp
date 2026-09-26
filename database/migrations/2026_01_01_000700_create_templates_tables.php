@@ -31,17 +31,14 @@ return new class extends Migration
             $table->index(['is_active', 'type', 'sort_order']);
         });
 
-        // Immutable code for one version. The files live on the template disk.
+        // Immutable code for one version. The package files (template.json,
+        // index.html, css/, js/, assets/) live on the template disk under path.
         Schema::create('template_versions', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('template_id')->constrained('templates')->cascadeOnDelete();
             $table->string('version', 32);
-            $table->string('disk', 64);
             $table->string('path');
             $table->char('checksum', 64);
-            $table->jsonb('fonts')->default('[]');
-            $table->jsonb('slot_labels')->default('{}');
-            $table->jsonb('placeholders');
             $table->timestampTz('published_at');
             $table->timestampsTz();
 

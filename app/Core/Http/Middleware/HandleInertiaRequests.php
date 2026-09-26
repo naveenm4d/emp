@@ -11,16 +11,16 @@ class HandleInertiaRequests extends Middleware
 {
     /**
      * Each area has its own root template:
-     *  - resources/views/site.blade.php      guest-facing site (/, /e, /rsvp, /preview)
+     *  - resources/views/web.blade.php       guest-facing site (/, /e, /rsvp, /preview)
      *  - resources/views/app.blade.php       client dashboard  (/app)
-     *  - resources/views/internal.blade.php  staff console     (/internal)
+     *  - resources/views/admin.blade.php     staff console     (/admin)
      */
     public function rootView(Request $request): string
     {
         return match (self::area($request)) {
-            'internal' => 'internal',
+            'admin' => 'admin',
             'client' => 'app',
-            default => 'site',
+            default => 'web',
         };
     }
 
@@ -36,7 +36,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'area' => self::area($request),
-            'auth' => self::area($request) === 'internal'
+            'auth' => self::area($request) === 'admin'
                 ? ['staff' => fn () => ($staff = $request->user('staff')) ? StaffMemberResource::make($staff)->resolve($request) : null]
                 : ['client' => fn () => ($client = $request->user('client')) ? ClientResource::make($client)->resolve($request) : null],
             'flash' => [
@@ -46,13 +46,13 @@ class HandleInertiaRequests extends Middleware
         ];
     }
 
-    /** @return 'site'|'client'|'internal' */
+    /** @return 'web'|'client'|'admin' */
     private static function area(Request $request): string
     {
         return match (true) {
-            $request->is('internal', 'internal/*') => 'internal',
+            $request->is('admin', 'admin/*') => 'admin',
             $request->is('app', 'app/*') => 'client',
-            default => 'site',
+            default => 'web',
         };
     }
 }

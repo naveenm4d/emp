@@ -18,6 +18,13 @@ interface NotificationRepositoryInterface extends RepositoryInterface
     /** @return LengthAwarePaginator<int, Notification> */
     public function paginateForEvent(string $eventId, int $perPage): LengthAwarePaginator;
 
+    /**
+     * All messages sent to a guest, newest first, with their delivery log.
+     *
+     * @return Collection<int, Notification>
+     */
+    public function forGuest(string $guestId): Collection;
+
     /** @return LengthAwarePaginator<int, Notification> */
     public function paginateByStatus(NotificationStatus $status, int $perPage): LengthAwarePaginator;
 

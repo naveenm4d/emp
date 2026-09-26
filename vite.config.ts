@@ -12,7 +12,7 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
-                'resources/css/site.css',
+                'resources/css/web.css',
                 'resources/js/app.tsx',
             ],
             refresh: true,
@@ -38,7 +38,7 @@ export default defineConfig({
     ]),
     server: {
         // IPv4, not `localhost`: on macOS that resolves to [::1], and CSP
-        // source lists (site pages) cannot contain IPv6 hosts, so the browser
+        // source lists (web pages) cannot contain IPv6 hosts, so the browser
         // would block the dev server's CSS and HMR socket.
         host: '127.0.0.1',
         watch: {

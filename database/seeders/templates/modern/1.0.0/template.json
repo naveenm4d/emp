@@ -5,10 +5,15 @@
     "author": "EMP Studio",
     "description": "Big type, full-bleed cover image and an optional highlight video. Great for launches, parties and corporate events.",
     "category": "corporate",
-    "tags": ["bold", "sans-serif", "dark", "video"],
-    "price": 29900,
-    "currency": "INR",
-    "display_price": "₹299",
+    "tags": [
+        "bold",
+        "sans-serif",
+        "dark",
+        "video"
+    ],
+    "price": 99000,
+    "currency": "LKR",
+    "display_price": "Rs. 990",
     "fonts": [
         "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
     ],
@@ -17,5 +22,45 @@
         "video_1": "Highlight video",
         "bg_music": "Background music"
     },
-    "sort_order": 2
+    "sort_order": 2,
+    "editable": {
+        "texts": {
+            "date_label": {
+                "label": "\"Date\" label",
+                "default": "Date"
+            },
+            "time_label": {
+                "label": "\"Time\" label",
+                "default": "Time"
+            },
+            "where_label": {
+                "label": "\"Where\" label",
+                "default": "Where"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Get directions →"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#c6ff3d"
+            },
+            "background": {
+                "label": "Background",
+                "default": "#0e0f13"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#f4f4f6"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            }
+        }
+    }
 }

@@ -4,15 +4,18 @@ namespace App\Domains\Event\Services;
 
 use App\Domains\Event\Contracts\EventDesignServiceInterface;
 use App\Domains\Event\Contracts\EventRepositoryInterface;
+use App\Domains\Event\Events\EventDesignChanged;
+use App\Domains\Event\Exceptions\EventNotEditableException;
 use App\Domains\Event\Models\Event;
 use App\Domains\Event\Models\EventMedia;
 use App\Domains\Template\DTOs\MediaSlot;
 use App\Domains\Template\Enums\MediaType;
 use App\Domains\Template\Support\PlaceholderContext;
+use App\Domains\Template\Support\PlaceholderFormat;
+use App\Domains\Template\Support\PlaceholderImage;
 use App\Domains\Template\Support\PlaceholderSyntax;
 use App\Domains\Template\Support\TemplateRenderer;
 use Illuminate\Contracts\Filesystem\Filesystem;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 
@@ -27,6 +30,15 @@ use Illuminate\Support\HtmlString;
 class EventDesignService implements EventDesignServiceInterface
 {
     private const GUEST_FIELDS = PlaceholderSyntax::GUEST_FIELDS;
+
+    /** Outlines what can be clicked in the editor's canvas. */
+    private const EDITOR_STYLES = <<<'CSS'
+        [data-emp-text] { cursor: text; border-radius: 3px; outline: 2px dashed transparent; outline-offset: 3px; transition: outline-color .15s; }
+        [data-emp-text]:hover { outline-color: rgba(99, 102, 241, .55); }
+        [src*="#emp-slot="] { cursor: pointer; outline: 3px solid transparent; outline-offset: -3px; transition: outline-color .15s; }
+        [src*="#emp-slot="]:hover { outline-color: rgba(99, 102, 241, .55); }
+        [data-emp-selected] { outline: 2px solid #6366f1 !important; }
+        CSS;
 
     public function __construct(
         private readonly EventRepositoryInterface $events,
@@ -76,29 +88,26 @@ class EventDesignService implements EventDesignServiceInterface
 
     public function render(Event $event): void
     {
-        $event->load(['templateVersion', 'media']);
+        $event->load(['templateVersion.template', 'media']);
         $version = $event->templateVersion;
-
-        $styles = $this->renderer->render(
-            PlaceholderSyntax::parse($version->styles(), PlaceholderContext::Styles),
-            assetUrl: $version->assetUrl(...),
-        );
+        $editable = $version->editable();
+        $customizations = $event->customizations ?? [];
 
         $markup = $this->renderer->render(
             PlaceholderSyntax::parse($version->markup(), PlaceholderContext::Markup),
-            [...$this->eventValues($event), ...$this->mediaValues($event)],
+            [...$this->eventValues($event), ...$this->mediaValues($event), ...$editable->values($customizations)],
             $version->assetUrl(...),
             defer: self::GUEST_FIELDS,
         );
 
-        $html = "<style>\n{$styles}\n</style>\n{$markup}";
+        $html = "<style>\n{$this->styles($event)}\n</style>\n{$markup}";
         $hash = hash('sha256', $version->id."\n".$html);
 
         if ($hash === $event->rendered_hash && $event->rendered_path && $this->disk()->exists($event->rendered_path)) {
             return;
         }
 
-        $path = "invitations/{$event->id}/{$hash}.html";
+        $path = "invitations/{$event->storageDirectory()}/{$hash}.html";
         $this->disk()->put($path, $html);
 
         $previous = $event->rendered_path;
@@ -107,6 +116,56 @@ class EventDesignService implements EventDesignServiceInterface
         if ($previous && $previous !== $path) {
             $this->disk()->delete($previous);
         }
+    }
+
+    public function customize(Event $event, array $changes): Event
+    {
+        if (! $event->state->isEditable()) {
+            throw new EventNotEditableException;
+        }
+
+        /** @var Event $event */
+        $event = $this->events->update($event, ['customizations' => $this->withChanges($event, $changes)]);
+
+        EventDesignChanged::dispatch($event);
+
+        return $event;
+    }
+
+    public function editorPreview(Event $event, array $draft = []): array
+    {
+        $event->loadMissing(['templateVersion.template', 'media']);
+        $version = $event->templateVersion;
+        $customizations = $this->withChanges($event, $draft);
+
+        // Each slot's element is findable by a URL fragment, which does not change what loads.
+        $media = collect($version->slots())
+            ->mapWithKeys(fn (MediaSlot $slot) => [$slot->key => $slot->type === MediaType::Image
+                ? PlaceholderImage::dataUri($slot->displayLabel())
+                : null])
+            ->merge($this->mediaValues($event))
+            ->map(fn (?string $url, string $key) => $url === null ? null : "{$url}#emp-slot={$key}")
+            ->all();
+
+        $markup = $this->renderer->render(
+            PlaceholderSyntax::parse($version->markup(), PlaceholderContext::Markup),
+            [
+                ...$this->eventValues($event),
+                ...$media,
+                ...$version->editable()->values($customizations),
+                'guest.name' => 'Guest Name',
+            ],
+            $version->assetUrl(...),
+            decorate: fn (string $name, string $html, bool $insideTag) => str_starts_with($name, 'text.') && ! $insideTag
+                ? '<span data-emp-text="'.substr($name, 5).'">'.$html.'</span>'
+                : $html,
+        );
+
+        return [
+            'html' => "<style>\n{$this->styles($event, $customizations)}\n".self::EDITOR_STYLES."\n</style>\n{$markup}",
+            'fonts' => $version->fonts(),
+            'scripts' => $version->scriptUrls(),
+        ];
     }
 
     public function forGuest(Event $event, ?string $guestName): array
@@ -132,7 +191,8 @@ class EventDesignService implements EventDesignServiceInterface
 
         return [
             'html' => $html,
-            'fonts' => $version->fonts,
+            'fonts' => $version->fonts(),
+            'scripts' => $version->scriptUrls(),
             'has_bg_music' => $media->contains('slot_key', 'bg_music'),
             'cover_image_url' => $cover?->url(),
             'template' => [
@@ -149,14 +209,14 @@ class EventDesignService implements EventDesignServiceInterface
     {
         return [
             'event.title' => $event->title,
-            'event.description' => $this->multiline($event->description),
-            'event.type' => $event->event_type,
-            'event.date' => $event->event_date?->translatedFormat('l, j F Y'),
-            'event.start_time' => $this->time($event->start_time),
-            'event.end_time' => $this->time($event->end_time),
+            'event.description' => PlaceholderFormat::multiline($event->description),
+            'event.type' => $event->event_type?->label(),
+            'event.date' => PlaceholderFormat::date($event->event_date),
+            'event.start_time' => PlaceholderFormat::time($event->start_time),
+            'event.end_time' => PlaceholderFormat::time($event->end_time),
             'event.location_name' => $event->location_name,
-            'event.location_address' => $this->multiline($event->location_address),
-            'event.map_url' => $event->map_url && preg_match('#^https?://#i', $event->map_url) ? $event->map_url : null,
+            'event.location_address' => PlaceholderFormat::multiline($event->location_address),
+            'event.map_url' => PlaceholderFormat::url($event->map_url),
         ];
     }
 
@@ -168,14 +228,50 @@ class EventDesignService implements EventDesignServiceInterface
             ->all();
     }
 
-    private function multiline(?string $text): ?HtmlString
+    /**
+     * The event's saved customisations with $changes applied. Only differences
+     * from the template's defaults are kept.
+     *
+     * @param  array{texts?: array<string, string>, colors?: array<string, string>, sections?: array<string, bool>}  $changes
+     * @return array{texts?: array<string, string>, colors?: array<string, string>, sections?: array<string, bool>}
+     */
+    private function withChanges(Event $event, array $changes): array
     {
-        return filled($text) ? new HtmlString(nl2br(PlaceholderSyntax::escape((string) $text), false)) : null;
+        $schema = $event->templateVersion->editable()->toArray();
+        $customizations = $event->customizations ?? [];
+
+        foreach (['texts', 'colors', 'sections'] as $kind) {
+            foreach ($changes[$kind] ?? [] as $key => $value) {
+                $value = $kind === 'colors' ? strtolower((string) $value) : $value;
+
+                if ($value === ($schema[$kind][$key]['default'] ?? null)) {
+                    unset($customizations[$kind][$key]);
+                } else {
+                    $customizations[$kind][$key] = $value;
+                }
+            }
+
+            if (($customizations[$kind] ?? null) === []) {
+                unset($customizations[$kind]);
+            }
+        }
+
+        return $customizations;
     }
 
-    private function time(?string $time): ?string
+    /**
+     * The template's CSS with the event's colours (var(--emp-color-*)) in front.
+     *
+     * @param  array<string, mixed>|null  $customizations  defaults to the saved ones
+     */
+    private function styles(Event $event, ?array $customizations = null): string
     {
-        return $time ? Carbon::createFromFormat('H:i:s', strlen($time) === 5 ? "{$time}:00" : $time)?->format('g:i A') : null;
+        $version = $event->templateVersion;
+
+        return $version->editable()->colorStyles($customizations ?? $event->customizations ?? []).$this->renderer->render(
+            PlaceholderSyntax::parse($version->styles(), PlaceholderContext::Styles),
+            assetUrl: $version->assetUrl(...),
+        );
     }
 
     private function disk(): Filesystem

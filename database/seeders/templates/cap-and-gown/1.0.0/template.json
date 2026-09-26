@@ -1,0 +1,64 @@
+{
+    "key": "cap-and-gown",
+    "name": "Cap & Gown",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Navy-and-gold card for graduations, farewells and other milestones.",
+    "category": "other",
+    "tags": [
+        "graduation",
+        "milestone",
+        "navy",
+        "gold"
+    ],
+    "price": 0,
+    "currency": "LKR",
+    "display_price": "Free",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Work+Sans:wght@400;500&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Graduate photo"
+    },
+    "sort_order": 13,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "Celebrate with us"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Get directions"
+            },
+            "greeting": {
+                "label": "Greeting",
+                "default": "Dear"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#c9a227"
+            },
+            "paper": {
+                "label": "Card",
+                "default": "#ffffff"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#14213d"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            },
+            "map": {
+                "label": "Directions link",
+                "default": true
+            }
+        }
+    }
+}

@@ -1,0 +1,61 @@
+{
+    "key": "summit-keynote",
+    "name": "Summit Keynote",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Sharp conference invite with a cover image, highlight video and an expandable details panel.",
+    "category": "corporate",
+    "tags": [
+        "corporate",
+        "conference",
+        "minimal",
+        "video"
+    ],
+    "price": 149000,
+    "currency": "LKR",
+    "display_price": "Rs. 1,490",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Cover image",
+        "video_1": "Teaser video"
+    },
+    "sort_order": 10,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "You're invited"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Get directions"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#2563eb"
+            },
+            "paper": {
+                "label": "Card",
+                "default": "#ffffff"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#0f172a"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            },
+            "map": {
+                "label": "Directions link",
+                "default": true
+            }
+        }
+    }
+}

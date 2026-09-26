@@ -1,0 +1,28 @@
+<main class="inv">
+    <div class="balloons" aria-hidden="true"><span></span><span></span><span></span></div>
+    <article class="card">
+        <p class="eyebrow">{{ text.intro }}</p>
+        <h1 class="title">{{ event.title }}</h1>
+        {{#if guest.name}}<p class="greeting">{{ text.greeting }} {{ guest.name }},</p>{{/if}}
+        <figure class="photo"><img src="{{ img_1 }}" alt="{{ event.title }}"></figure>
+        {{#if section.photo_strip}}{{#if img_2}}
+        <div class="strip">
+            <img src="{{ img_2 }}" alt="">
+            {{#if img_3}}<img src="{{ img_3 }}" alt="">{{/if}}
+        </div>
+        {{/if}}{{/if}}
+        <section class="details">
+        {{#if event.date}}<p class="date">{{ event.date }}</p>{{/if}}
+        {{#if event.start_time}}<p class="time">{{ event.start_time }}{{#if event.end_time}} &ndash; {{ event.end_time }}{{/if}}</p>{{/if}}
+        {{#if event.location_name}}
+        <div class="venue">
+            <p class="venue__name">{{ event.location_name }}</p>
+            {{#if event.location_address}}<p class="venue__address">{{ event.location_address }}</p>{{/if}}
+            {{#if section.map}}{{#if event.map_url}}<a class="venue__map" href="{{ event.map_url }}" target="_blank" rel="noopener">{{ text.map_label }}</a>{{/if}}{{/if}}
+        </div>
+        {{/if}}
+        {{#if section.description}}{{#if event.description}}<p class="description">{{ event.description }}</p>{{/if}}{{/if}}
+    </section>
+        <div class="rsvp">{{ rsvp }}</div>
+    </article>
+</main>

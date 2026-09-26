@@ -5,10 +5,15 @@
     "author": "EMP Studio",
     "description": "Soft pastel card with botanical corners, a main photo and a gallery of up to five more photos.",
     "category": "wedding",
-    "tags": ["floral", "pastel", "romantic", "gallery"],
-    "price": 49900,
-    "currency": "INR",
-    "display_price": "₹499",
+    "tags": [
+        "floral",
+        "pastel",
+        "romantic",
+        "gallery"
+    ],
+    "price": 149000,
+    "currency": "LKR",
+    "display_price": "Rs. 1,490",
     "fonts": [
         "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;1,400&family=Lato:wght@300;400&display=swap"
     ],
@@ -21,5 +26,37 @@
         "img_6": "Gallery photo 5",
         "bg_music": "Background music"
     },
-    "sort_order": 3
+    "sort_order": 3,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "Please join us for"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Find the venue"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#c9828f"
+            },
+            "paper": {
+                "label": "Card",
+                "default": "#fffaf8"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#4a3b40"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            }
+        }
+    }
 }

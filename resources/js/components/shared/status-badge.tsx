@@ -15,6 +15,7 @@ const statusTone: Record<string, keyof typeof tones> = {
     accepted: 'green',
     confirmed: 'green',
     delivered: 'green',
+    read: 'violet',
     active: 'green',
     sent: 'blue',
     super_admin: 'violet',

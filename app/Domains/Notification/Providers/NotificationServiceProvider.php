@@ -3,7 +3,6 @@
 namespace App\Domains\Notification\Providers;
 
 use App\Core\Providers\DomainServiceProvider;
-use App\Domains\Invitation\Events\InvitationSent;
 use App\Domains\Notification\Channels\ChannelRegistry;
 use App\Domains\Notification\Channels\EmailChannel;
 use App\Domains\Notification\Channels\SmsChannel;
@@ -13,13 +12,16 @@ use App\Domains\Notification\Contracts\NotificationDispatcherInterface;
 use App\Domains\Notification\Contracts\NotificationQueryServiceInterface;
 use App\Domains\Notification\Contracts\NotificationRepositoryInterface;
 use App\Domains\Notification\Contracts\NotificationServiceInterface;
-use App\Domains\Notification\Listeners\SendInvitationMessage;
+use App\Domains\Notification\Listeners\SendRsvpMessage;
+use App\Domains\Notification\Listeners\SendRsvpReminder;
 use App\Domains\Notification\Models\Notification;
 use App\Domains\Notification\Policies\NotificationPolicy;
 use App\Domains\Notification\Repositories\NotificationRepository;
 use App\Domains\Notification\Services\NotificationDispatcher;
 use App\Domains\Notification\Services\NotificationQueryService;
 use App\Domains\Notification\Services\NotificationService;
+use App\Domains\Rsvp\Events\RsvpReminded;
+use App\Domains\Rsvp\Events\RsvpSent;
 
 class NotificationServiceProvider extends DomainServiceProvider
 {
@@ -36,7 +38,8 @@ class NotificationServiceProvider extends DomainServiceProvider
     ];
 
     protected array $listen = [
-        InvitationSent::class => [SendInvitationMessage::class],
+        RsvpSent::class => [SendRsvpMessage::class],
+        RsvpReminded::class => [SendRsvpReminder::class],
     ];
 
     public function register(): void

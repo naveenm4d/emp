@@ -8,7 +8,7 @@ final class UpdateGuestData extends PartialData
 {
     protected static function fields(): array
     {
-        return ['name', 'email', 'phone', 'notes'];
+        return ['name', 'email', 'phone', 'notes', 'invitation_message', 'reminder_message'];
     }
 
     protected function normalize(array $values): array

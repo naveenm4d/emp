@@ -26,7 +26,13 @@ enum StaffRole: string
             self::Admin => [
                 StaffPermission::StaffRead,
                 StaffPermission::ClientsRead,
+                StaffPermission::ClientsUpdate,
                 StaffPermission::EventsRead,
+                StaffPermission::EventsCreate,
+                StaffPermission::EventsUpdate,
+                StaffPermission::EventsDelete,
+                StaffPermission::TemplatesRead,
+                StaffPermission::TemplatesManage,
                 StaffPermission::StatsRead,
                 StaffPermission::NotificationsRead,
                 StaffPermission::NotificationsRetry,
@@ -34,6 +40,7 @@ enum StaffRole: string
             self::Viewer => [
                 StaffPermission::ClientsRead,
                 StaffPermission::EventsRead,
+                StaffPermission::TemplatesRead,
                 StaffPermission::StatsRead,
             ],
         };

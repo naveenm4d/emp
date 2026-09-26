@@ -4,8 +4,10 @@ namespace App\Domains\Event\Models;
 
 use App\Domains\Client\Models\Client;
 use App\Domains\Event\Enums\EventState;
+use App\Domains\Event\Enums\EventType;
+use App\Domains\Event\Enums\RegistrationType;
 use App\Domains\Guest\Models\Guest;
-use App\Domains\Invitation\Models\Invitation;
+use App\Domains\Rsvp\Models\Rsvp;
 use App\Domains\Template\Models\TemplateVersion;
 use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
@@ -17,6 +19,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\URL;
 
 /**
@@ -28,38 +32,55 @@ use Illuminate\Support\Facades\URL;
  * @property string|null $description
  * @property EventState $state
  * @property int $max_capacity 0 = unlimited
- * @property bool $require_approval
+ * @property RegistrationType $registration_type who can join: open, approval_required or guest_list_only
  * @property bool $registration_open
- * @property string|null $event_type
+ * @property EventType|null $event_type
  * @property string|null $location_name
  * @property string|null $location_address
  * @property string|null $map_url
  * @property CarbonImmutable|null $event_date
  * @property string|null $start_time HH:MM:SS
  * @property string|null $end_time HH:MM:SS
+ * @property string|null $invitation_message default WhatsApp text sent with RSVP links (placeholders: see RsvpMessage)
+ * @property string|null $reminder_message default WhatsApp text for RSVP reminders
+ * @property bool $auto_reminders send reminders automatically (RsvpReminderCommand)
+ * @property int $remind_after_days automatic reminder this many days after sending, if no reply
+ * @property int $remind_before_days automatic reminder this many days before the event date
+ * @property array{texts?: array<string, string>, colors?: array<string, string>, sections?: array<string, bool>}|null $customizations the client's changes to the template's editable texts, colours and sections
  * @property string|null $rendered_path generated invitation HTML on the render disk
  * @property string|null $rendered_hash
  * @property CarbonImmutable|null $rendered_at
  * @property-read TemplateVersion $templateVersion
  * @property-read Collection<int, EventMedia> $media
+ * @property-read EventLink|null $publicLink
+ * @property CarbonImmutable|null $deleted_at events are only soft-deleted
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  */
 #[UseFactory(EventFactory::class)]
 #[Fillable([
     'client_id', 'template_version_id', 'title', 'slug', 'description', 'state', 'max_capacity',
-    'require_approval', 'registration_open', 'event_type', 'location_name',
-    'location_address', 'map_url', 'event_date', 'start_time', 'end_time',
+    'registration_type', 'registration_open', 'event_type', 'location_name',
+    'location_address', 'map_url', 'event_date', 'start_time', 'end_time', 'customizations',
+    'invitation_message', 'reminder_message', 'auto_reminders', 'remind_after_days', 'remind_before_days',
 ])]
 class Event extends Model
 {
     /** @use HasFactory<EventFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, SoftDeletes;
+
+    /**
+     * First URL segments taken by the app, so they can't be event slugs
+     * (event links are domain/{slug}/{code}).
+     *
+     * @var list<string>
+     */
+    public const array RESERVED_SLUGS = ['app', 'admin', 'webhooks', 'preview', 'rsvp', 'e', 'storage', 'build', 'up', 'api'];
 
     protected $attributes = [
         'state' => 'draft',
         'max_capacity' => 0,
-        'require_approval' => false,
+        'registration_type' => 'guest_list_only',
         'registration_open' => false,
     ];
 
@@ -68,8 +89,13 @@ class Event extends Model
     {
         return [
             'state' => EventState::class,
+            'event_type' => EventType::class,
+            'customizations' => 'array',
             'max_capacity' => 'integer',
-            'require_approval' => 'boolean',
+            'registration_type' => RegistrationType::class,
+            'auto_reminders' => 'boolean',
+            'remind_after_days' => 'integer',
+            'remind_before_days' => 'integer',
             'registration_open' => 'boolean',
             'event_date' => 'date:Y-m-d',
             'rendered_at' => 'datetime',
@@ -86,19 +112,35 @@ class Event extends Model
         return $this->client_id === $client->id;
     }
 
+    /** Public registrations wait for the client's approval. */
+    public function requiresApproval(): bool
+    {
+        return $this->registration_type->requiresApproval();
+    }
+
     public function acceptsPublicRegistrations(): bool
     {
-        return $this->state === EventState::Published && $this->registration_open;
+        return $this->state === EventState::Published
+            && $this->registration_type->hasPublicRegistration()
+            && $this->registration_open;
     }
 
     /** Temporary signed link to the client's preview of the invitation. */
     public function previewUrl(): string
     {
         return URL::temporarySignedRoute(
-            'site.preview',
+            'web.preview',
             now()->addMinutes((int) config('emp.preview_link_minutes')),
             ['event' => $this->id],
         );
+    }
+
+    /** Storage segment grouping this event's files by its template's category: "{category}/{event_id}". */
+    public function storageDirectory(): string
+    {
+        $this->loadMissing('templateVersion.template');
+
+        return "{$this->templateVersion->template->category->value}/{$this->id}";
     }
 
     /** @return BelongsTo<TemplateVersion, $this> */
@@ -125,9 +167,25 @@ class Event extends Model
         return $this->hasMany(Guest::class);
     }
 
-    /** @return HasMany<Invitation, $this> */
-    public function invitations(): HasMany
+    /** @return HasMany<Rsvp, $this> */
+    public function rsvps(): HasMany
     {
-        return $this->hasMany(Invitation::class);
+        return $this->hasMany(Rsvp::class);
+    }
+
+    /** @return HasMany<EventLink, $this> */
+    public function links(): HasMany
+    {
+        return $this->hasMany(EventLink::class);
+    }
+
+    /**
+     * The event's public URL (the link without a guest).
+     *
+     * @return HasOne<EventLink, $this>
+     */
+    public function publicLink(): HasOne
+    {
+        return $this->hasOne(EventLink::class)->whereNull('guest_id');
     }
 }

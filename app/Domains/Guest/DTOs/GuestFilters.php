@@ -4,15 +4,15 @@ namespace App\Domains\Guest\DTOs;
 
 use App\Core\DTOs\DataTransferObject;
 use App\Domains\Guest\Enums\ApprovalStatus;
+use App\Domains\Guest\Enums\GuestRsvpStatus;
 use App\Domains\Guest\Enums\GuestSource;
-use App\Domains\Guest\Enums\RsvpStatus;
 
 final readonly class GuestFilters extends DataTransferObject
 {
     public function __construct(
         public ?GuestSource $source = null,
         public ?ApprovalStatus $approvalStatus = null,
-        public ?RsvpStatus $rsvpStatus = null,
+        public ?GuestRsvpStatus $rsvpStatus = null,
         public ?string $search = null,
     ) {}
 
@@ -22,7 +22,7 @@ final readonly class GuestFilters extends DataTransferObject
         return new self(
             source: GuestSource::tryFrom((string) ($data['source'] ?? '')),
             approvalStatus: ApprovalStatus::tryFrom((string) ($data['approval_status'] ?? '')),
-            rsvpStatus: RsvpStatus::tryFrom((string) ($data['rsvp_status'] ?? '')),
+            rsvpStatus: GuestRsvpStatus::tryFrom((string) ($data['rsvp_status'] ?? '')),
             search: filled($data['search'] ?? null) ? (string) $data['search'] : null,
         );
     }

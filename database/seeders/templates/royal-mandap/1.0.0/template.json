@@ -1,0 +1,74 @@
+{
+    "key": "royal-mandap",
+    "name": "Royal Mandap",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Regal maroon-and-gold wedding card with a mandap arch, a couple portrait and a second photo.",
+    "category": "wedding",
+    "tags": [
+        "traditional",
+        "indian",
+        "maroon",
+        "gold"
+    ],
+    "price": 199000,
+    "currency": "LKR",
+    "display_price": "Rs. 1,990",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=EB+Garamond:ital@0;1&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Couple portrait",
+        "img_2": "Family photo",
+        "bg_music": "Shehnai or background music"
+    },
+    "sort_order": 4,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "Shubh Vivah"
+            },
+            "lead": {
+                "label": "Invitation line",
+                "default": "With the blessings of our elders, we invite you to celebrate our wedding"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Get directions"
+            },
+            "greeting": {
+                "label": "Greeting",
+                "default": "Dear"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#b8862b"
+            },
+            "paper": {
+                "label": "Card",
+                "default": "#fff8ec"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#3d0f12"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            },
+            "map": {
+                "label": "Directions link",
+                "default": true
+            },
+            "family_photo": {
+                "label": "Family photo",
+                "default": true
+            }
+        }
+    }
+}

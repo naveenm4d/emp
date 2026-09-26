@@ -27,7 +27,7 @@ class EventMediaService extends BaseService implements EventMediaServiceInterfac
 
         $disk = (string) config('emp.media_disk');
         $extension = $file->guessExtension() ?: $file->getClientOriginalExtension();
-        $path = $file->storeAs("events/{$event->id}/media", Str::uuid().'.'.strtolower($extension), ['disk' => $disk]);
+        $path = $file->storeAs("events/{$event->storageDirectory()}/media", Str::uuid().'.'.strtolower($extension), ['disk' => $disk]);
 
         /** @var EventMedia|null $previous */
         $previous = $event->media()->where('slot_key', $slotKey)->first();

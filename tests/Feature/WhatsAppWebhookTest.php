@@ -60,3 +60,19 @@ it('marks notifications delivered and logs the callback', function () {
 it('acknowledges unknown message ids', function () {
     signedPost(statusPayload('wamid.unknown', 'delivered'))->assertOk();
 });
+
+it('marks notifications read and ignores a late delivered callback', function () {
+    $notification = Notification::factory()->create([
+        'status' => NotificationStatus::Sent,
+        'provider_message_id' => 'wamid.1',
+    ]);
+
+    signedPost(statusPayload('wamid.1', 'read'))->assertOk();
+    signedPost(statusPayload('wamid.1', 'delivered'))->assertOk();
+
+    $notification->refresh();
+    expect($notification->status)->toBe(NotificationStatus::Read)
+        ->and($notification->read_at)->not->toBeNull()
+        ->and($notification->delivered_at)->not->toBeNull()
+        ->and($notification->deliveries()->count())->toBe(2);
+});

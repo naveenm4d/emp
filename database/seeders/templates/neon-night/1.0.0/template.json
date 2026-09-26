@@ -1,0 +1,65 @@
+{
+    "key": "neon-night",
+    "name": "Neon Night",
+    "version": "1.0.0",
+    "author": "EMP Studio",
+    "description": "Glowing neon party invite for late nights, with a flickering sign.",
+    "category": "party",
+    "tags": [
+        "party",
+        "neon",
+        "dark",
+        "animated"
+    ],
+    "price": 99000,
+    "currency": "LKR",
+    "display_price": "Rs. 990",
+    "fonts": [
+        "https://fonts.googleapis.com/css2?family=Monoton&family=Rubik:wght@400;600&display=swap"
+    ],
+    "slot_labels": {
+        "img_1": "Party photo",
+        "bg_music": "Party track"
+    },
+    "sort_order": 11,
+    "editable": {
+        "texts": {
+            "intro": {
+                "label": "Intro line",
+                "default": "Tonight we dance"
+            },
+            "map_label": {
+                "label": "Map link label",
+                "default": "Get directions"
+            },
+            "greeting": {
+                "label": "Greeting",
+                "default": "Dear"
+            }
+        },
+        "colors": {
+            "accent": {
+                "label": "Accent",
+                "default": "#f472b6"
+            },
+            "paper": {
+                "label": "Card",
+                "default": "#12071f"
+            },
+            "ink": {
+                "label": "Text",
+                "default": "#f5f3ff"
+            }
+        },
+        "sections": {
+            "description": {
+                "label": "Event description",
+                "default": true
+            },
+            "map": {
+                "label": "Directions link",
+                "default": true
+            }
+        }
+    }
+}

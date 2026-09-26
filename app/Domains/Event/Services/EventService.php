@@ -5,16 +5,20 @@ namespace App\Domains\Event\Services;
 use App\Core\Services\BaseService;
 use App\Domains\Client\Models\Client;
 use App\Domains\Event\Contracts\EventDesignServiceInterface;
+use App\Domains\Event\Contracts\EventLinkServiceInterface;
 use App\Domains\Event\Contracts\EventRepositoryInterface;
 use App\Domains\Event\Contracts\EventServiceInterface;
 use App\Domains\Event\DTOs\CreateEventData;
 use App\Domains\Event\DTOs\UpdateEventData;
 use App\Domains\Event\Enums\EventState;
+use App\Domains\Event\Enums\RegistrationType;
 use App\Domains\Event\Events\EventDesignChanged;
+use App\Domains\Event\Events\EventRegistrationTypeChanged;
 use App\Domains\Event\Exceptions\EventDesignIncompleteException;
 use App\Domains\Event\Exceptions\EventNotEditableException;
-use App\Domains\Event\Exceptions\EventSlugTakenException;
+use App\Domains\Event\Exceptions\EventSlugReservedException;
 use App\Domains\Event\Exceptions\InvalidEventStateTransitionException;
+use App\Domains\Event\Exceptions\RegistrationNotAvailableException;
 use App\Domains\Event\Models\Event;
 use App\Domains\Template\Contracts\TemplateQueryServiceInterface;
 use Illuminate\Support\Str;
@@ -25,12 +29,12 @@ class EventService extends BaseService implements EventServiceInterface
         private readonly EventRepositoryInterface $events,
         private readonly TemplateQueryServiceInterface $templates,
         private readonly EventDesignServiceInterface $designs,
+        private readonly EventLinkServiceInterface $links,
     ) {}
 
     public function create(Client $client, CreateEventData $data): Event
     {
         $slug = $this->normalizeSlug($data->slug);
-        $this->ensureSlugAvailable($slug);
 
         // The event is pinned to the template's current version.
         $template = $this->templates->findSelectable($data->template_id, $client);
@@ -46,6 +50,9 @@ class EventService extends BaseService implements EventServiceInterface
                 'registration_open' => false,
             ]);
 
+            // The event's public URL (domain/{slug}/{code}).
+            $this->links->createForEvent($event);
+
             EventDesignChanged::dispatch($event);
 
             return $event;
@@ -60,7 +67,6 @@ class EventService extends BaseService implements EventServiceInterface
 
         if ($data->has('slug')) {
             $attributes['slug'] = $this->normalizeSlug((string) $data->get('slug'));
-            $this->ensureSlugAvailable($attributes['slug'], $event->id);
         }
 
         // Switching to another template pins its current version. Picking the
@@ -70,10 +76,21 @@ class EventService extends BaseService implements EventServiceInterface
             $attributes['template_version_id'] = $template->latest_version_id;
         }
 
-        return $this->transaction(function () use ($event, $attributes) {
+        // A guest-list-only event has no public registration to keep open.
+        if ($data->has('registration_type') && ! RegistrationType::from((string) $data->get('registration_type'))->hasPublicRegistration()) {
+            $attributes['registration_open'] = false;
+        }
+
+        $previousType = $event->registration_type;
+
+        return $this->transaction(function () use ($event, $attributes, $previousType) {
             /** @var Event $event */
             $event = $this->events->update($event, $attributes);
             $event->unsetRelation('templateVersion');
+
+            if ($event->registration_type !== $previousType) {
+                EventRegistrationTypeChanged::dispatch($event, $previousType);
+            }
 
             EventDesignChanged::dispatch($event);
 
@@ -132,6 +149,10 @@ class EventService extends BaseService implements EventServiceInterface
     {
         $this->ensureEditable($event);
 
+        if (! $event->registration_type->hasPublicRegistration()) {
+            throw new RegistrationNotAvailableException;
+        }
+
         /** @var Event */
         return $this->events->update($event, ['registration_open' => true]);
     }
@@ -147,16 +168,16 @@ class EventService extends BaseService implements EventServiceInterface
         $this->events->delete($event);
     }
 
+    /** Slugs are labels in the event's links (the code identifies the event), so they need not be unique. */
     private function normalizeSlug(string $slug): string
     {
-        return Str::slug(mb_strtolower(trim($slug)));
-    }
+        $slug = Str::slug(mb_strtolower(trim($slug)));
 
-    private function ensureSlugAvailable(string $slug, ?string $exceptId = null): void
-    {
-        if ($this->events->slugExists($slug, $exceptId)) {
-            throw new EventSlugTakenException;
+        if (in_array($slug, Event::RESERVED_SLUGS, true)) {
+            throw new EventSlugReservedException;
         }
+
+        return $slug;
     }
 
     private function ensureEditable(Event $event): void

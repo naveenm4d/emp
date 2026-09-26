@@ -18,7 +18,9 @@ class NotificationResource extends JsonResource
             'id' => $this->id,
             'event_id' => $this->event_id,
             'guest_id' => $this->guest_id,
+            'rsvp_id' => $this->rsvp_id,
             'channel' => $this->channel->value,
+            'kind' => $this->kind?->value,
             'status' => $this->status->value,
             'recipient' => $this->recipient,
             'message' => $this->message,
@@ -26,6 +28,7 @@ class NotificationResource extends JsonResource
             'attempts' => $this->attempts,
             'sent_at' => $this->sent_at?->toIso8601String(),
             'delivered_at' => $this->delivered_at?->toIso8601String(),
+            'read_at' => $this->read_at?->toIso8601String(),
             'guest' => $this->whenLoaded('guest', fn () => $this->guest ? ['id' => $this->guest->id, 'name' => $this->guest->name] : null),
             'event' => $this->whenLoaded('event', fn () => [
                 'id' => $this->event->id,
