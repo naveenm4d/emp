@@ -354,6 +354,21 @@ export function EventForm({
                         <CardTitle>Guest messages</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
+                        {event?.message_limits && (
+                            <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                                Each guest can get up to{' '}
+                                {event.message_limits.invitations}{' '}
+                                {event.message_limits.invitations === 1
+                                    ? 'invitation'
+                                    : 'invitations'}{' '}
+                                and {event.message_limits.reminders}{' '}
+                                {event.message_limits.reminders === 1
+                                    ? 'reminder'
+                                    : 'reminders'}{' '}
+                                (automatic reminders included). Contact EMP to
+                                change this.
+                            </p>
+                        )}
                         <MessageField
                             id="invitation_message"
                             label="Invitation (WhatsApp)"

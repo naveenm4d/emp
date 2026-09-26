@@ -4,7 +4,11 @@ namespace Database\Seeders;
 
 use App\Domains\Client\Models\Client;
 use App\Domains\Event\Contracts\EventDesignServiceInterface;
+use App\Domains\Event\Enums\DietaryOption;
+use App\Domains\Event\Enums\EventType;
+use App\Domains\Event\Enums\QuestionType;
 use App\Domains\Event\Models\Event;
+use App\Domains\Event\Models\RegistrationQuestion;
 use App\Domains\Guest\Enums\ApprovalStatus;
 use App\Domains\Guest\Enums\GuestRsvpStatus;
 use App\Domains\Guest\Enums\GuestSource;
@@ -12,6 +16,8 @@ use App\Domains\Guest\Models\Guest;
 use App\Domains\Notification\Models\Notification;
 use App\Domains\Rsvp\Enums\RsvpStatus;
 use App\Domains\Rsvp\Models\Rsvp;
+use App\Domains\Seating\Models\EventTable;
+use App\Domains\Seating\Models\SeatAssignment;
 use App\Domains\Staff\Enums\StaffRole;
 use App\Domains\Staff\Models\StaffMember;
 use App\Domains\Template\Enums\MediaType;
@@ -40,12 +46,25 @@ class DatabaseSeeder extends Seeder
 
         $client = Client::factory()->create(['name' => 'Demo Client', 'email' => 'client@emp.test']);
 
-        $gala = Event::factory()->for($client)->openForRegistration()->capacity(100)->create([
-            'title' => 'Summer Gala 2026',
-            'slug' => 'summer-gala-2026',
-            'template_version_id' => $modern,
-        ]);
+        $gala = Event::factory()->for($client)->openForRegistration()->capacity(100)
+            ->registrationSettings([
+                'contact' => ['email' => 'required', 'company' => 'optional', 'job_title' => 'optional'],
+                'attendance' => ['allow_maybe' => true],
+                'party' => ['plus_ones' => true, 'max_additional_guests' => 1],
+                'dietary' => ['enabled' => true, 'options' => array_column(DietaryOption::cases(), 'value'), 'notes' => true],
+                'responses' => ['editable' => true],
+            ])
+            ->create([
+                'title' => 'Summer Gala 2026',
+                'slug' => 'summer-gala-2026',
+                'event_type' => EventType::Corporate,
+                'template_version_id' => $modern,
+            ]);
         $this->attachDemoPhoto($gala, [30, 36, 64], [198, 120, 255]);
+        RegistrationQuestion::factory()->for($gala)->choice(QuestionType::Select, ['S', 'M', 'L', 'XL'])->required()
+            ->create(['label' => 'What is your T-shirt size?', 'sort_order' => 0]);
+        RegistrationQuestion::factory()->for($gala)->choice(QuestionType::Radio, ['Yes', 'No'])
+            ->create(['label' => 'Would you like transportation?', 'sort_order' => 1]);
 
         $dinner = Event::factory()->for($client)->requiresApproval()->create([
             'title' => 'Founders Dinner',
@@ -83,6 +102,18 @@ class DatabaseSeeder extends Seeder
         Notification::factory()->for($guests->last())->for($gala)->failed('WhatsApp API error (400): Invalid phone number')->create([
             'recipient' => $guests->last()->phone,
         ]);
+
+        // Seating: two tables, with the confirmed guests at the first.
+        $head = EventTable::factory()->for($gala)->seats(8)->create(['name' => 'Table 1', 'sort_order' => 0]);
+        EventTable::factory()->for($gala)->seats(6)->create(['name' => 'Table 2', 'sort_order' => 1]);
+        foreach ($guests->take(2) as $index => $guest) {
+            SeatAssignment::factory()->create([
+                'table_id' => $head->id,
+                'event_id' => $gala->id,
+                'guest_id' => $guest->id,
+                'seat_number' => $index + 1,
+            ]);
+        }
 
         // A second client so staff lists are not trivially one row.
         Event::factory()->count(2)->published()->create(['template_version_id' => $classic]);

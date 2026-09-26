@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { GuestActions } from '@/components/guests/guest-actions';
 import { GuestTimeline } from '@/components/guests/guest-timeline';
+import type { GuestAnswer } from '@/components/guests/guest-timeline';
 import { MessageStatus } from '@/components/rsvps/message-status';
 import { RsvpStatus } from '@/components/rsvps/rsvp-status';
 import { StatusWithTime } from '@/components/shared/status-with-time';
@@ -16,7 +17,7 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { formatDateTime } from '@/lib/format';
-import type { Guest, RegistrationType } from '@/types';
+import type { Guest, MessageLimits, RegistrationType } from '@/types';
 
 const sourceLabels: Record<Guest['source'], string> = {
     manual: 'Added by you',
@@ -30,6 +31,8 @@ type GuestDetailsSheetProps = {
     guest: Guest | null;
     onClose: () => void;
     registrationType: RegistrationType;
+    /** The event's per-guest message limits. */
+    messageLimits?: MessageLimits;
     /** Show approval in the status grid (see showsApproval). */
     showsApproval: boolean;
     onEdit: (guest: Guest) => void;
@@ -43,6 +46,7 @@ export function GuestDetailsSheet({
     guest,
     onClose,
     registrationType,
+    messageLimits,
     showsApproval,
     onEdit,
 }: GuestDetailsSheetProps) {
@@ -56,6 +60,9 @@ export function GuestDetailsSheet({
     }, [guest]);
 
     const rsvp = shown?.latest_rsvp;
+    const [answers, setAnswers] = useState<GuestAnswer[]>([]);
+
+    useEffect(() => setAnswers([]), [shown?.id]);
 
     return (
         <Sheet
@@ -76,6 +83,7 @@ export function GuestDetailsSheet({
                                 <GuestActions
                                     guest={shown}
                                     registrationType={registrationType}
+                                    messageLimits={messageLimits}
                                     onEdit={() => onEdit(shown)}
                                 />
                             </div>
@@ -120,6 +128,16 @@ export function GuestDetailsSheet({
                                             <Muted>Not invited yet</Muted>
                                         )}
                                     </Field>
+                                    {shown.messages_sent && messageLimits && (
+                                        <Field label="Messages sent">
+                                            Invitations{' '}
+                                            {shown.messages_sent.invitations} /{' '}
+                                            {messageLimits.invitations} ·
+                                            Reminders{' '}
+                                            {shown.messages_sent.reminders} /{' '}
+                                            {messageLimits.reminders}
+                                        </Field>
+                                    )}
                                     <Field label="Latest message">
                                         <MessageStatus
                                             message={rsvp?.message}
@@ -144,6 +162,15 @@ export function GuestDetailsSheet({
                                 </Section>
                             )}
 
+                            {shown && hasResponse(shown, answers) && (
+                                <Section title="Response">
+                                    <GuestResponse
+                                        guest={shown}
+                                        answers={answers}
+                                    />
+                                </Section>
+                            )}
+
                             <Section title="Details">
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <Field label="Source">
@@ -151,6 +178,13 @@ export function GuestDetailsSheet({
                                     </Field>
                                     <Field label="Added">
                                         {formatDateTime(shown.created_at)}
+                                    </Field>
+                                    <Field label="Seat">
+                                        {shown.seating ? (
+                                            `${shown.seating.table} · ${shown.seating.seats.length === 1 ? 'seat' : 'seats'} ${shown.seating.seats.join(', ')}`
+                                        ) : (
+                                            <Muted>Not seated</Muted>
+                                        )}
                                     </Field>
                                     {shown.notes && (
                                         <Field label="Notes" wide>
@@ -183,6 +217,7 @@ export function GuestDetailsSheet({
                                         rsvp?.reminder_count,
                                         rsvp?.message?.status,
                                     ].join('|')}
+                                    onAnswers={setAnswers}
                                 />
                             </Section>
                         </SheetBody>
@@ -191,6 +226,142 @@ export function GuestDetailsSheet({
             </SheetContent>
         </Sheet>
     );
+}
+
+function hasResponse(guest: Guest, answers: GuestAnswer[]): boolean {
+    return (
+        showsParty(guest) ||
+        !!guest.latest_rsvp?.response_note ||
+        !!guest.company ||
+        !!guest.job_title ||
+        !!guest.address ||
+        guest.dietary_restrictions.length > 0 ||
+        !!guest.dietary_notes ||
+        answers.length > 0
+    );
+}
+
+/** What the guest told us when registering or RSVPing. */
+function GuestResponse({
+    guest,
+    answers,
+}: {
+    guest: Guest;
+    answers: GuestAnswer[];
+}) {
+    const note = guest.latest_rsvp?.response_note;
+
+    return (
+        <div className="grid gap-3 sm:grid-cols-2">
+            {showsParty(guest) && (
+                <Field label="Party">
+                    {guest.party_size}{' '}
+                    {guest.party_size === 1 ? 'person' : 'people'}
+                    {guest.party_size > 1 && (
+                        <span className="block text-xs text-muted-foreground">
+                            Guest +{' '}
+                            {partyText(guest.additional_guests, guest.children)}
+                        </span>
+                    )}
+                    {partyChanged(guest) && (
+                        <span className="block text-xs text-muted-foreground">
+                            Invited with{' '}
+                            {partyText(
+                                guest.invited_additional_guests ?? 0,
+                                guest.invited_children ?? 0,
+                            ) || 'no one else'}
+                        </span>
+                    )}
+                </Field>
+            )}
+            {note && (
+                <Field label="Note when declining" wide>
+                    <p className="whitespace-pre-line">{note}</p>
+                </Field>
+            )}
+            {guest.company && <Field label="Company">{guest.company}</Field>}
+            {guest.job_title && (
+                <Field label="Job title">{guest.job_title}</Field>
+            )}
+            {guest.address && (
+                <Field label="Address" wide>
+                    <p className="whitespace-pre-line">{guest.address}</p>
+                </Field>
+            )}
+            {guest.dietary_restrictions.length > 0 && (
+                <Field label="Dietary restrictions">
+                    {guest.dietary_restrictions.map(headline).join(', ')}
+                </Field>
+            )}
+            {guest.dietary_notes && (
+                <Field label="Dietary notes" wide>
+                    <p className="whitespace-pre-line">{guest.dietary_notes}</p>
+                </Field>
+            )}
+            {answers.map((answer) => (
+                <Field key={answer.question} label={answer.question} wide>
+                    <p className="whitespace-pre-line">
+                        {formatAnswer(answer.value)}
+                    </p>
+                </Field>
+            ))}
+        </div>
+    );
+}
+
+/**
+ * The party is worth showing when someone comes along, or when the guest
+ * answered differently from what they were invited with. Not once declined.
+ */
+function showsParty(guest: Guest): boolean {
+    return (
+        guest.rsvp_status !== 'declined' &&
+        (guest.party_size > 1 || partyChanged(guest))
+    );
+}
+
+/** The guest was invited with a party and answered with a different one. */
+function partyChanged(guest: Guest): boolean {
+    const invited =
+        guest.invited_additional_guests !== null ||
+        guest.invited_children !== null;
+
+    return (
+        invited &&
+        ['confirmed', 'maybe'].includes(guest.rsvp_status) &&
+        ((guest.invited_additional_guests ?? 0) !== guest.additional_guests ||
+            (guest.invited_children ?? 0) !== guest.children)
+    );
+}
+
+/** "1 additional guest + 2 children"; only the parts above zero. */
+function partyText(additional: number, children: number): string {
+    return [
+        additional > 0 &&
+            `${additional} additional guest${additional === 1 ? '' : 's'}`,
+        children > 0 && `${children} child${children === 1 ? '' : 'ren'}`,
+    ]
+        .filter(Boolean)
+        .join(' + ');
+}
+
+function formatAnswer(value: GuestAnswer['value']): string {
+    if (Array.isArray(value)) {
+        return value.join(', ');
+    }
+
+    if (typeof value === 'boolean') {
+        return value ? 'Yes' : 'No';
+    }
+
+    return String(value);
+}
+
+/** gluten_free → Gluten free */
+function headline(value: string): string {
+    const words = value.replace(/_/g, ' ');
+
+    return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 function ContactLinks({ guest }: { guest: Guest }) {

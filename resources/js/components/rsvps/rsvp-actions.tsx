@@ -18,14 +18,23 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { expire, remind, resend, send } from '@/routes/client/rsvps';
-import type { Rsvp } from '@/types';
+import { messageAllowance } from '@/lib/guests';
+import type { MessageLimits, Rsvp } from '@/types';
 
 /** Row actions on the RSVPs tab: Send or Remind as the button; resend, copy and expire in a ⋯ menu. */
-export function RsvpActions({ rsvp }: { rsvp: Rsvp }) {
+export function RsvpActions({
+    rsvp,
+    messageLimits,
+}: {
+    rsvp: Rsvp;
+    /** The event's per-guest message limits; used-up actions are disabled. */
+    messageLimits?: MessageLimits;
+}) {
     const post = (url: string) =>
         router.post(url, {}, { preserveScroll: true });
     const status = rsvpDisplayStatus(rsvp);
     const noPhone = !rsvp.guest?.phone;
+    const allowance = messageAllowance(rsvp.guest, messageLimits);
 
     if (status !== 'pending' && status !== 'sent') {
         return null;
@@ -37,7 +46,8 @@ export function RsvpActions({ rsvp }: { rsvp: Rsvp }) {
                 <Button
                     size="sm"
                     variant="outline"
-                    disabled={noPhone}
+                    title={allowance.invitationsHint ?? undefined}
+                    disabled={noPhone || !allowance.invitations}
                     onClick={() => post(send.url(rsvp))}
                 >
                     <Send /> Send
@@ -46,8 +56,10 @@ export function RsvpActions({ rsvp }: { rsvp: Rsvp }) {
                 <Button
                     size="sm"
                     variant="outline"
-                    title="Remind the guest to reply"
-                    disabled={noPhone}
+                    title={
+                        allowance.remindersHint ?? 'Remind the guest to reply'
+                    }
+                    disabled={noPhone || !allowance.reminders}
                     onClick={() => post(remind.url(rsvp))}
                 >
                     <BellRing /> Remind
@@ -63,7 +75,7 @@ export function RsvpActions({ rsvp }: { rsvp: Rsvp }) {
                 <DropdownMenuContent>
                     {status === 'sent' && (
                         <DropdownMenuItem
-                            disabled={noPhone}
+                            disabled={noPhone || !allowance.invitations}
                             onClick={() => post(resend.url(rsvp))}
                         >
                             <RotateCw /> Resend invitation

@@ -12,6 +12,7 @@ enum RsvpStatus: string
     case Sent = 'sent';
     case Accepted = 'accepted';
     case Declined = 'declined';
+    case Maybe = 'maybe';
     case Expired = 'expired';
 
     /** Only one active RSVP link may exist per guest. */
@@ -22,7 +23,7 @@ enum RsvpStatus: string
 
     public function isResponded(): bool
     {
-        return $this === self::Accepted || $this === self::Declined;
+        return $this === self::Accepted || $this === self::Declined || $this === self::Maybe;
     }
 
     public function canBeSent(): bool

@@ -4,6 +4,7 @@ namespace App\Domains\Rsvp\Repositories;
 
 use App\Core\Repositories\BaseRepository;
 use App\Domains\Event\Enums\EventState;
+use App\Domains\Guest\Models\Guest;
 use App\Domains\Rsvp\Contracts\RsvpRepositoryInterface;
 use App\Domains\Rsvp\DTOs\RsvpFilters;
 use App\Domains\Rsvp\Enums\RsvpStatus;
@@ -20,6 +21,12 @@ class RsvpRepository extends BaseRepository implements RsvpRepositoryInterface
     protected function model(): string
     {
         return Rsvp::class;
+    }
+
+    public function findAndLock(string $id): Rsvp
+    {
+        /** @var Rsvp */
+        return $this->query()->lockForUpdate()->findOrFail($id);
     }
 
     public function findByToken(string $token): ?Rsvp
@@ -49,7 +56,11 @@ class RsvpRepository extends BaseRepository implements RsvpRepositoryInterface
     {
         return $this->query()
             ->where('event_id', $eventId)
-            ->with(['guest.link.event', 'event', 'latestNotification'])
+            ->with([
+                'guest' => fn ($query) => $query->with('link.event')->withCount(Guest::messagesSentCounts()),
+                'event',
+                'latestNotification',
+            ])
             ->when($filters->status, fn (Builder $q, RsvpStatus $status) => $q->where('status', $status))
             ->latest()
             ->paginate($perPage)

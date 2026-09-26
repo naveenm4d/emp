@@ -109,9 +109,10 @@ export default function GuestsIndex({
             <PageHeader
                 title={event.title}
                 description={
-                    approval
+                    (approval
                         ? `${summary.total} guests · ${summary.approved} approved · ${summary.pending} pending · ${summary.waitlisted} waitlisted`
-                        : `${summary.total} guests`
+                        : `${summary.total} guests`) +
+                    ` · headcount ${summary.headcount} confirmed, ${summary.headcount_total} expected`
                 }
                 actions={
                     event.state !== 'cancelled' && (
@@ -236,6 +237,7 @@ export default function GuestsIndex({
                                         registrationType={
                                             event.registration_type
                                         }
+                                        messageLimits={event.message_limits}
                                         onEdit={() => startEditing(guest.id)}
                                     />
                                 </li>
@@ -304,6 +306,7 @@ export default function GuestsIndex({
                                             <StatusBadge
                                                 status={guest.rsvp_status}
                                             />
+                                            <PartySize guest={guest} />
                                         </TableCell>
                                         <TableCell>
                                             <OptionalBadge
@@ -338,6 +341,9 @@ export default function GuestsIndex({
                                                 registrationType={
                                                     event.registration_type
                                                 }
+                                                messageLimits={
+                                                    event.message_limits
+                                                }
                                                 onEdit={() =>
                                                     startEditing(guest.id)
                                                 }
@@ -356,6 +362,7 @@ export default function GuestsIndex({
                 guest={selectedGuest}
                 onClose={() => setSelected(null)}
                 registrationType={event.registration_type}
+                messageLimits={event.message_limits}
                 showsApproval={approval}
                 onEdit={(guest) => startEditing(guest.id)}
             />
@@ -428,6 +435,7 @@ function GuestBadges({
         <div className={cn('flex flex-wrap gap-1.5', className)}>
             {approval && <StatusBadge status={guest.approval_status} />}
             <StatusBadge status={guest.rsvp_status} />
+            <PartySize guest={guest} />
             {rsvp?.message && (
                 <StatusBadge
                     status={rsvp.message.status}
@@ -435,5 +443,41 @@ function GuestBadges({
                 />
             )}
         </div>
+    );
+}
+
+/**
+ * "+2" when the guest brings plus-ones or children, with what they were
+ * invited with when their answer differs. Nothing once they declined.
+ */
+function PartySize({ guest }: { guest: Guest }) {
+    if (guest.rsvp_status === 'declined') {
+        return null;
+    }
+
+    const invited =
+        guest.invited_additional_guests === null &&
+        guest.invited_children === null
+            ? null
+            : (guest.invited_additional_guests ?? 0) +
+              (guest.invited_children ?? 0);
+    const bringing = guest.party_size - 1;
+    const changed =
+        invited !== null &&
+        invited !== bringing &&
+        ['confirmed', 'maybe'].includes(guest.rsvp_status);
+
+    if (bringing === 0 && !changed) {
+        return null;
+    }
+
+    return (
+        <span
+            className="ml-1.5 text-xs text-muted-foreground"
+            title={`Party of ${guest.party_size}`}
+        >
+            +{bringing}
+            {changed && ` (invited +${invited})`}
+        </span>
     );
 }

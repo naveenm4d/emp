@@ -28,6 +28,7 @@ export function RsvpStatus({
         sent: ['sent', rsvp.sent_at],
         accepted: ['replied', rsvp.responded_at],
         declined: ['replied', rsvp.responded_at],
+        maybe: ['replied', rsvp.responded_at],
         expired: ['expired', rsvp.expires_at],
     }[status] as [string, string | null];
 

@@ -10,6 +10,7 @@
 
 use App\Domains\Client\Http\Controllers\Admin\ClientController;
 use App\Domains\Event\Http\Controllers\Admin\EventController;
+use App\Domains\Event\Http\Controllers\Admin\EventMessageLimitController;
 use App\Domains\Event\Http\Controllers\Admin\EventRegistrationController;
 use App\Domains\Event\Http\Controllers\Admin\EventStateController;
 use App\Domains\Event\Http\Controllers\Admin\MapPreviewController;
@@ -57,6 +58,7 @@ Route::middleware(['auth:staff', 'staff.active'])->group(function () {
             Route::patch('events/{event}/state', [EventStateController::class, 'update'])->name('events.state');
             Route::post('events/{event}/registration/open', [EventRegistrationController::class, 'open'])->name('events.registration.open');
             Route::post('events/{event}/registration/close', [EventRegistrationController::class, 'close'])->name('events.registration.close');
+            Route::patch('events/{event}/message-limits', [EventMessageLimitController::class, 'update'])->name('events.message-limits');
         });
 
         Route::delete('events/{event}', [EventController::class, 'destroy'])->middleware('can:events.delete')->name('events.destroy');

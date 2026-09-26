@@ -7,6 +7,7 @@ use App\Domains\Guest\Contracts\GuestQueryServiceInterface;
 use App\Domains\Guest\Contracts\GuestRepositoryInterface;
 use App\Domains\Guest\DTOs\GuestFilters;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 class GuestQueryService implements GuestQueryServiceInterface
 {
@@ -22,6 +23,11 @@ class GuestQueryService implements GuestQueryServiceInterface
     public function summary(Event $event): array
     {
         return $this->guests->summary($event->id);
+    }
+
+    public function approvedWithSeats(Event $event): Collection
+    {
+        return $this->guests->approvedWithSeats($event->id);
     }
 
     public function count(): int

@@ -9,7 +9,8 @@ use App\Domains\Rsvp\Events\RsvpResponded;
 use App\Domains\Rsvp\Events\RsvpSent;
 
 /**
- * Keeps the guest's RSVP status in step with their RSVP link.
+ * Keeps the guest's RSVP status in step with their RSVP link, and stores the
+ * details they gave with their answer.
  */
 class SyncGuestRsvpStatus
 {
@@ -22,9 +23,14 @@ class SyncGuestRsvpStatus
         $status = match (true) {
             $event instanceof RsvpSent => GuestRsvpStatus::Pending,
             $event->rsvp->status === RsvpStatus::Accepted => GuestRsvpStatus::Confirmed,
+            $event->rsvp->status === RsvpStatus::Maybe => GuestRsvpStatus::Maybe,
             default => GuestRsvpStatus::Declined,
         };
 
         $this->guests->setRsvpStatus($event->rsvp->guest_id, $status);
+
+        if ($event instanceof RsvpResponded && $event->details !== null) {
+            $this->guests->saveRegistrationDetails($event->rsvp->guest_id, $event->details);
+        }
     }
 }

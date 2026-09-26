@@ -2,6 +2,7 @@
 
 use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Models\Guest;
+use App\Domains\Notification\Enums\NotificationKind;
 use App\Domains\Notification\Models\Notification;
 use App\Domains\Rsvp\Enums\RsvpStatus;
 use App\Domains\Rsvp\Models\Rsvp;
@@ -92,4 +93,16 @@ it('skips events without automatic reminders, unpublished events and answered li
     $this->artisan('rsvps:send-reminders');
 
     expect(Notification::count())->toBe(0);
+});
+
+it('stops automatic reminders at the per-guest limit, quietly', function () {
+    $this->event->update(['max_reminders_per_guest' => 1]);
+    $limited = sentLink($this->event, $this->guest, 3);
+    Notification::factory()->for($this->guest)->create(['kind' => NotificationKind::RsvpReminder]);
+    $other = sentLink($this->event, Guest::factory()->for($this->event)->create(), 3);
+
+    $this->artisan('rsvps:send-reminders')->assertSuccessful();
+
+    expect($limited->fresh()->reminder_count)->toBe(0)
+        ->and($other->fresh()->reminder_count)->toBe(1);
 });

@@ -21,7 +21,18 @@ import { cn } from '@/lib/utils';
 import { details } from '@/routes/client/guests';
 import type { Guest, Notification, Rsvp } from '@/types';
 
-type TimelineData = { rsvps: Rsvp[]; messages: Notification[] };
+/** A guest's answer to one of the event's custom questions. */
+export type GuestAnswer = {
+    question: string;
+    type: string;
+    value: string | number | boolean | string[];
+};
+
+type TimelineData = {
+    rsvps: Rsvp[];
+    messages: Notification[];
+    answers: GuestAnswer[];
+};
 
 type Entry = {
     key: string;
@@ -53,17 +64,22 @@ const approvalTitles: Record<Guest['approval_status'], string> = {
 export function GuestTimeline({
     guest,
     refreshKey,
+    onAnswers,
 }: {
     guest: Guest;
     /** Changes when the guest's statuses change, so the history reloads. */
     refreshKey: string;
+    /** Receives the guest's custom answers, which come with the history. */
+    onAnswers?: (answers: GuestAnswer[]) => void;
 }) {
     const http = useHttp<Record<string, never>, TimelineData>();
     const [failed, setFailed] = useState(false);
 
     useEffect(() => {
         setFailed(false);
-        http.get(details.url(guest)).catch(() => setFailed(true));
+        http.get(details.url(guest))
+            .then((data) => onAnswers?.(data.answers))
+            .catch(() => setFailed(true));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [guest.id, refreshKey]);
 
@@ -176,11 +192,22 @@ function buildEntries(guest: Guest, { rsvps, messages }: TimelineData) {
                 key: `reply-${rsvp.id}`,
                 at: rsvp.responded_at,
                 icon: rsvp.status === 'declined' ? CircleX : CircleCheck,
-                tone: rsvp.status === 'declined' ? 'danger' : 'success',
-                title:
+                tone:
                     rsvp.status === 'declined'
-                        ? 'Declined the invitation'
-                        : 'Accepted the invitation',
+                        ? 'danger'
+                        : rsvp.status === 'maybe'
+                          ? 'muted'
+                          : 'success',
+                title:
+                    {
+                        declined: 'Declined the invitation',
+                        maybe: 'Answered maybe',
+                    }[rsvp.status as string] ?? 'Accepted the invitation',
+                body: rsvp.response_note ? (
+                    <p className="text-sm whitespace-pre-line text-muted-foreground">
+                        “{rsvp.response_note}”
+                    </p>
+                ) : undefined,
             });
         }
 

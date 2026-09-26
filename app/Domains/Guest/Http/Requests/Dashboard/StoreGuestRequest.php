@@ -18,10 +18,18 @@ class StoreGuestRequest extends FormRequest
     {
         return [
             ...GuestRules::contact(),
+            ...GuestRules::invitedParty(),
+            'email' => ['required_without:phone', ...GuestRules::contact()['email']],
             'notes' => ['nullable', 'string', 'max:2000'],
             'invitation_message' => ['nullable', 'string', 'max:1000'],
             'reminder_message' => ['nullable', 'string', 'max:1000'],
         ];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return ['email.required_without' => GuestRules::CONTACT_REQUIRED];
     }
 
     public function toData(): GuestData

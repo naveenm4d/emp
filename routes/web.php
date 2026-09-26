@@ -45,7 +45,6 @@ Route::middleware(ContentSecurityPolicy::class)->name('web.')->group(function ()
         ->middleware('throttle:public-registration')
         ->name('events.register');
     Route::middleware('throttle:20,1')->group(function () {
-        Route::post('{slug}/{code}/accept', [RsvpController::class, 'accept'])->name('rsvp.accept');
-        Route::post('{slug}/{code}/decline', [RsvpController::class, 'decline'])->name('rsvp.decline');
+        Route::post('{slug}/{code}/respond', [RsvpController::class, 'respond'])->name('rsvp.respond');
     });
 });

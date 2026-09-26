@@ -6,6 +6,7 @@ use App\Core\Http\Controllers\Controller;
 use App\Core\Http\Responses\InvitationPage;
 use App\Domains\Event\Contracts\EventDesignServiceInterface;
 use App\Domains\Event\Http\Resources\PublicEventResource;
+use App\Domains\Event\Http\Resources\PublicRegistrationFormResource;
 use App\Domains\Event\Models\Event;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,7 +27,14 @@ class PreviewController extends Controller
         $response = InvitationPage::render(
             $this->designs->forGuest($event, 'Guest Name'),
             PublicEventResource::make($event)->resolve($request),
-            ['mode' => 'preview', 'rsvp' => null, 'guest' => null, 'actions' => null],
+            [
+                'mode' => 'preview',
+                'rsvp' => null,
+                'guest' => null,
+                'form' => PublicRegistrationFormResource::forRsvp($event->load('registrationQuestions'))->resolve($request),
+                'response' => null,
+                'actions' => null,
+            ],
         )->toResponse($request);
 
         $response->headers->set('X-Robots-Tag', 'noindex, nofollow');

@@ -17,6 +17,8 @@ export default function ShowInvitation({
     event,
     design,
     rsvp,
+    form,
+    response,
     actions,
 }: InvitationPageProps) {
     const [root, setRoot] = useState<ShadowRoot | null>(null);
@@ -42,7 +44,15 @@ export default function ShowInvitation({
                 html={design.html}
                 scripts={design.scripts}
                 onReady={setRoot}
-                rsvp={<RsvpActions mode={mode} rsvp={rsvp} actions={actions} />}
+                rsvp={
+                    <RsvpActions
+                        mode={mode}
+                        rsvp={rsvp}
+                        actions={actions}
+                        form={form}
+                        response={response}
+                    />
+                }
             />
             {design.has_bg_music && <BackgroundMusic root={root} />}
         </>

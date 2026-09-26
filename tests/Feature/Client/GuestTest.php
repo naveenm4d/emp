@@ -26,7 +26,7 @@ it('adds a guest manually', function () {
 });
 
 it('saves a guest\'s custom invitation message on add and update', function () {
-    $this->post("/app/events/{$this->event->id}/guests", ['name' => 'John', 'invitation_message' => 'Hi John: {{ rsvp.link }}'])
+    $this->post("/app/events/{$this->event->id}/guests", ['name' => 'John', 'phone' => '+15550100400', 'invitation_message' => 'Hi John: {{ rsvp.link }}'])
         ->assertSessionHas('success');
 
     $guest = Guest::sole();
@@ -68,7 +68,7 @@ it('approves, rejects and waitlists', function () {
 it('approves guests the client adds, even when registrations need approval', function () {
     $this->event->update(['registration_type' => 'approval_required']);
 
-    $this->post("/app/events/{$this->event->id}/guests", ['name' => 'Ada'])->assertSessionHas('success');
+    $this->post("/app/events/{$this->event->id}/guests", ['name' => 'Ada', 'email' => 'ada@example.com'])->assertSessionHas('success');
 
     expect(Guest::sole())
         ->approval_status->toBe(ApprovalStatus::Approved)
@@ -178,4 +178,52 @@ it('approves everyone on the list when an event switches to guest list only', fu
     expect($pending->fresh()->approval_status)->toBe(ApprovalStatus::Approved)
         ->and($waitlisted->fresh()->approval_status)->toBe(ApprovalStatus::Approved)
         ->and($other->fresh()->approval_status)->toBe(ApprovalStatus::Pending);
+});
+
+it('needs an email or a phone to add a guest', function () {
+    $this->post("/app/events/{$this->event->id}/guests", ['name' => 'Ada'])
+        ->assertSessionHasErrors(['email' => 'Add a phone number or an email.']);
+
+    expect(Guest::count())->toBe(0);
+});
+
+it('refuses an update that removes the guest\'s only contact', function () {
+    $guest = Guest::factory()->for($this->event)->withoutPhone()->create(['email' => 'ada@example.com']);
+
+    $this->patch("/app/guests/{$guest->id}", ['email' => ''])
+        ->assertSessionHasErrors(['email' => 'Add a phone number or an email.']);
+
+    expect($guest->fresh()->email)->toBe('ada@example.com');
+});
+
+it('adds a guest invited with plus-ones and children, counted in the headcount', function () {
+    $this->post("/app/events/{$this->event->id}/guests", [
+        'name' => 'John',
+        'phone' => '+15550100200',
+        'invited_additional_guests' => 1,
+        'invited_children' => 2,
+    ])->assertSessionHas('success');
+
+    expect(Guest::sole())
+        ->invited_additional_guests->toBe(1)
+        ->invited_children->toBe(2)
+        ->additional_guests->toBe(1)
+        ->children->toBe(2);
+
+    $this->get("/app/events/{$this->event->id}/guests")
+        ->assertInertia(fn (Assert $page) => $page->where('summary.headcount_total', 4));
+});
+
+it('caps an answered party when the client lowers the invitation', function () {
+    $guest = Guest::factory()->for($this->event)->create([
+        'rsvp_status' => 'confirmed',
+        'invited_additional_guests' => 2,
+        'additional_guests' => 2,
+    ]);
+
+    $this->patch("/app/guests/{$guest->id}", ['invited_additional_guests' => 1])->assertSessionHas('success');
+
+    expect($guest->fresh())
+        ->invited_additional_guests->toBe(1)
+        ->additional_guests->toBe(1);
 });

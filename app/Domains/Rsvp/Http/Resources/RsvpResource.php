@@ -28,6 +28,7 @@ class RsvpResource extends JsonResource
             'sent_at' => $this->sent_at?->toIso8601String(),
             'expires_at' => $this->expires_at?->toIso8601String(),
             'responded_at' => $this->responded_at?->toIso8601String(),
+            'response_note' => $this->response_note,
             'reminder_count' => $this->reminder_count,
             'last_reminded_at' => $this->last_reminded_at?->toIso8601String(),
             'message' => $this->whenLoaded('latestNotification', fn () => $this->latestNotification ? [

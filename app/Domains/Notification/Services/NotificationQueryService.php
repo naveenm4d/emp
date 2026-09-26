@@ -6,6 +6,7 @@ use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Models\Guest;
 use App\Domains\Notification\Contracts\NotificationQueryServiceInterface;
 use App\Domains\Notification\Contracts\NotificationRepositoryInterface;
+use App\Domains\Notification\Enums\NotificationKind;
 use App\Domains\Notification\Enums\NotificationStatus;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -19,6 +20,11 @@ class NotificationQueryService implements NotificationQueryServiceInterface
     public function forEvent(Event $event): LengthAwarePaginator
     {
         return $this->notifications->paginateForEvent($event->id, config('emp.per_page'));
+    }
+
+    public function countSentToGuest(string $guestId, NotificationKind $kind): int
+    {
+        return $this->notifications->countForGuest($guestId, $kind);
     }
 
     public function forGuest(Guest $guest): Collection

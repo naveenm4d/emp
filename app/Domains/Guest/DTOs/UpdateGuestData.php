@@ -8,7 +8,10 @@ final class UpdateGuestData extends PartialData
 {
     protected static function fields(): array
     {
-        return ['name', 'email', 'phone', 'notes', 'invitation_message', 'reminder_message'];
+        return [
+            'name', 'email', 'phone', 'notes', 'invitation_message', 'reminder_message',
+            'invited_additional_guests', 'invited_children',
+        ];
     }
 
     protected function normalize(array $values): array
@@ -23,6 +26,12 @@ final class UpdateGuestData extends PartialData
 
         if (array_key_exists('phone', $values)) {
             $values['phone'] = GuestContact::phone($values['phone']);
+        }
+
+        foreach (['invited_additional_guests', 'invited_children'] as $count) {
+            if (array_key_exists($count, $values)) {
+                $values[$count] = $values[$count] === null ? null : (int) $values[$count];
+            }
         }
 
         return $values;

@@ -25,12 +25,15 @@ import {
 import { approve, destroy, reject, waitlist } from '@/routes/client/guests';
 import { store as createRsvp } from '@/routes/client/guests/rsvps';
 import { remind, resend, send } from '@/routes/client/rsvps';
-import type { Guest, RegistrationType } from '@/types';
+import { messageAllowance } from '@/lib/guests';
+import type { Guest, MessageLimits, RegistrationType } from '@/types';
 
 type GuestActionsProps = {
     guest: Guest;
     /** Decides the approval actions: all of them for approval_required, none for guest_list_only. */
     registrationType: RegistrationType;
+    /** The event's per-guest message limits; used-up actions are disabled. */
+    messageLimits?: MessageLimits;
     onEdit: () => void;
 };
 
@@ -41,6 +44,7 @@ type GuestActionsProps = {
 export function GuestActions({
     guest,
     registrationType,
+    messageLimits,
     onEdit,
 }: GuestActionsProps) {
     const requiresApproval = registrationType === 'approval_required';
@@ -55,9 +59,11 @@ export function GuestActions({
     const isApproved = guest.approval_status === 'approved';
     const canInvite =
         isApproved &&
-        (!status || ['accepted', 'declined', 'expired'].includes(status));
+        (!status ||
+            ['accepted', 'declined', 'maybe', 'expired'].includes(status));
     const noPhone = !guest.phone;
     const noPhoneHint = 'Add a phone number to send on WhatsApp';
+    const allowance = messageAllowance(guest, messageLimits);
 
     // Pending requests are approved from the button; waitlisted / rejected
     // guests (and leftovers after the type changed) from the menu.
@@ -86,9 +92,10 @@ export function GuestActions({
                 title={
                     noPhone
                         ? noPhoneHint
-                        : 'Create and send an RSVP link on WhatsApp'
+                        : (allowance.invitationsHint ??
+                          'Create and send an RSVP link on WhatsApp')
                 }
-                disabled={noPhone}
+                disabled={noPhone || !allowance.invitations}
                 onClick={() => post(createRsvp.url(guest), { send: true })}
             >
                 <Send /> Invite
@@ -99,8 +106,13 @@ export function GuestActions({
             <Button
                 size="sm"
                 variant="outline"
-                title={noPhone ? noPhoneHint : 'Send the RSVP link on WhatsApp'}
-                disabled={noPhone}
+                title={
+                    noPhone
+                        ? noPhoneHint
+                        : (allowance.invitationsHint ??
+                          'Send the RSVP link on WhatsApp')
+                }
+                disabled={noPhone || !allowance.invitations}
                 onClick={() => post(send.url(rsvp))}
             >
                 <Send /> Send
@@ -111,8 +123,13 @@ export function GuestActions({
             <Button
                 size="sm"
                 variant="outline"
-                title={noPhone ? noPhoneHint : 'Remind the guest to reply'}
-                disabled={noPhone}
+                title={
+                    noPhone
+                        ? noPhoneHint
+                        : (allowance.remindersHint ??
+                          'Remind the guest to reply')
+                }
+                disabled={noPhone || !allowance.reminders}
                 onClick={() => post(remind.url(rsvp))}
             >
                 <BellRing /> Remind
@@ -161,7 +178,7 @@ export function GuestActions({
                 <DropdownMenuContent>
                     {rsvp && status === 'sent' && (
                         <DropdownMenuItem
-                            disabled={noPhone}
+                            disabled={noPhone || !allowance.invitations}
                             onClick={() => post(resend.url(rsvp))}
                         >
                             <RotateCw /> Resend invitation

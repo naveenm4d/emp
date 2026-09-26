@@ -41,6 +41,17 @@ class EventResource extends JsonResource
             'auto_reminders' => $this->auto_reminders,
             'remind_after_days' => $this->remind_after_days,
             'remind_before_days' => $this->remind_before_days,
+            // Most invitations / reminders each guest can get (staff also see the overrides and defaults).
+            'message_limits' => [
+                'invitations' => $this->invitationLimit(),
+                'reminders' => $this->reminderLimit(),
+                ...($request->user('staff') ? [
+                    'invitations_override' => $this->max_invitations_per_guest,
+                    'reminders_override' => $this->max_reminders_per_guest,
+                    'default_invitations' => (int) config('emp.max_invitations_per_guest'),
+                    'default_reminders' => (int) config('emp.max_reminders_per_guest'),
+                ] : []),
+            ],
             // The event's public URL (domain/{slug}/{code}) and how often people opened it.
             'public_url' => $this->whenLoaded('publicLink', fn () => $this->publicLink?->url()),
             'public_link_open_count' => $this->whenLoaded('publicLink', fn () => $this->publicLink?->open_count ?? 0),

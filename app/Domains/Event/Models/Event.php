@@ -3,11 +3,13 @@
 namespace App\Domains\Event\Models;
 
 use App\Domains\Client\Models\Client;
+use App\Domains\Event\DTOs\RegistrationSettings;
 use App\Domains\Event\Enums\EventState;
 use App\Domains\Event\Enums\EventType;
 use App\Domains\Event\Enums\RegistrationType;
 use App\Domains\Guest\Models\Guest;
 use App\Domains\Rsvp\Models\Rsvp;
+use App\Domains\Seating\Models\EventTable;
 use App\Domains\Template\Models\TemplateVersion;
 use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
@@ -47,12 +49,17 @@ use Illuminate\Support\Facades\URL;
  * @property int $remind_after_days automatic reminder this many days after sending, if no reply
  * @property int $remind_before_days automatic reminder this many days before the event date
  * @property array{texts?: array<string, string>, colors?: array<string, string>, sections?: array<string, bool>}|null $customizations the client's changes to the template's editable texts, colours and sections
+ * @property array<string, mixed>|null $event_registration_settings what guests are asked when registering / RSVPing; read through registrationSettings()
+ * @property int|null $max_invitations_per_guest staff override of the invitations each guest can get (null = platform default)
+ * @property int|null $max_reminders_per_guest staff override of the reminders each guest can get (null = platform default)
+ * @property CarbonImmutable|null $responses_lock_at when guests can no longer change their answer (if changes are allowed)
  * @property string|null $rendered_path generated invitation HTML on the render disk
  * @property string|null $rendered_hash
  * @property CarbonImmutable|null $rendered_at
  * @property-read TemplateVersion $templateVersion
  * @property-read Collection<int, EventMedia> $media
  * @property-read EventLink|null $publicLink
+ * @property-read Collection<int, RegistrationQuestion> $registrationQuestions
  * @property CarbonImmutable|null $deleted_at events are only soft-deleted
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
@@ -63,6 +70,7 @@ use Illuminate\Support\Facades\URL;
     'registration_type', 'registration_open', 'event_type', 'location_name',
     'location_address', 'map_url', 'event_date', 'start_time', 'end_time', 'customizations',
     'invitation_message', 'reminder_message', 'auto_reminders', 'remind_after_days', 'remind_before_days',
+    'event_registration_settings', 'responses_lock_at', 'max_invitations_per_guest', 'max_reminders_per_guest',
 ])]
 class Event extends Model
 {
@@ -99,6 +107,10 @@ class Event extends Model
             'registration_open' => 'boolean',
             'event_date' => 'date:Y-m-d',
             'rendered_at' => 'datetime',
+            'event_registration_settings' => 'array',
+            'responses_lock_at' => 'datetime',
+            'max_invitations_per_guest' => 'integer',
+            'max_reminders_per_guest' => 'integer',
         ];
     }
 
@@ -123,6 +135,56 @@ class Event extends Model
         return $this->state === EventState::Published
             && $this->registration_type->hasPublicRegistration()
             && $this->registration_open;
+    }
+
+    /** What guests are asked when they register or RSVP; unsaved events use the defaults for their type. */
+    public function registrationSettings(): RegistrationSettings
+    {
+        $defaults = RegistrationSettings::defaultsFor($this->event_type, $this->registration_type);
+
+        return $this->event_registration_settings === null
+            ? $defaults
+            : RegistrationSettings::fromArray($this->event_registration_settings, $defaults);
+    }
+
+    /** When the event starts: its date plus start time (start of day without one). */
+    public function startsAt(): ?CarbonImmutable
+    {
+        if ($this->event_date === null) {
+            return null;
+        }
+
+        return $this->start_time === null
+            ? $this->event_date->startOfDay()
+            : $this->event_date->setTimeFromTimeString($this->start_time);
+    }
+
+    /**
+     * Guests may change an answer they already gave: the client allows it, the
+     * lock time (if set) has not passed and the event has not started.
+     */
+    public function allowsResponseChanges(): bool
+    {
+        if (! $this->registrationSettings()->responsesEditable) {
+            return false;
+        }
+
+        $now = now();
+
+        return ($this->responses_lock_at === null || $now->lessThan($this->responses_lock_at))
+            && ($this->startsAt() === null || $now->lessThan($this->startsAt()));
+    }
+
+    /** Most invitations (send, resend, re-invite) one guest can get; failed messages don't count. */
+    public function invitationLimit(): int
+    {
+        return $this->max_invitations_per_guest ?? (int) config('emp.max_invitations_per_guest');
+    }
+
+    /** Most reminders (manual and automatic) one guest can get; failed messages don't count. */
+    public function reminderLimit(): int
+    {
+        return $this->max_reminders_per_guest ?? (int) config('emp.max_reminders_per_guest');
     }
 
     /** Temporary signed link to the client's preview of the invitation. */
@@ -171,6 +233,22 @@ class Event extends Model
     public function rsvps(): HasMany
     {
         return $this->hasMany(Rsvp::class);
+    }
+
+    /** @return HasMany<RegistrationQuestion, $this> */
+    public function registrationQuestions(): HasMany
+    {
+        return $this->hasMany(RegistrationQuestion::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Seating tables, in the order the client arranged them.
+     *
+     * @return HasMany<EventTable, $this>
+     */
+    public function tables(): HasMany
+    {
+        return $this->hasMany(EventTable::class)->orderBy('sort_order')->orderBy('created_at');
     }
 
     /** @return HasMany<EventLink, $this> */

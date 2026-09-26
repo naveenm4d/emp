@@ -5,6 +5,7 @@ use App\Domains\Event\Providers\EventServiceProvider;
 use App\Domains\Guest\Providers\GuestServiceProvider;
 use App\Domains\Notification\Providers\NotificationServiceProvider;
 use App\Domains\Rsvp\Providers\RsvpServiceProvider;
+use App\Domains\Seating\Providers\SeatingServiceProvider;
 use App\Domains\Staff\Providers\StaffServiceProvider;
 use App\Domains\Template\Providers\TemplateServiceProvider;
 use App\Providers\AppServiceProvider;
@@ -19,5 +20,6 @@ return [
     EventServiceProvider::class,
     GuestServiceProvider::class,
     RsvpServiceProvider::class,
+    SeatingServiceProvider::class,
     NotificationServiceProvider::class,
 ];

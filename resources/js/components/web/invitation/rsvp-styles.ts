@@ -5,10 +5,10 @@
  * shadow root *before* the template's own <style>, so any template can
  * restyle these classes:
  *
- *   .emp-rsvp[data-state]      awaiting | accepted | declined | expired | preview
+ *   .emp-rsvp[data-state]      awaiting | accepted | declined | maybe | expired | preview | open | closed
  *   .emp-rsvp__message
  *   .emp-rsvp__actions
- *   .emp-rsvp__button(--accept | --decline)
+ *   .emp-rsvp__button(--accept | --maybe | --decline | --change)
  *   .emp-rsvp__note
  */
 export const RSVP_STYLES = `
@@ -24,5 +24,6 @@ img[src=""], video[src=""], audio[src=""] { visibility: hidden; }
 .emp-rsvp__button:hover:not(:disabled) { transform: translateY(-1px); }
 .emp-rsvp__button:disabled { opacity: .55; cursor: not-allowed; }
 .emp-rsvp__button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.emp-rsvp__button--change { min-width: 0; padding: 8px 16px; font-size: .9em; opacity: .8; }
 .emp-rsvp__note { margin: 12px 0 0; font-size: .85em; opacity: .75; }
 `;

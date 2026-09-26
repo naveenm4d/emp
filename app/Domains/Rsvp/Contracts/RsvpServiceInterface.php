@@ -2,8 +2,10 @@
 
 namespace App\Domains\Rsvp\Contracts;
 
+use App\Domains\Guest\DTOs\RegistrationDetailsData;
 use App\Domains\Guest\Models\Guest;
 use App\Domains\Rsvp\Enums\RsvpReminderType;
+use App\Domains\Rsvp\Enums\RsvpStatus;
 use App\Domains\Rsvp\Models\Rsvp;
 
 interface RsvpServiceInterface
@@ -25,7 +27,10 @@ interface RsvpServiceInterface
     /** Sends the automatic reminders that are due; returns how many were sent. */
     public function sendDueReminders(): int;
 
-    public function accept(string $token): Rsvp;
-
-    public function decline(string $token): Rsvp;
+    /**
+     * Records the guest's answer (accepted, declined or maybe), the details
+     * they gave, and their note to the host when declining. A second answer only replaces the first while the event
+     * allows changes; otherwise the current state is returned.
+     */
+    public function respond(string $token, RsvpStatus $response, ?RegistrationDetailsData $details = null, ?string $note = null): Rsvp;
 }

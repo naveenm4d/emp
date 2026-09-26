@@ -13,6 +13,8 @@ final readonly class GuestData extends DataTransferObject
         public ?string $notes = null,
         public ?string $invitation_message = null,
         public ?string $reminder_message = null,
+        public ?int $invited_additional_guests = null,
+        public ?int $invited_children = null,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -25,6 +27,8 @@ final readonly class GuestData extends DataTransferObject
             notes: $data['notes'] ?? null,
             invitation_message: $data['invitation_message'] ?? null,
             reminder_message: $data['reminder_message'] ?? null,
+            invited_additional_guests: isset($data['invited_additional_guests']) ? (int) $data['invited_additional_guests'] : null,
+            invited_children: isset($data['invited_children']) ? (int) $data['invited_children'] : null,
         );
     }
 }

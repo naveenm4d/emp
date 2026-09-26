@@ -175,3 +175,72 @@ it('shows a message with its delivery log', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('client/notifications/show'));
 });
+
+it('stops invitations at the per-guest limit, across resends', function () {
+    config(['emp.max_invitations_per_guest' => 2]);
+    $guest = Guest::factory()->for($this->event)->create(['name' => 'Priya']);
+
+    $this->post("/app/guests/{$guest->id}/rsvps", ['send' => true])->assertSessionHas('success');
+    $rsvp = Rsvp::sole();
+    $this->post("/app/rsvps/{$rsvp->id}/resend")->assertSessionHas('success');
+
+    $this->post("/app/rsvps/{$rsvp->id}/resend")
+        ->assertSessionHas('error', 'Priya has had all 2 invitations for this event.');
+
+    expect(Notification::where('kind', NotificationKind::RsvpInvitation)->count())->toBe(2);
+});
+
+it('counts re-invites with a new link toward the same allowance', function () {
+    config(['emp.max_invitations_per_guest' => 1]);
+    $guest = Guest::factory()->for($this->event)->create(['name' => 'Priya']);
+    $this->post("/app/guests/{$guest->id}/rsvps", ['send' => true])->assertSessionHas('success');
+    $this->post('/app/rsvps/'.Rsvp::sole()->id.'/expire');
+
+    $this->post("/app/guests/{$guest->id}/rsvps", ['send' => true])
+        ->assertSessionHas('error', 'Priya has had all 1 invitation for this event.');
+
+    expect(Notification::count())->toBe(1);
+});
+
+it('does not count failed messages', function () {
+    config(['emp.max_invitations_per_guest' => 1]);
+    $guest = Guest::factory()->for($this->event)->create();
+    $rsvp = Rsvp::factory()->for($guest)->for($this->event)->sent()->create();
+    Notification::factory()->for($guest)->failed()->create(['kind' => NotificationKind::RsvpInvitation, 'rsvp_id' => $rsvp->id]);
+
+    $this->post("/app/rsvps/{$rsvp->id}/resend")->assertSessionHas('success');
+});
+
+it('stops reminders at the per-guest limit', function () {
+    config(['emp.max_reminders_per_guest' => 1]);
+    $guest = Guest::factory()->for($this->event)->create(['name' => 'Priya']);
+    $rsvp = Rsvp::factory()->for($guest)->for($this->event)->sent()->create();
+
+    $this->post("/app/rsvps/{$rsvp->id}/remind")->assertSessionHas('success');
+    $this->post("/app/rsvps/{$rsvp->id}/remind")
+        ->assertSessionHas('error', 'Priya has had all 1 reminder for this event.');
+
+    expect($rsvp->fresh()->reminder_count)->toBe(1);
+});
+
+it('uses the event\'s own limits over the platform default', function () {
+    config(['emp.max_reminders_per_guest' => 5]);
+    $this->event->update(['max_reminders_per_guest' => 0]);
+    $guest = Guest::factory()->for($this->event)->create();
+    $rsvp = Rsvp::factory()->for($guest)->for($this->event)->sent()->create();
+
+    $this->post("/app/rsvps/{$rsvp->id}/remind")
+        ->assertSessionHas('error', 'No reminders can be sent to guests of this event.');
+});
+
+it('shows each guest\'s messages sent against the event\'s limits', function () {
+    config(['emp.max_invitations_per_guest' => 3, 'emp.max_reminders_per_guest' => 2]);
+    $guest = Guest::factory()->for($this->event)->create();
+    Notification::factory()->for($guest)->count(2)->create(['kind' => NotificationKind::RsvpInvitation]);
+    Notification::factory()->for($guest)->failed()->create(['kind' => NotificationKind::RsvpInvitation]);
+    Notification::factory()->for($guest)->create(['kind' => NotificationKind::RsvpReminder]);
+
+    $this->get("/app/events/{$this->event->id}/guests")->assertInertia(fn (Assert $page) => $page
+        ->where('event.data.message_limits', ['invitations' => 3, 'reminders' => 2])
+        ->where('guests.data.0.messages_sent', ['invitations' => 2, 'reminders' => 1]));
+});

@@ -4,6 +4,7 @@ namespace App\Domains\Guest\Contracts;
 
 use App\Domains\Event\Models\Event;
 use App\Domains\Guest\DTOs\GuestData;
+use App\Domains\Guest\DTOs\RegistrationDetailsData;
 use App\Domains\Guest\DTOs\UpdateGuestData;
 use App\Domains\Guest\Enums\GuestRsvpStatus;
 use App\Domains\Guest\Models\Guest;
@@ -13,9 +14,11 @@ interface GuestServiceInterface
     /** Client adds a guest from the dashboard. */
     public function add(Event $event, GuestData $data): Guest;
 
-    /** A guest registers through the public event page. */
-    /** Self-registration through the event's public link (published, public registration open). */
-    public function registerPublic(Event $event, GuestData $data): Guest;
+    /** Self-registration through the event's public link (published, public registration open), with the details the event asks for. */
+    public function registerPublic(Event $event, GuestData $data, ?RegistrationDetailsData $details = null): Guest;
+
+    /** Stores the details a guest gave when RSVPing (built-in fields and custom answers). */
+    public function saveRegistrationDetails(string $guestId, RegistrationDetailsData $details): Guest;
 
     public function update(Guest $guest, UpdateGuestData $data): Guest;
 

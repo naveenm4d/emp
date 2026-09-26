@@ -37,6 +37,16 @@ export type RegistrationTypeOption = {
     details: { label: string; value: string; ok: boolean }[];
 };
 
+export type MessageLimits = {
+    invitations: number;
+    reminders: number;
+    /** Staff only: the event's own values (null = platform default) and the defaults. */
+    invitations_override?: number | null;
+    reminders_override?: number | null;
+    default_invitations?: number;
+    default_reminders?: number;
+};
+
 export type Event = {
     id: string;
     title: string;
@@ -61,6 +71,8 @@ export type Event = {
     auto_reminders: boolean;
     remind_after_days: number;
     remind_before_days: number;
+    /** Most invitations / reminders each guest can get; staff also get the overrides and defaults. */
+    message_limits: MessageLimits;
     /** The event's public URL (domain/{slug}/{code}); only on the event's own pages. */
     public_url?: string | null;
     public_link_open_count?: number;
@@ -89,10 +101,92 @@ export type Guest = {
     link_url?: string | null;
     link_open_count?: number;
     link_last_opened_at?: string | null;
-    rsvp_status: 'not_sent' | 'pending' | 'confirmed' | 'declined';
+    rsvp_status: 'not_sent' | 'pending' | 'confirmed' | 'declined' | 'maybe';
     check_in_status: 'not_checked_in' | 'checked_in';
+    address: string | null;
+    company: string | null;
+    job_title: string | null;
+    /** Plus-ones / children the client invited the guest with; null = the event's settings. */
+    invited_additional_guests: number | null;
+    invited_children: number | null;
+    additional_guests: number;
+    children: number;
+    /** The guest plus their plus-ones and children. */
+    party_size: number;
+    dietary_restrictions: string[];
+    dietary_notes: string | null;
     latest_rsvp?: Rsvp | null;
+    /** Invitations / reminders sent so far, not counting failed ones. */
+    messages_sent?: { invitations: number; reminders: number };
+    /** Where the guest's party sits; null when not seated. */
+    seating?: { table: string; seats: number[] } | null;
     created_at: string;
+};
+
+export type GuestRsvpStatus = Guest['rsvp_status'];
+
+/** One seat at a table: empty, or the person sitting there. */
+export type Seat = {
+    number: number;
+    guest_id: string | null;
+    /** 0 = the guest, then their plus-ones, then their children. */
+    party_member: number | null;
+    /** "John", "John's guest", "John's child 2". */
+    label: string | null;
+    status: GuestRsvpStatus | null;
+};
+
+export type TableShape = 'round' | 'oval' | 'square' | 'rectangle';
+
+export type EventTable = {
+    id: string;
+    name: string;
+    seat_count: number;
+    shape: TableShape;
+    seats: Seat[];
+};
+
+/** A guest as the seating page sees them (SeatingGuestResource). */
+export type SeatingGuest = {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    rsvp_status: GuestRsvpStatus;
+    additional_guests: number;
+    children: number;
+    party_size: number;
+    dietary_restrictions: string[];
+    dietary_notes: string | null;
+    /** How many of the party have a seat. */
+    seated: number;
+    table_id: string | null;
+    table_name: string | null;
+    seat_numbers: number[];
+    /** Every seated person of the party, wherever they sit (a party can be split). */
+    seats: {
+        party_member: number;
+        label: string;
+        table_id: string;
+        table_name: string;
+        seat_number: number;
+    }[];
+    /** Party members without a seat. */
+    missing_members: { party_member: number; label: string }[];
+};
+
+export type SeatingSummary = {
+    seats_total: number;
+    seats_taken: number;
+    confirmed_people: number;
+    confirmed_seated: number;
+    /** Confirmed guests whose party is (partly) without seats. */
+    unseated: {
+        guest_id: string;
+        name: string;
+        party_size: number;
+        missing: number;
+    }[];
 };
 
 export type GuestSummary = {
@@ -103,6 +197,11 @@ export type GuestSummary = {
     waitlisted: number;
     rsvp_confirmed: number;
     rsvp_declined: number;
+    rsvp_maybe: number;
+    /** Confirmed guests with their plus-ones and children. */
+    headcount: number;
+    /** Everyone holding a seat (pending or approved, not declined) with their party. */
+    headcount_total: number;
 };
 
 export type RsvpStatus =
@@ -110,6 +209,7 @@ export type RsvpStatus =
     | 'sent'
     | 'accepted'
     | 'declined'
+    | 'maybe'
     | 'expired';
 
 export type Rsvp = {
@@ -122,6 +222,8 @@ export type Rsvp = {
     sent_at: string | null;
     expires_at: string | null;
     responded_at: string | null;
+    /** The guest's note to the host when declining. */
+    response_note: string | null;
     reminder_count: number;
     last_reminded_at: string | null;
     message?: RsvpMessage | null;

@@ -140,7 +140,7 @@ export default function ShowEvent({
             <div
                 className={cn(
                     'mb-6 grid gap-4 sm:grid-cols-2',
-                    approval ? 'xl:grid-cols-4' : 'xl:grid-cols-3',
+                    approval ? 'xl:grid-cols-5' : 'xl:grid-cols-4',
                 )}
             >
                 <MetricCard
@@ -165,14 +165,20 @@ export default function ShowEvent({
                     value={
                         rsvpSummary.sent +
                         rsvpSummary.accepted +
-                        rsvpSummary.declined
+                        rsvpSummary.declined +
+                        rsvpSummary.maybe
                     }
                     description={`${rsvpSummary.pending} not sent yet`}
                 />
                 <MetricCard
                     title="Confirmed"
                     value={guestSummary.rsvp_confirmed}
-                    description={`${guestSummary.rsvp_declined} declined`}
+                    description={`${guestSummary.rsvp_maybe} maybe · ${guestSummary.rsvp_declined} declined`}
+                />
+                <MetricCard
+                    title="Headcount"
+                    value={guestSummary.headcount}
+                    description={`${guestSummary.headcount_total} expected incl. unanswered`}
                 />
             </div>
 

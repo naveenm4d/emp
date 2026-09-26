@@ -4,6 +4,7 @@ namespace App\Domains\Notification\Repositories;
 
 use App\Core\Repositories\BaseRepository;
 use App\Domains\Notification\Contracts\NotificationRepositoryInterface;
+use App\Domains\Notification\Enums\NotificationKind;
 use App\Domains\Notification\Enums\NotificationStatus;
 use App\Domains\Notification\Models\Notification;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -32,6 +33,15 @@ class NotificationRepository extends BaseRepository implements NotificationRepos
             ->latest()
             ->paginate($perPage)
             ->withQueryString();
+    }
+
+    public function countForGuest(string $guestId, NotificationKind $kind): int
+    {
+        return $this->query()
+            ->where('guest_id', $guestId)
+            ->where('kind', $kind)
+            ->where('status', '!=', NotificationStatus::Failed)
+            ->count();
     }
 
     public function forGuest(string $guestId): Collection

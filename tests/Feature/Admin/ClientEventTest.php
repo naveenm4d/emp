@@ -117,3 +117,47 @@ it('forbids viewers from managing a client\'s events', function () {
 
     expect(Event::count())->toBe(0);
 });
+
+it('sets and clears an event\'s message limits', function () {
+    config(['emp.max_invitations_per_guest' => 3, 'emp.max_reminders_per_guest' => 3]);
+    $event = Event::factory()->for($this->client)->create();
+
+    $this->patch(($this->eventUrl)($event, '/message-limits'), ['max_invitations_per_guest' => 1, 'max_reminders_per_guest' => 0])
+        ->assertSessionHas('success', 'Message limits saved.');
+
+    expect($event->fresh())->invitationLimit()->toBe(1)->reminderLimit()->toBe(0);
+
+    $this->get(($this->eventUrl)($event, '/edit'))->assertInertia(fn (Assert $page) => $page
+        ->where('event.data.message_limits.invitations_override', 1)
+        ->where('event.data.message_limits.default_invitations', 3));
+
+    $this->patch(($this->eventUrl)($event, '/message-limits'), ['max_invitations_per_guest' => null, 'max_reminders_per_guest' => null]);
+
+    expect($event->fresh())->max_invitations_per_guest->toBeNull()->invitationLimit()->toBe(3);
+});
+
+it('validates message limits', function () {
+    $event = Event::factory()->for($this->client)->create();
+
+    $this->patch(($this->eventUrl)($event, '/message-limits'), ['max_invitations_per_guest' => 0, 'max_reminders_per_guest' => 21])
+        ->assertSessionHasErrors([
+            'max_invitations_per_guest' => 'The invitations per guest field must be at least 1.',
+            'max_reminders_per_guest' => 'The reminders per guest field must not be greater than 20.',
+        ]);
+});
+
+it('forbids viewers from changing message limits', function () {
+    $this->actingAs(StaffMember::factory()->role(StaffRole::Viewer)->create(), 'staff');
+    $event = Event::factory()->for($this->client)->create();
+
+    $this->patch(($this->eventUrl)($event, '/message-limits'), ['max_invitations_per_guest' => 9])->assertForbidden();
+});
+
+it('does not let clients change their message limits', function () {
+    $event = Event::factory()->for($this->client)->create();
+    $this->actingAs($this->client, 'client');
+
+    $this->patch("/app/events/{$event->id}", ['max_invitations_per_guest' => 50, 'max_reminders_per_guest' => 50]);
+
+    expect($event->fresh())->max_invitations_per_guest->toBeNull()->max_reminders_per_guest->toBeNull();
+});

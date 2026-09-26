@@ -16,6 +16,7 @@ use App\Domains\Event\Http\Controllers\Dashboard\EventController;
 use App\Domains\Event\Http\Controllers\Dashboard\EventDesignController;
 use App\Domains\Event\Http\Controllers\Dashboard\EventMediaController;
 use App\Domains\Event\Http\Controllers\Dashboard\EventRegistrationController;
+use App\Domains\Event\Http\Controllers\Dashboard\EventSettingsController;
 use App\Domains\Event\Http\Controllers\Dashboard\EventStateController;
 use App\Domains\Event\Http\Controllers\Dashboard\MapPreviewController;
 use App\Domains\Guest\Http\Controllers\Dashboard\GuestApprovalController;
@@ -24,6 +25,7 @@ use App\Domains\Guest\Http\Controllers\Dashboard\GuestDetailsController;
 use App\Domains\Notification\Http\Controllers\Dashboard\NotificationController;
 use App\Domains\Rsvp\Http\Controllers\Dashboard\RsvpController;
 use App\Domains\Rsvp\Http\Controllers\Dashboard\RsvpDeliveryController;
+use App\Domains\Seating\Http\Controllers\Dashboard\SeatingController;
 use App\Domains\Template\Http\Controllers\Dashboard\TemplateController;
 use Illuminate\Support\Facades\Route;
 
@@ -59,6 +61,21 @@ Route::middleware('auth:client')->group(function () {
     Route::post('events/{event}/template/upgrade', [EventDesignController::class, 'upgrade'])->name('events.template.upgrade');
     Route::post('events/{event}/media', [EventMediaController::class, 'store'])->name('events.media.store');
     Route::delete('events/{event}/media/{media}', [EventMediaController::class, 'destroy'])->scopeBindings()->name('events.media.destroy');
+
+    // Settings: what guests are asked when they register or RSVP
+    Route::get('events/{event}/settings', [EventSettingsController::class, 'edit'])->name('events.settings');
+    Route::put('events/{event}/settings', [EventSettingsController::class, 'update'])->name('events.settings.update');
+
+    // Seating: tables and who sits where
+    Route::get('events/{event}/seating', [SeatingController::class, 'index'])->name('events.seating');
+    Route::post('events/{event}/tables', [SeatingController::class, 'storeTable'])->name('events.tables.store');
+    Route::patch('tables/{table}', [SeatingController::class, 'updateTable'])->name('tables.update');
+    Route::delete('tables/{table}', [SeatingController::class, 'destroyTable'])->name('tables.destroy');
+    Route::post('tables/{table}/seats', [SeatingController::class, 'assign'])->name('tables.seats.store');
+    Route::delete('guests/{guest}/seats', [SeatingController::class, 'unassign'])->name('guests.seats.destroy');
+    Route::post('events/{event}/seating/swap', [SeatingController::class, 'swap'])->name('events.seating.swap');
+    Route::post('events/{event}/seating/replace', [SeatingController::class, 'replace'])->name('events.seating.replace');
+    Route::post('events/{event}/seating/auto', [SeatingController::class, 'autoSeat'])->name('events.seating.auto');
 
     // Guests
     Route::get('events/{event}/guests', [GuestController::class, 'index'])->name('events.guests.index');

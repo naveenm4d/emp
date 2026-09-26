@@ -163,6 +163,15 @@ class EventService extends BaseService implements EventServiceInterface
         return $this->events->update($event, ['registration_open' => false]);
     }
 
+    public function setMessageLimits(Event $event, ?int $invitations, ?int $reminders): Event
+    {
+        /** @var Event */
+        return $this->events->update($event, [
+            'max_invitations_per_guest' => $invitations,
+            'max_reminders_per_guest' => $reminders,
+        ]);
+    }
+
     public function delete(Event $event): void
     {
         $this->events->delete($event);

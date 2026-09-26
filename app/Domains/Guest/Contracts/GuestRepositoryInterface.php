@@ -6,6 +6,7 @@ use App\Core\Contracts\RepositoryInterface;
 use App\Domains\Guest\DTOs\GuestFilters;
 use App\Domains\Guest\Models\Guest;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * @extends RepositoryInterface<Guest>
@@ -27,4 +28,7 @@ interface GuestRepositoryInterface extends RepositoryInterface
 
     /** @return array<string, int> */
     public function summary(string $eventId): array;
+
+    /** @return Collection<int, Guest> approved guests of the event, by name, with their seats */
+    public function approvedWithSeats(string $eventId): Collection;
 }

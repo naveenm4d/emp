@@ -17,6 +17,8 @@ export type GuestFormData = {
     notes: string;
     invitation_message: string;
     reminder_message: string;
+    invited_additional_guests: number | '';
+    invited_children: number | '';
 };
 
 type GuestFormProps = {
@@ -45,6 +47,8 @@ export function GuestForm({
         notes: guest?.notes ?? '',
         invitation_message: guest?.invitation_message ?? '',
         reminder_message: guest?.reminder_message ?? '',
+        invited_additional_guests: guest?.invited_additional_guests ?? '',
+        invited_children: guest?.invited_children ?? '',
     });
     const [showsMessages, setShowsMessages] = useState(
         !!guest?.invitation_message || !!guest?.reminder_message,
@@ -82,6 +86,7 @@ export function GuestForm({
                 label="Email"
                 htmlFor={`email-${guest?.id ?? 'new'}`}
                 error={form.errors.email}
+                hint="Add an email or a phone, so you can reach them."
             >
                 <Input
                     id={`email-${guest?.id ?? 'new'}`}
@@ -113,6 +118,54 @@ export function GuestForm({
                     onChange={(e) => form.setData('notes', e.target.value)}
                 />
             </FormField>
+            <div className="grid grid-cols-2 gap-3">
+                <FormField
+                    label="Plus-ones"
+                    htmlFor={`plus-ones-${id}`}
+                    error={form.errors.invited_additional_guests}
+                >
+                    <Input
+                        id={`plus-ones-${id}`}
+                        type="number"
+                        min={0}
+                        max={20}
+                        placeholder="Default"
+                        title="How many people the guest is invited with. Leave empty to use the event's settings."
+                        value={form.data.invited_additional_guests}
+                        onChange={(e) =>
+                            form.setData(
+                                'invited_additional_guests',
+                                e.target.value === ''
+                                    ? ''
+                                    : Number(e.target.value),
+                            )
+                        }
+                    />
+                </FormField>
+                <FormField
+                    label="Children"
+                    htmlFor={`children-${id}`}
+                    error={form.errors.invited_children}
+                >
+                    <Input
+                        id={`children-${id}`}
+                        type="number"
+                        min={0}
+                        max={20}
+                        placeholder="Default"
+                        title="How many children the guest is invited with. Leave empty to use the event's settings."
+                        value={form.data.invited_children}
+                        onChange={(e) =>
+                            form.setData(
+                                'invited_children',
+                                e.target.value === ''
+                                    ? ''
+                                    : Number(e.target.value),
+                            )
+                        }
+                    />
+                </FormField>
+            </div>
             <div className="sm:col-span-2 lg:col-span-4">
                 <button
                     type="button"

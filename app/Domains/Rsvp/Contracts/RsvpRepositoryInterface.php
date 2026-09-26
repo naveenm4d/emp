@@ -15,6 +15,9 @@ interface RsvpRepositoryInterface extends RepositoryInterface
 {
     public function findByToken(string $token): ?Rsvp;
 
+    /** Reloads the link with a row lock. Must be called inside a transaction. */
+    public function findAndLock(string $id): Rsvp;
+
     public function findActiveForGuest(string $guestId): ?Rsvp;
 
     /** The guest's most recent RSVP link. */

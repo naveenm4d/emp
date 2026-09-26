@@ -5,8 +5,11 @@ namespace App\Domains\Rsvp\Services;
 use App\Core\Exceptions\DomainException;
 use App\Core\Exceptions\NotFoundException;
 use App\Core\Services\BaseService;
+use App\Domains\Guest\DTOs\RegistrationDetailsData;
 use App\Domains\Guest\Enums\ApprovalStatus;
 use App\Domains\Guest\Models\Guest;
+use App\Domains\Notification\Contracts\NotificationQueryServiceInterface;
+use App\Domains\Notification\Enums\NotificationKind;
 use App\Domains\Rsvp\Contracts\RsvpRepositoryInterface;
 use App\Domains\Rsvp\Contracts\RsvpServiceInterface;
 use App\Domains\Rsvp\Enums\RsvpReminderType;
@@ -16,9 +19,11 @@ use App\Domains\Rsvp\Events\RsvpResponded;
 use App\Domains\Rsvp\Events\RsvpSent;
 use App\Domains\Rsvp\Exceptions\GuestNoPhoneException;
 use App\Domains\Rsvp\Exceptions\GuestNotApprovedException;
+use App\Domains\Rsvp\Exceptions\MessageLimitReachedException;
 use App\Domains\Rsvp\Exceptions\RsvpActiveException;
 use App\Domains\Rsvp\Exceptions\RsvpExpiredException;
 use App\Domains\Rsvp\Exceptions\RsvpNotSendableException;
+use App\Domains\Rsvp\Exceptions\RsvpResponseNotAllowedException;
 use App\Domains\Rsvp\Models\Rsvp;
 use Illuminate\Database\UniqueConstraintViolationException;
 
@@ -26,6 +31,7 @@ class RsvpService extends BaseService implements RsvpServiceInterface
 {
     public function __construct(
         private readonly RsvpRepositoryInterface $rsvps,
+        private readonly NotificationQueryServiceInterface $notifications,
     ) {}
 
     public function create(Guest $guest): Rsvp
@@ -91,6 +97,9 @@ class RsvpService extends BaseService implements RsvpServiceInterface
         }
 
         return $this->transaction(function () use ($rsvp, $automatic) {
+            $this->rsvps->findAndLock($rsvp->id);
+            $this->ensureAllowance($rsvp, NotificationKind::RsvpReminder);
+
             $now = now();
             $attributes = ['reminder_count' => $rsvp->reminder_count + 1, 'last_reminded_at' => $now];
 
@@ -114,7 +123,8 @@ class RsvpService extends BaseService implements RsvpServiceInterface
         foreach ($this->rsvps->candidatesForAutoReminder() as $rsvp) {
             $due = $this->dueReminders($rsvp);
 
-            if ($due === []) {
+            // Guests who've had all their reminders are skipped quietly.
+            if ($due === [] || ! $this->hasAllowance($rsvp, NotificationKind::RsvpReminder)) {
                 continue;
             }
 
@@ -128,16 +138,6 @@ class RsvpService extends BaseService implements RsvpServiceInterface
         }
 
         return $sent;
-    }
-
-    public function accept(string $token): Rsvp
-    {
-        return $this->respond($token, RsvpStatus::Accepted);
-    }
-
-    public function decline(string $token): Rsvp
-    {
-        return $this->respond($token, RsvpStatus::Declined);
     }
 
     /**
@@ -173,6 +173,31 @@ class RsvpService extends BaseService implements RsvpServiceInterface
         return $due;
     }
 
+    /** The guest may still get a message of this kind (failed messages don't count). */
+    private function hasAllowance(Rsvp $rsvp, NotificationKind $kind): bool
+    {
+        $limit = $kind === NotificationKind::RsvpInvitation ? $rsvp->event->invitationLimit() : $rsvp->event->reminderLimit();
+
+        return $this->notifications->countSentToGuest($rsvp->guest_id, $kind) < $limit;
+    }
+
+    private function ensureAllowance(Rsvp $rsvp, NotificationKind $kind): void
+    {
+        if ($this->hasAllowance($rsvp, $kind)) {
+            return;
+        }
+
+        $invitation = $kind === NotificationKind::RsvpInvitation;
+        $limit = $invitation ? $rsvp->event->invitationLimit() : $rsvp->event->reminderLimit();
+        $what = str($invitation ? 'invitation' : 'reminder')->plural($limit);
+
+        throw new MessageLimitReachedException(
+            $limit === 0
+                ? "No {$what} can be sent to guests of this event."
+                : "{$rsvp->guest->name} has had all {$limit} {$what} for this event.",
+        );
+    }
+
     private function deliver(Rsvp $rsvp): Rsvp
     {
         if ($rsvp->guest->phone === null) {
@@ -180,6 +205,10 @@ class RsvpService extends BaseService implements RsvpServiceInterface
         }
 
         return $this->transaction(function () use ($rsvp) {
+            // The lock keeps a double click from going over the limit.
+            $this->rsvps->findAndLock($rsvp->id);
+            $this->ensureAllowance($rsvp, NotificationKind::RsvpInvitation);
+
             $now = now();
 
             /** @var Rsvp $rsvp */
@@ -195,17 +224,21 @@ class RsvpService extends BaseService implements RsvpServiceInterface
         });
     }
 
-    private function respond(string $token, RsvpStatus $response): Rsvp
+    public function respond(string $token, RsvpStatus $response, ?RegistrationDetailsData $details = null, ?string $note = null): Rsvp
     {
         $rsvp = $this->rsvps->findByToken($token)
             ?? throw new NotFoundException('RSVP link not found.');
 
-        // Idempotent: repeating (or changing) a response returns the current state.
-        if ($rsvp->status->isResponded()) {
-            return $rsvp;
+        if (! $response->isResponded() || ($response === RsvpStatus::Maybe && ! $rsvp->event->registrationSettings()->allowMaybe)) {
+            throw new RsvpResponseNotAllowedException;
         }
 
-        if ($rsvp->isExpired()) {
+        if ($rsvp->status->isResponded()) {
+            // Answers are final unless the event lets guests change them (until its lock time).
+            if (! $rsvp->canChangeResponse()) {
+                return $rsvp;
+            }
+        } elseif ($rsvp->isExpired()) {
             if ($rsvp->status !== RsvpStatus::Expired) {
                 $this->rsvps->update($rsvp, ['status' => RsvpStatus::Expired]);
             }
@@ -213,14 +246,16 @@ class RsvpService extends BaseService implements RsvpServiceInterface
             throw new RsvpExpiredException;
         }
 
-        return $this->transaction(function () use ($rsvp, $response) {
+        return $this->transaction(function () use ($rsvp, $response, $details, $note) {
             /** @var Rsvp $rsvp */
             $rsvp = $this->rsvps->update($rsvp, [
                 'status' => $response,
                 'responded_at' => now(),
+                // Only a decline carries a note; a later answer clears it.
+                'response_note' => $response === RsvpStatus::Declined ? $note : null,
             ]);
 
-            RsvpResponded::dispatch($rsvp);
+            RsvpResponded::dispatch($rsvp, $details);
 
             return $rsvp;
         });

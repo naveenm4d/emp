@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Domains\Client\Models\Client;
+use App\Domains\Event\DTOs\RegistrationSettings;
 use App\Domains\Event\Enums\EventState;
 use App\Domains\Event\Enums\EventType;
 use App\Domains\Event\Enums\RegistrationType;
@@ -39,6 +40,8 @@ class EventFactory extends Factory
             'event_date' => fake()->dateTimeBetween('+1 week', '+6 months')->format('Y-m-d'),
             'start_time' => '18:00',
             'end_time' => '22:00',
+            // Name, email and phone only, whatever the random event type (see registrationSettings()).
+            'event_registration_settings' => RegistrationSettings::defaultsFor(null)->toArray(),
         ];
     }
 
@@ -66,6 +69,19 @@ class EventFactory extends Factory
     public function capacity(int $capacity): static
     {
         return $this->state(['max_capacity' => $capacity]);
+    }
+
+    /**
+     * Changes what guests are asked, on top of the plain name / email / phone form.
+     *
+     * @param  array<string, mixed>  $settings  partial RegistrationSettings::toArray() shape
+     */
+    public function registrationSettings(array $settings): static
+    {
+        return $this->state(['event_registration_settings' => array_replace_recursive(
+            RegistrationSettings::defaultsFor(null)->toArray(),
+            $settings,
+        )]);
     }
 
     public function requiresApproval(): static

@@ -3,6 +3,7 @@
 namespace App\Domains\Notification\Contracts;
 
 use App\Core\Contracts\RepositoryInterface;
+use App\Domains\Notification\Enums\NotificationKind;
 use App\Domains\Notification\Enums\NotificationStatus;
 use App\Domains\Notification\Models\Notification;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -24,6 +25,9 @@ interface NotificationRepositoryInterface extends RepositoryInterface
      * @return Collection<int, Notification>
      */
     public function forGuest(string $guestId): Collection;
+
+    /** Messages of this kind sent to the guest, not counting failed ones. */
+    public function countForGuest(string $guestId, NotificationKind $kind): int;
 
     /** @return LengthAwarePaginator<int, Notification> */
     public function paginateByStatus(NotificationStatus $status, int $perPage): LengthAwarePaginator;

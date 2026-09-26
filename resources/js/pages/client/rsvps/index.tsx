@@ -63,7 +63,7 @@ export default function RsvpsIndex({
             <Head title={`RSVPs · ${event.title}`} />
             <PageHeader
                 title={event.title}
-                description={`${summary.total} RSVP links · ${summary.sent} awaiting reply · ${summary.accepted} accepted · ${summary.declined} declined · ${summary.expired} expired`}
+                description={`${summary.total} RSVP links · ${summary.sent} awaiting reply · ${summary.accepted} accepted · ${summary.declined} declined · ${summary.maybe} maybe · ${summary.expired} expired`}
             />
             <EventTabs event={event} />
 
@@ -127,7 +127,10 @@ export default function RsvpsIndex({
                                             )}
                                         </div>
                                     </button>
-                                    <RsvpActions rsvp={rsvp} />
+                                    <RsvpActions
+                                        rsvp={rsvp}
+                                        messageLimits={event.message_limits}
+                                    />
                                 </li>
                             ))}
                         </ul>
@@ -198,7 +201,12 @@ export default function RsvpsIndex({
                                                 e.stopPropagation()
                                             }
                                         >
-                                            <RsvpActions rsvp={rsvp} />
+                                            <RsvpActions
+                                                rsvp={rsvp}
+                                                messageLimits={
+                                                    event.message_limits
+                                                }
+                                            />
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -213,6 +221,7 @@ export default function RsvpsIndex({
                 guest={selectedGuest}
                 onClose={() => setSelected(null)}
                 registrationType={event.registration_type}
+                messageLimits={event.message_limits}
                 showsApproval={event.registration_type === 'approval_required'}
                 onEdit={(guest) =>
                     router.visit(guestsIndex.url(event), {

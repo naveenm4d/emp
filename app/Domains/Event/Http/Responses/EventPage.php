@@ -4,6 +4,7 @@ namespace App\Domains\Event\Http\Responses;
 
 use App\Domains\Event\Contracts\EventDesignServiceInterface;
 use App\Domains\Event\Http\Resources\PublicEventResource;
+use App\Domains\Event\Http\Resources\PublicRegistrationFormResource;
 use App\Domains\Event\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -35,11 +36,12 @@ final class EventPage
 
         // The event's invitation design, as guests see it (no guest name on the public page).
         $design = app(EventDesignServiceInterface::class)->forGuest($event, null);
-        $event->loadMissing('publicLink');
+        $event->loadMissing(['publicLink', 'registrationQuestions']);
 
         return Inertia::render('web/events/show', [
             'event' => $publicEvent,
             'design' => $design,
+            'form' => PublicRegistrationFormResource::forRegistration($event)->resolve($request),
             'actions' => [
                 'register' => route('web.events.register', ['slug' => $event->slug, 'code' => $event->publicLink?->code]),
             ],

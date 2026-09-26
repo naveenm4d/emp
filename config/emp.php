@@ -10,6 +10,11 @@ return [
 
     'rsvp_expiry_days' => (int) env('EMP_RSVP_EXPIRY_DAYS', 7),
 
+    // Most WhatsApp invitations / reminders one guest can get per event (failed
+    // messages don't count). Staff can override them per event.
+    'max_invitations_per_guest' => (int) env('EMP_MAX_INVITATIONS_PER_GUEST', 3),
+    'max_reminders_per_guest' => (int) env('EMP_MAX_REMINDERS_PER_GUEST', 3),
+
     /*
     |--------------------------------------------------------------------------
     | Invitation templates & media

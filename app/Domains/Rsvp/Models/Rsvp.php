@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonImmutable|null $sent_at
  * @property CarbonImmutable|null $expires_at
  * @property CarbonImmutable|null $responded_at
+ * @property string|null $response_note the guest's note to the host when declining
  * @property int $reminder_count reminders sent for this link (manual and automatic)
  * @property CarbonImmutable|null $last_reminded_at
  * @property CarbonImmutable|null $auto_after_reminded_at when the automatic "days after sending" reminder went out
@@ -35,7 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 #[UseFactory(RsvpFactory::class)]
 #[Fillable([
-    'event_id', 'guest_id', 'status', 'token', 'sent_at', 'expires_at', 'responded_at',
+    'event_id', 'guest_id', 'status', 'token', 'sent_at', 'expires_at', 'responded_at', 'response_note',
     'reminder_count', 'last_reminded_at', 'auto_after_reminded_at', 'auto_before_reminded_at',
 ])]
 class Rsvp extends Model
@@ -67,6 +68,12 @@ class Rsvp extends Model
     {
         return $this->status === RsvpStatus::Expired
             || ($this->expires_at !== null && $this->expires_at->isPast());
+    }
+
+    /** The guest answered and the event still lets them change the answer. */
+    public function canChangeResponse(): bool
+    {
+        return $this->status->isResponded() && $this->event->allowsResponseChanges();
     }
 
     /**

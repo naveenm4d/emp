@@ -22,6 +22,7 @@ const statusTone: Record<string, keyof typeof tones> = {
     admin: 'blue',
     draft: 'amber',
     pending: 'amber',
+    maybe: 'amber',
     waitlisted: 'violet',
     not_sent: 'gray',
     expired: 'gray',

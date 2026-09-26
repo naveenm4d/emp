@@ -1,8 +1,11 @@
 <?php
 
+use App\Domains\Event\Enums\QuestionType;
 use App\Domains\Event\Models\Event;
+use App\Domains\Event\Models\RegistrationQuestion;
 use App\Domains\Guest\Enums\ApprovalStatus;
 use App\Domains\Guest\Models\Guest;
+use App\Domains\Guest\Models\RegistrationAnswer;
 use App\Domains\Template\Models\Template;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -144,4 +147,77 @@ it('shows an invited-guests-only page for guest-list-only events and refuses reg
     $this->post(publicPath($event).'/register', ['name' => 'Ada', 'email' => 'ada@example.com'])
         ->assertSessionHas('error', 'Registration for this event is closed.');
     expect(Guest::count())->toBe(0);
+});
+
+it('registers a guest with the details and answers the event asks for', function () {
+    $event = Event::factory()->openForRegistration()->registrationSettings([
+        'contact' => ['email' => 'required', 'phone' => 'off', 'company' => 'required', 'job_title' => 'optional', 'address' => 'optional'],
+        'party' => ['plus_ones' => true, 'max_additional_guests' => 1],
+    ])->create();
+    $workshop = RegistrationQuestion::factory()->for($event)->choice(QuestionType::Radio, ['AI', 'Design'])->required()->create();
+
+    $this->post(publicPath($event).'/register', [
+        'name' => 'Ada',
+        'email' => 'ada@example.com',
+        'phone' => '+15550100200',
+        'company' => 'Analytical Engines',
+        'job_title' => 'Engineer',
+        'additional_guests' => 1,
+        'answers' => [$workshop->id => 'AI'],
+    ])->assertSessionHas('success');
+
+    expect(Guest::sole())
+        ->phone->toBeNull()
+        ->company->toBe('Analytical Engines')
+        ->job_title->toBe('Engineer')
+        ->address->toBeNull()
+        ->additional_guests->toBe(1)
+        ->and(RegistrationAnswer::sole())
+        ->question_id->toBe($workshop->id)
+        ->value->toBe('AI');
+});
+
+it('validates registration against the event settings', function () {
+    $event = Event::factory()->openForRegistration()->registrationSettings([
+        'contact' => ['email' => 'off', 'phone' => 'required', 'company' => 'required'],
+    ])->create();
+    $size = RegistrationQuestion::factory()->for($event)->required()->create(['label' => 'Any special requirements?']);
+
+    $this->post(publicPath($event).'/register', ['name' => 'Ada', 'email' => 'ada@example.com'])
+        ->assertSessionHasErrors([
+            'phone' => 'The phone field is required.',
+            'company' => 'The company field is required.',
+            "answers.{$size->id}" => 'The Any special requirements? field is required.',
+        ]);
+
+    expect(Guest::count())->toBe(0);
+});
+
+it('requires the only contact field the event asks for', function () {
+    $event = Event::factory()->openForRegistration()->registrationSettings([
+        'contact' => ['email' => 'optional', 'phone' => 'off'],
+    ])->create();
+
+    $this->post(publicPath($event).'/register', ['name' => 'Ada'])
+        ->assertSessionHasErrors(['email' => 'The email field is required.']);
+});
+
+it('rejects answers to questions of another event', function () {
+    $event = Event::factory()->openForRegistration()->create();
+    RegistrationQuestion::factory()->for($event)->create();
+    $other = RegistrationQuestion::factory()->create();
+
+    $this->post(publicPath($event).'/register', ['name' => 'Ada', 'email' => 'ada@example.com', 'answers' => [$other->id => 'Hi']])
+        ->assertSessionHasErrors('answers');
+
+    expect(Guest::count())->toBe(0);
+});
+
+it('gives the public page the registration form', function () {
+    $event = Event::factory()->openForRegistration()->registrationSettings(['contact' => ['company' => 'required']])->create();
+
+    $this->get(publicPath($event))->assertInertia(fn (Assert $page) => $page
+        ->where('form.contact.email', 'optional')
+        ->where('form.contact.company', 'required')
+        ->where('form.questions', []));
 });

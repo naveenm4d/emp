@@ -7,6 +7,18 @@ namespace App\Domains\Guest\Http\Requests;
  */
 final class GuestRules
 {
+    /** Every guest needs a way to be reached. */
+    public const string CONTACT_REQUIRED = 'Add a phone number or an email.';
+
+    /** @return array<string, list<string>> how many plus-ones and children the client invites the guest with */
+    public static function invitedParty(): array
+    {
+        return [
+            'invited_additional_guests' => ['nullable', 'integer', 'min:0', 'max:20'],
+            'invited_children' => ['nullable', 'integer', 'min:0', 'max:20'],
+        ];
+    }
+
     /** @return array<string, list<string>> */
     public static function contact(): array
     {
