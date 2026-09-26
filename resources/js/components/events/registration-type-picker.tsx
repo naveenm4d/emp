@@ -1,5 +1,6 @@
 import { Check, X } from 'lucide-react';
 
+import { useHasPlanFeature } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 import type { RegistrationType, RegistrationTypeOption } from '@/types';
 
@@ -46,6 +47,11 @@ export function RegistrationTypePicker({
     onChange,
     error,
 }: RegistrationTypePickerProps) {
+    // Starter has no public registration: only guest list only can be picked.
+    const hasFeature = useHasPlanFeature();
+    const allowed = (type: RegistrationType) =>
+        type === 'guest_list_only' || hasFeature('public_registration');
+
     return (
         <div className="space-y-2">
             <div
@@ -55,16 +61,25 @@ export function RegistrationTypePicker({
             >
                 {options.map((option) => {
                     const selected = option.value === value;
+                    const available = allowed(option.value);
 
                     return (
                         <label
                             key={option.value}
                             className={cn(
-                                'flex cursor-pointer flex-col gap-2 rounded-lg border p-3 transition-colors',
+                                'flex flex-col gap-2 rounded-lg border p-3 transition-colors',
+                                available
+                                    ? 'cursor-pointer'
+                                    : 'cursor-not-allowed opacity-60',
                                 selected
                                     ? 'border-primary bg-primary/5 ring-1 ring-primary'
                                     : 'border-border hover:bg-muted/50',
                             )}
+                            title={
+                                available
+                                    ? undefined
+                                    : 'Public registration is available from the Celebration plan'
+                            }
                         >
                             <span className="flex items-center gap-2">
                                 <input
@@ -72,6 +87,7 @@ export function RegistrationTypePicker({
                                     name="registration_type"
                                     value={option.value}
                                     checked={selected}
+                                    disabled={!available}
                                     onChange={() => onChange(option.value)}
                                     className="accent-primary"
                                 />
@@ -82,6 +98,11 @@ export function RegistrationTypePicker({
                             <span className="text-xs text-muted-foreground">
                                 {option.description}
                             </span>
+                            {!available && (
+                                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                                    From the Celebration plan
+                                </span>
+                            )}
                             <RegistrationTypeDetails option={option} />
                         </label>
                     );

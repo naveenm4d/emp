@@ -1,11 +1,14 @@
-import type { Client, StaffMember } from '@/types/models';
+import type { Client, ClientPlanUsage, StaffMember } from '@/types/models';
 
 declare module '@inertiajs/core' {
     export interface InertiaConfig {
         sharedPageProps: {
             name: string;
             area: 'web' | 'client' | 'admin';
-            auth: { client?: Client | null; staff?: StaffMember | null };
+            auth: {
+                client?: (Omit<Client, 'plan'> & { plan: ClientPlanUsage }) | null;
+                staff?: StaffMember | null;
+            };
             flash: { success: string | null; error: string | null };
             [key: string]: unknown;
         };

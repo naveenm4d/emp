@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { CalendarDays, Plus } from 'lucide-react';
 
+import { PlanCard } from '@/components/clients/plan-card';
 import { EmptyState } from '@/components/shared/empty-state';
 import { FormField } from '@/components/shared/form-field';
 import { PageHeader } from '@/components/shared/page-header';
@@ -23,7 +24,15 @@ import { formatDate } from '@/lib/format';
 import { useStaffCan } from '@/lib/permissions';
 import { show, update } from '@/routes/admin/clients';
 import { create, edit } from '@/routes/admin/clients/events';
-import type { Client, Event, Option, Paginated, Resource } from '@/types';
+import type {
+    Client,
+    ClientPlanUsage,
+    Event,
+    Option,
+    Paginated,
+    Resource,
+    StaffActivity,
+} from '@/types';
 
 type Filters = { state: string | null; search: string | null };
 
@@ -32,11 +41,17 @@ export default function ShowClient({
     events,
     filters,
     states,
+    plan,
+    plans,
+    planHistory,
 }: {
     client: Resource<Client>;
     events: Paginated<Event>;
     filters: Filters;
     states: Option[];
+    plan: ClientPlanUsage;
+    plans: Option[];
+    planHistory: StaffActivity[] | null;
 }) {
     const can = useStaffCan();
 
@@ -167,11 +182,20 @@ export default function ShowClient({
                     </div>
                 </div>
 
-                {can('clients.update') ? (
-                    <EditClientCard client={client} />
-                ) : (
-                    <ClientDetailsCard client={client} />
-                )}
+                <div className="space-y-6">
+                    <PlanCard
+                        client={client}
+                        usage={plan}
+                        plans={plans}
+                        history={planHistory}
+                        canEdit={can('clients.plan')}
+                    />
+                    {can('clients.update') ? (
+                        <EditClientCard client={client} />
+                    ) : (
+                        <ClientDetailsCard client={client} />
+                    )}
+                </div>
             </div>
         </AdminLayout>
     );

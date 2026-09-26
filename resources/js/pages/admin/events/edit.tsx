@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, ExternalLink, Trash2 } from 'lucide-react';
 
 import { EventForm } from '@/components/events/event-form';
+import { ExtraGuestsCard } from '@/components/events/extra-guests-card';
 import { MessageLimitsCard } from '@/components/events/message-limits-card';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
@@ -187,6 +188,12 @@ export default function AdminEditEvent({
                     )}
                 </CardContent>
             </Card>
+
+            {can('clients.plan') &&
+                (client.plan === 'celebration' ||
+                    client.plan === 'business') && (
+                    <ExtraGuestsCard event={event} client={client} />
+                )}
 
             {can('events.update') && (
                 <MessageLimitsCard event={event} clientId={client.id} />

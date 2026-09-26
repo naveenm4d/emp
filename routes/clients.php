@@ -66,16 +66,18 @@ Route::middleware('auth:client')->group(function () {
     Route::get('events/{event}/settings', [EventSettingsController::class, 'edit'])->name('events.settings');
     Route::put('events/{event}/settings', [EventSettingsController::class, 'update'])->name('events.settings.update');
 
-    // Seating: tables and who sits where
-    Route::get('events/{event}/seating', [SeatingController::class, 'index'])->name('events.seating');
-    Route::post('events/{event}/tables', [SeatingController::class, 'storeTable'])->name('events.tables.store');
-    Route::patch('tables/{table}', [SeatingController::class, 'updateTable'])->name('tables.update');
-    Route::delete('tables/{table}', [SeatingController::class, 'destroyTable'])->name('tables.destroy');
-    Route::post('tables/{table}/seats', [SeatingController::class, 'assign'])->name('tables.seats.store');
-    Route::delete('guests/{guest}/seats', [SeatingController::class, 'unassign'])->name('guests.seats.destroy');
-    Route::post('events/{event}/seating/swap', [SeatingController::class, 'swap'])->name('events.seating.swap');
-    Route::post('events/{event}/seating/replace', [SeatingController::class, 'replace'])->name('events.seating.replace');
-    Route::post('events/{event}/seating/auto', [SeatingController::class, 'autoSeat'])->name('events.seating.auto');
+    // Seating: tables and who sits where (not on the Starter plan)
+    Route::middleware('plan.feature:seating')->group(function () {
+        Route::get('events/{event}/seating', [SeatingController::class, 'index'])->name('events.seating');
+        Route::post('events/{event}/tables', [SeatingController::class, 'storeTable'])->name('events.tables.store');
+        Route::patch('tables/{table}', [SeatingController::class, 'updateTable'])->name('tables.update');
+        Route::delete('tables/{table}', [SeatingController::class, 'destroyTable'])->name('tables.destroy');
+        Route::post('tables/{table}/seats', [SeatingController::class, 'assign'])->name('tables.seats.store');
+        Route::delete('guests/{guest}/seats', [SeatingController::class, 'unassign'])->name('guests.seats.destroy');
+        Route::post('events/{event}/seating/swap', [SeatingController::class, 'swap'])->name('events.seating.swap');
+        Route::post('events/{event}/seating/replace', [SeatingController::class, 'replace'])->name('events.seating.replace');
+        Route::post('events/{event}/seating/auto', [SeatingController::class, 'autoSeat'])->name('events.seating.auto');
+    });
 
     // Guests
     Route::get('events/{event}/guests', [GuestController::class, 'index'])->name('events.guests.index');
@@ -88,16 +90,18 @@ Route::middleware('auth:client')->group(function () {
     Route::post('guests/{guest}/waitlist', [GuestApprovalController::class, 'waitlist'])->name('guests.waitlist');
 
     // RSVP links sent to guests
-    Route::get('events/{event}/rsvps', [RsvpController::class, 'index'])->name('events.rsvps.index');
+    Route::get('events/{event}/rsvps', [RsvpController::class, 'index'])->middleware('plan.feature:rsvp_list')->name('events.rsvps.index');
     Route::post('guests/{guest}/rsvps', [RsvpController::class, 'store'])->name('guests.rsvps.store');
     Route::post('rsvps/{rsvp}/send', [RsvpDeliveryController::class, 'send'])->name('rsvps.send');
     Route::post('rsvps/{rsvp}/resend', [RsvpDeliveryController::class, 'resend'])->name('rsvps.resend');
     Route::post('rsvps/{rsvp}/remind', [RsvpDeliveryController::class, 'remind'])->name('rsvps.remind');
     Route::post('rsvps/{rsvp}/expire', [RsvpDeliveryController::class, 'expire'])->name('rsvps.expire');
 
-    // Notifications
-    Route::get('events/{event}/notifications', [NotificationController::class, 'index'])->name('events.notifications.index');
-    Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.show');
+    // Notifications: the message log (not on the Starter plan)
+    Route::middleware('plan.feature:message_log')->group(function () {
+        Route::get('events/{event}/notifications', [NotificationController::class, 'index'])->name('events.notifications.index');
+        Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.show');
+    });
 
     // Invitation designs: browse and preview
     Route::get('templates', [TemplateController::class, 'index'])->name('templates.index');

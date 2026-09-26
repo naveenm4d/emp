@@ -3,6 +3,7 @@
 namespace App\Domains\Staff\Http\Controllers\Admin;
 
 use App\Core\Http\Controllers\InertiaController;
+use App\Domains\Staff\Contracts\StaffActivityServiceInterface;
 use App\Domains\Staff\Contracts\StaffMemberServiceInterface;
 use App\Domains\Staff\Http\Requests\Admin\LoginRequest;
 use App\Domains\Staff\Models\StaffMember;
@@ -16,6 +17,7 @@ class AuthController extends InertiaController
 {
     public function __construct(
         private readonly StaffMemberServiceInterface $staff,
+        private readonly StaffActivityServiceInterface $activities,
     ) {}
 
     public function showLogin(): Response
@@ -31,6 +33,7 @@ class AuthController extends InertiaController
         /** @var StaffMember $member */
         $member = $request->user('staff');
         $this->staff->recordLogin($member);
+        $this->activities->record($member, 'admin.login', 'Signed in');
 
         return redirect()->intended(route('admin.dashboard', absolute: false));
     }

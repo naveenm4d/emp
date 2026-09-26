@@ -20,6 +20,7 @@ use App\Domains\Guest\Events\GuestPartyChanged;
 use App\Domains\Guest\Exceptions\ApprovalNotRequiredException;
 use App\Domains\Guest\Exceptions\EventAtCapacityException;
 use App\Domains\Guest\Exceptions\GuestEmailConflictException;
+use App\Domains\Guest\Exceptions\GuestLimitReachedException;
 use App\Domains\Guest\Exceptions\GuestPhoneConflictException;
 use App\Domains\Guest\Exceptions\RegistrationClosedException;
 use App\Domains\Guest\Models\Guest;
@@ -230,10 +231,26 @@ class GuestService extends BaseService implements GuestServiceInterface
         }
     }
 
+    /** The event's own capacity, then the guest limit of the client's plan (plus extra guests bought). */
     private function ensureCapacity(Event $event): void
     {
-        if (! $event->hasUnlimitedCapacity() && $this->guests->countActive($event->id) >= $event->max_capacity) {
+        $active = $this->guests->countActive($event->id);
+
+        if (! $event->hasUnlimitedCapacity() && $active >= $event->max_capacity) {
             throw new EventAtCapacityException;
+        }
+
+        $limit = $event->guestLimit();
+
+        if ($limit !== null && $active >= $limit) {
+            $plan = $event->client->plan;
+            $block = (int) config('emp.extra_guests_block');
+            $price = 'Rs. '.number_format((int) config('emp.extra_guests_block_price') / 100);
+
+            throw new GuestLimitReachedException(
+                "This event allows up to {$limit} guests on the {$plan->label()} plan."
+                .($plan->allowsExtraGuests() ? " Add more guests: {$price} per {$block}." : ' Upgrade your plan for more guests.'),
+            );
         }
     }
 

@@ -45,7 +45,7 @@ class EventRepository extends BaseRepository implements EventRepositoryInterface
     public function paginateAll(EventFilters $filters, int $perPage): LengthAwarePaginator
     {
         return $this->filtered($filters)
-            ->with('client:id,name,email')
+            ->with('client:id,name,email,plan')
             ->withCount('guests')
             ->latest()
             ->paginate($perPage)

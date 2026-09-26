@@ -6,6 +6,7 @@ use App\Core\Repositories\BaseRepository;
 use App\Domains\Client\Contracts\ClientRepositoryInterface;
 use App\Domains\Client\DTOs\ClientFilters;
 use App\Domains\Client\Models\Client;
+use App\Domains\Event\Models\Event;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
@@ -16,6 +17,17 @@ class ClientRepository extends BaseRepository implements ClientRepositoryInterfa
     protected function model(): string
     {
         return Client::class;
+    }
+
+    public function findAndLock(string $id): Client
+    {
+        /** @var Client */
+        return $this->query()->lockForUpdate()->findOrFail($id);
+    }
+
+    public function eventsCreatedCount(string $clientId): int
+    {
+        return Event::withTrashed()->where('client_id', $clientId)->count();
     }
 
     public function findByEmail(string $email): ?Client

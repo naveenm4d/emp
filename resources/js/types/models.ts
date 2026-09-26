@@ -4,13 +4,61 @@
 
 export type Option = { value: string; label: string };
 
+export type ClientPlanKey = 'starter' | 'celebration' | 'business' | 'enterprise';
+
+export type PlanFeature =
+    | 'public_registration'
+    | 'seating'
+    | 'rsvp_list'
+    | 'message_log';
+
+/** The client's plan and what's used / left (ClientPlanService::usage). */
+export type ClientPlanUsage = {
+    plan: ClientPlanKey;
+    label: string;
+    active: boolean;
+    expires_at: string | null;
+    event_credits: number;
+    events_used: number;
+    /** null = unlimited */
+    events_allowed: number | null;
+    can_create_event: boolean;
+    /** Why no event can be created now. */
+    reason: string | null;
+    max_guests_per_event: number | null;
+    allows_extra_guests: boolean;
+    features: PlanFeature[];
+    message_limits: { invitations: number; reminders: number };
+};
+
 export type Client = {
     id: string;
     name: string;
     email: string;
     email_verified_at?: string | null;
     events_count?: number;
+    plan?: ClientPlanKey;
+    plan_label?: string;
+    plan_active?: boolean;
+    /** Staff only. */
+    plan_expires_at?: string | null;
+    event_credits?: number;
     created_at?: string;
+};
+
+/** One entry of the admin activity log. */
+export type StaffActivity = {
+    id: string;
+    action: string;
+    description: string;
+    staff: { id: string; name: string } | null;
+    client?: { id: string; name: string } | null;
+    subject_type: string | null;
+    subject_id: string | null;
+    changes: Record<string, unknown> | null;
+    note: string | null;
+    ip: string | null;
+    created_at: string;
 };
 
 export type StaffMember = {
@@ -71,6 +119,9 @@ export type Event = {
     auto_reminders: boolean;
     remind_after_days: number;
     remind_before_days: number;
+    /** Most guests the event can have (plan limit + extra guests); null = unlimited. */
+    guest_limit: number | null;
+    extra_guests: number;
     /** Most invitations / reminders each guest can get; staff also get the overrides and defaults. */
     message_limits: MessageLimits;
     /** The event's public URL (domain/{slug}/{code}); only on the event's own pages. */

@@ -4,6 +4,7 @@ import {
     AlertTriangle,
     Building2,
     CalendarDays,
+    History,
     LayoutDashboard,
     LayoutTemplate,
     UserCog,
@@ -13,6 +14,7 @@ import type { ReactNode } from 'react';
 import { DashboardShell } from '@/layouts/dashboard-shell';
 import { useStaffCan } from '@/lib/permissions';
 import { dashboard, logout } from '@/routes/admin';
+import { index as activityIndex } from '@/routes/admin/activity';
 import { index as clientsIndex } from '@/routes/admin/clients';
 import { index as eventsIndex } from '@/routes/admin/events';
 import { failed } from '@/routes/admin/notifications';
@@ -69,6 +71,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             href: staffIndex.url(),
             icon: UserCog,
             permission: 'staff.read',
+        },
+        {
+            label: 'Activity',
+            href: activityIndex.url(),
+            icon: History,
+            permission: 'activity.read',
         },
     ];
 

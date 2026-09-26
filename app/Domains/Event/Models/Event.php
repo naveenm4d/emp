@@ -50,6 +50,7 @@ use Illuminate\Support\Facades\URL;
  * @property int $remind_before_days automatic reminder this many days before the event date
  * @property array{texts?: array<string, string>, colors?: array<string, string>, sections?: array<string, bool>}|null $customizations the client's changes to the template's editable texts, colours and sections
  * @property array<string, mixed>|null $event_registration_settings what guests are asked when registering / RSVPing; read through registrationSettings()
+ * @property int $extra_guests guests bought on top of the plan's limit (in blocks of config emp.extra_guests_block)
  * @property int|null $max_invitations_per_guest staff override of the invitations each guest can get (null = platform default)
  * @property int|null $max_reminders_per_guest staff override of the reminders each guest can get (null = platform default)
  * @property CarbonImmutable|null $responses_lock_at when guests can no longer change their answer (if changes are allowed)
@@ -70,7 +71,7 @@ use Illuminate\Support\Facades\URL;
     'registration_type', 'registration_open', 'event_type', 'location_name',
     'location_address', 'map_url', 'event_date', 'start_time', 'end_time', 'customizations',
     'invitation_message', 'reminder_message', 'auto_reminders', 'remind_after_days', 'remind_before_days',
-    'event_registration_settings', 'responses_lock_at', 'max_invitations_per_guest', 'max_reminders_per_guest',
+    'event_registration_settings', 'responses_lock_at', 'max_invitations_per_guest', 'max_reminders_per_guest', 'extra_guests',
 ])]
 class Event extends Model
 {
@@ -90,6 +91,7 @@ class Event extends Model
         'max_capacity' => 0,
         'registration_type' => 'guest_list_only',
         'registration_open' => false,
+        'extra_guests' => 0,
     ];
 
     /** @return array<string, string> */
@@ -109,6 +111,7 @@ class Event extends Model
             'rendered_at' => 'datetime',
             'event_registration_settings' => 'array',
             'responses_lock_at' => 'datetime',
+            'extra_guests' => 'integer',
             'max_invitations_per_guest' => 'integer',
             'max_reminders_per_guest' => 'integer',
         ];
@@ -175,16 +178,32 @@ class Event extends Model
             && ($this->startsAt() === null || $now->lessThan($this->startsAt()));
     }
 
-    /** Most invitations (send, resend, re-invite) one guest can get; failed messages don't count. */
+    /**
+     * Most invitations (send, resend, re-invite) one guest can get; failed
+     * messages don't count. Staff override, else the client's plan, else the
+     * platform default.
+     */
     public function invitationLimit(): int
     {
-        return $this->max_invitations_per_guest ?? (int) config('emp.max_invitations_per_guest');
+        return $this->max_invitations_per_guest
+            ?? $this->client->plan->messageLimits()['invitations']
+            ?? (int) config('emp.max_invitations_per_guest');
     }
 
-    /** Most reminders (manual and automatic) one guest can get; failed messages don't count. */
+    /** Most reminders (manual and automatic) one guest can get; like invitationLimit(). */
     public function reminderLimit(): int
     {
-        return $this->max_reminders_per_guest ?? (int) config('emp.max_reminders_per_guest');
+        return $this->max_reminders_per_guest
+            ?? $this->client->plan->messageLimits()['reminders']
+            ?? (int) config('emp.max_reminders_per_guest');
+    }
+
+    /** Most guests the event can have: the plan's limit plus extra guests bought; null = unlimited. */
+    public function guestLimit(): ?int
+    {
+        $limit = $this->client->plan->maxGuestsPerEvent();
+
+        return $limit === null ? null : $limit + $this->extra_guests;
     }
 
     /** Temporary signed link to the client's preview of the invitation. */

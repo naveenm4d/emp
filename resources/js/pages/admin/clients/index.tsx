@@ -55,6 +55,7 @@ export default function ClientsIndex({
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="pl-4">Client</TableHead>
+                                <TableHead>Plan</TableHead>
                                 <TableHead>Events</TableHead>
                                 <TableHead>Email verified</TableHead>
                                 <TableHead className="pr-4">Joined</TableHead>
@@ -80,6 +81,14 @@ export default function ClientsIndex({
                                         <p className="text-xs text-muted-foreground">
                                             {client.email}
                                         </p>
+                                    </TableCell>
+                                    <TableCell>
+                                        {client.plan_label}
+                                        {client.plan_active === false && (
+                                            <span className="ml-1.5 text-xs text-amber-700 dark:text-amber-400">
+                                                expired
+                                            </span>
+                                        )}
                                     </TableCell>
                                     <TableCell className="tabular-nums">
                                         {client.events_count}

@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 
 import { EventForm } from '@/components/events/event-form';
+import { PlanStrip } from '@/components/plans/plan-strip';
 import { PageHeader } from '@/components/shared/page-header';
 import ClientLayout from '@/layouts/client-layout';
 import { mapPreview } from '@/routes/client';
@@ -30,6 +31,7 @@ export default function CreateEvent({
                 title="New event"
                 description="Events start as drafts. Publish when you are ready to share."
             />
+            <PlanStrip />
             <EventForm
                 templates={templates.data}
                 eventTypes={eventTypes}

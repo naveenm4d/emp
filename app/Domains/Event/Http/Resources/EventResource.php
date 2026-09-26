@@ -41,6 +41,9 @@ class EventResource extends JsonResource
             'auto_reminders' => $this->auto_reminders,
             'remind_after_days' => $this->remind_after_days,
             'remind_before_days' => $this->remind_before_days,
+            // Most guests the event can have (plan limit + extra guests bought); null = unlimited.
+            'guest_limit' => $this->guestLimit(),
+            'extra_guests' => $this->extra_guests,
             // Most invitations / reminders each guest can get (staff also see the overrides and defaults).
             'message_limits' => [
                 'invitations' => $this->invitationLimit(),

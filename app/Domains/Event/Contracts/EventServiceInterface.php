@@ -7,6 +7,7 @@ use App\Domains\Event\DTOs\CreateEventData;
 use App\Domains\Event\DTOs\UpdateEventData;
 use App\Domains\Event\Enums\EventState;
 use App\Domains\Event\Models\Event;
+use App\Domains\Staff\Models\StaffMember;
 
 interface EventServiceInterface
 {
@@ -22,6 +23,9 @@ interface EventServiceInterface
     public function openRegistration(Event $event): Event;
 
     public function closeRegistration(Event $event): Event;
+
+    /** Staff: extra guests on top of the plan's limit, in blocks (config emp.extra_guests_block), logged with who and why. */
+    public function setExtraGuests(Event $event, int $blocks, StaffMember $by, string $note): Event;
 
     /** Staff: how many invitations / reminders each guest can get; null = the platform default. */
     public function setMessageLimits(Event $event, ?int $invitations, ?int $reminders): Event;

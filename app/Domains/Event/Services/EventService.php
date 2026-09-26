@@ -3,6 +3,9 @@
 namespace App\Domains\Event\Services;
 
 use App\Core\Services\BaseService;
+use App\Domains\Client\Contracts\ClientPlanServiceInterface;
+use App\Domains\Client\Enums\PlanFeature;
+use App\Domains\Client\Exceptions\PlanFeatureUnavailableException;
 use App\Domains\Client\Models\Client;
 use App\Domains\Event\Contracts\EventDesignServiceInterface;
 use App\Domains\Event\Contracts\EventLinkServiceInterface;
@@ -20,6 +23,8 @@ use App\Domains\Event\Exceptions\EventSlugReservedException;
 use App\Domains\Event\Exceptions\InvalidEventStateTransitionException;
 use App\Domains\Event\Exceptions\RegistrationNotAvailableException;
 use App\Domains\Event\Models\Event;
+use App\Domains\Staff\Contracts\StaffActivityServiceInterface;
+use App\Domains\Staff\Models\StaffMember;
 use App\Domains\Template\Contracts\TemplateQueryServiceInterface;
 use Illuminate\Support\Str;
 
@@ -30,16 +35,23 @@ class EventService extends BaseService implements EventServiceInterface
         private readonly TemplateQueryServiceInterface $templates,
         private readonly EventDesignServiceInterface $designs,
         private readonly EventLinkServiceInterface $links,
+        private readonly ClientPlanServiceInterface $plans,
+        private readonly StaffActivityServiceInterface $activities,
     ) {}
 
     public function create(Client $client, CreateEventData $data): Event
     {
         $slug = $this->normalizeSlug($data->slug);
+        $this->plans->ensureCanCreateEvent($client);
+        $this->ensureRegistrationTypeAllowed($client, RegistrationType::from($data->registration_type));
 
         // The event is pinned to the template's current version.
         $template = $this->templates->findSelectable($data->template_id, $client);
 
         return $this->transaction(function () use ($data, $slug, $client, $template) {
+            // Celebration: each event uses one paid event credit.
+            $this->plans->useEventCredit($client);
+
             /** @var Event $event */
             $event = $this->events->create([
                 ...collect($data->toArray())->except('template_id')->all(),
@@ -62,6 +74,10 @@ class EventService extends BaseService implements EventServiceInterface
     public function update(Event $event, UpdateEventData $data): Event
     {
         $this->ensureEditable($event);
+
+        if ($data->has('registration_type') && $data->get('registration_type') !== $event->registration_type->value) {
+            $this->ensureRegistrationTypeAllowed($event->client, RegistrationType::from((string) $data->get('registration_type')));
+        }
 
         $attributes = $data->except(['template_id']);
 
@@ -153,6 +169,8 @@ class EventService extends BaseService implements EventServiceInterface
             throw new RegistrationNotAvailableException;
         }
 
+        $this->plans->ensureFeature($event->client, PlanFeature::PublicRegistration);
+
         /** @var Event */
         return $this->events->update($event, ['registration_open' => true]);
     }
@@ -172,6 +190,35 @@ class EventService extends BaseService implements EventServiceInterface
         ]);
     }
 
+    public function setExtraGuests(Event $event, int $blocks, StaffMember $by, string $note): Event
+    {
+        $plan = $event->client->plan;
+
+        if (! $plan->allowsExtraGuests()) {
+            throw new PlanFeatureUnavailableException("Extra guests can't be added on the {$plan->label()} plan.");
+        }
+
+        return $this->transaction(function () use ($event, $blocks, $by, $note) {
+            $block = (int) config('emp.extra_guests_block');
+            $before = $event->extra_guests;
+
+            /** @var Event $event */
+            $event = $this->events->update($event, ['extra_guests' => $blocks * $block]);
+
+            $this->activities->record(
+                staff: $by,
+                action: 'admin.clients.events.extra-guests',
+                description: "Extra guests for {$event->title}: {$before} → {$event->extra_guests} (limit {$event->guestLimit()})",
+                subject: $event,
+                clientId: $event->client_id,
+                changes: ['before' => ['extra_guests' => $before], 'after' => ['extra_guests' => $event->extra_guests]],
+                note: $note,
+            );
+
+            return $event;
+        });
+    }
+
     public function delete(Event $event): void
     {
         $this->events->delete($event);
@@ -187,6 +234,14 @@ class EventService extends BaseService implements EventServiceInterface
         }
 
         return $slug;
+    }
+
+    /** Open and approval-required events need a plan with public registration. */
+    private function ensureRegistrationTypeAllowed(Client $client, RegistrationType $type): void
+    {
+        if ($type->hasPublicRegistration()) {
+            $this->plans->ensureFeature($client, PlanFeature::PublicRegistration);
+        }
     }
 
     private function ensureEditable(Event $event): void

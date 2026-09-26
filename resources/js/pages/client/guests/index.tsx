@@ -103,6 +103,12 @@ export default function GuestsIndex({
             { preserveState: true, replace: true },
         );
 
+    // Against the plan's limit (plus extra guests bought), when there is one.
+    const guestCount =
+        event.guest_limit === null
+            ? `${summary.total} guests`
+            : `${summary.total} / ${event.guest_limit} guests`;
+
     return (
         <ClientLayout>
             <Head title={`Guests · ${event.title}`} />
@@ -110,8 +116,8 @@ export default function GuestsIndex({
                 title={event.title}
                 description={
                     (approval
-                        ? `${summary.total} guests · ${summary.approved} approved · ${summary.pending} pending · ${summary.waitlisted} waitlisted`
-                        : `${summary.total} guests`) +
+                        ? `${guestCount} · ${summary.approved} approved · ${summary.pending} pending · ${summary.waitlisted} waitlisted`
+                        : guestCount) +
                     ` · headcount ${summary.headcount} confirmed, ${summary.headcount_total} expected`
                 }
                 actions={

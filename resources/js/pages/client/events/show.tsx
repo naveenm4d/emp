@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ClientLayout from '@/layouts/client-layout';
 import { formatDate } from '@/lib/format';
 import { showsApproval } from '@/lib/guests';
+import { useClientPlan } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 import { mapPreview } from '@/routes/client';
 import { destroy, state, update } from '@/routes/client/events';
@@ -59,6 +60,7 @@ export default function ShowEvent({
     defaultInvitationMessage,
     defaultReminderMessage,
 }: Props) {
+    const plan = useClientPlan();
     const approval = showsApproval(event, guestSummary);
 
     const transition = (next: EventState) => {
@@ -136,6 +138,21 @@ export default function ShowEvent({
             />
 
             <EventTabs event={event} />
+            {plan?.plan === 'starter' && (
+                <p className="mb-6 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                    You're on the free Starter plan: up to{' '}
+                    {plan.max_guests_per_event} guests and 1 invitation + 1
+                    reminder per guest.{' '}
+                    <a
+                        href="/#pricing"
+                        className="font-medium text-primary hover:underline"
+                    >
+                        Upgrade to Celebration
+                    </a>{' '}
+                    for public registration, seating, RSVP tracking and the
+                    message log.
+                </p>
+            )}
 
             <div
                 className={cn(

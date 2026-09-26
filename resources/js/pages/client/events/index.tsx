@@ -5,7 +5,8 @@ import { EmptyState } from '@/components/shared/empty-state';
 import { PageHeader } from '@/components/shared/page-header';
 import { Pagination } from '@/components/shared/pagination';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { buttonVariants } from '@/components/ui/button';
+import { PlanStrip } from '@/components/plans/plan-strip';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import {
@@ -18,6 +19,7 @@ import {
 } from '@/components/ui/table';
 import ClientLayout from '@/layouts/client-layout';
 import { formatDate } from '@/lib/format';
+import { useClientPlan } from '@/lib/plans';
 import { create, index, show } from '@/routes/client/events';
 import type { Event, Option, Paginated } from '@/types';
 
@@ -28,6 +30,7 @@ type Props = {
 };
 
 export default function EventsIndex({ events, filters, states }: Props) {
+    const plan = useClientPlan();
     const filter = (changes: Partial<Props['filters']>) =>
         router.get(
             index.url(),
@@ -42,11 +45,18 @@ export default function EventsIndex({ events, filters, states }: Props) {
                 title="Events"
                 description="Everything you are hosting."
                 actions={
-                    <Link href={create.url()} className={buttonVariants()}>
-                        <Plus /> New event
-                    </Link>
+                    plan && !plan.can_create_event ? (
+                        <Button disabled title={plan.reason ?? undefined}>
+                            <Plus /> New event
+                        </Button>
+                    ) : (
+                        <Link href={create.url()} className={buttonVariants()}>
+                            <Plus /> New event
+                        </Link>
+                    )
                 }
             />
+            <PlanStrip />
 
             <div className="mb-4 flex flex-wrap gap-2">
                 <Input

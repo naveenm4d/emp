@@ -2,6 +2,7 @@
 
 namespace App\Core\Http\Middleware;
 
+use App\Domains\Client\Contracts\ClientPlanServiceInterface;
 use App\Domains\Client\Http\Resources\ClientResource;
 use App\Domains\Staff\Http\Resources\StaffMemberResource;
 use Illuminate\Http\Request;
@@ -38,7 +39,11 @@ class HandleInertiaRequests extends Middleware
             'area' => self::area($request),
             'auth' => self::area($request) === 'admin'
                 ? ['staff' => fn () => ($staff = $request->user('staff')) ? StaffMemberResource::make($staff)->resolve($request) : null]
-                : ['client' => fn () => ($client = $request->user('client')) ? ClientResource::make($client)->resolve($request) : null],
+                : ['client' => fn () => ($client = $request->user('client')) ? [
+                    ...ClientResource::make($client)->resolve($request),
+                    // The plan and what's used / left (events, guests, features).
+                    'plan' => app(ClientPlanServiceInterface::class)->usage($client),
+                ] : null],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

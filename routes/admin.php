@@ -9,12 +9,15 @@
 */
 
 use App\Domains\Client\Http\Controllers\Admin\ClientController;
+use App\Domains\Client\Http\Controllers\Admin\ClientPlanController;
 use App\Domains\Event\Http\Controllers\Admin\EventController;
+use App\Domains\Event\Http\Controllers\Admin\EventExtraGuestsController;
 use App\Domains\Event\Http\Controllers\Admin\EventMessageLimitController;
 use App\Domains\Event\Http\Controllers\Admin\EventRegistrationController;
 use App\Domains\Event\Http\Controllers\Admin\EventStateController;
 use App\Domains\Event\Http\Controllers\Admin\MapPreviewController;
 use App\Domains\Notification\Http\Controllers\Admin\FailedNotificationController;
+use App\Domains\Staff\Http\Controllers\Admin\ActivityController;
 use App\Domains\Staff\Http\Controllers\Admin\AuthController;
 use App\Domains\Staff\Http\Controllers\Admin\DashboardController;
 use App\Domains\Staff\Http\Controllers\Admin\StaffMemberController;
@@ -28,7 +31,8 @@ Route::middleware('guest:staff')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 });
 
-Route::middleware(['auth:staff', 'staff.active'])->group(function () {
+// Every successful change in here is written to the activity log (staff.activity).
+Route::middleware(['auth:staff', 'staff.active', 'staff.activity'])->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::get('/', DashboardController::class)->name('dashboard');
@@ -43,6 +47,8 @@ Route::middleware(['auth:staff', 'staff.active'])->group(function () {
     // Scoped bindings: an {event} must belong to the {client} in the URL.
     Route::prefix('clients/{client}')->name('clients.')->scopeBindings()->group(function () {
         Route::get('/', [ClientController::class, 'show'])->middleware('can:clients.read')->name('show');
+        Route::patch('plan', [ClientPlanController::class, 'update'])->middleware('can:clients.plan')->name('plan');
+        Route::patch('events/{event}/extra-guests', [EventExtraGuestsController::class, 'update'])->middleware('can:clients.plan')->name('events.extra-guests');
         Route::patch('/', [ClientController::class, 'update'])->middleware('can:clients.update')->name('update');
 
         Route::get('events/create', [EventController::class, 'create'])->middleware('can:events.create')->name('events.create');
@@ -77,6 +83,8 @@ Route::middleware(['auth:staff', 'staff.active'])->group(function () {
         ->middleware('can:templates.read')
         ->scopeBindings()
         ->name('templates.versions.preview');
+
+    Route::get('activity', [ActivityController::class, 'index'])->middleware('can:activity.read')->name('activity.index');
 
     Route::get('notifications/failed', [FailedNotificationController::class, 'index'])->middleware('can:notifications.read')->name('notifications.failed');
     Route::post('notifications/{notification}/retry', [FailedNotificationController::class, 'retry'])->middleware('can:notifications.retry')->name('notifications.retry');

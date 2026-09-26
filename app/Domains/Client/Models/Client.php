@@ -2,6 +2,7 @@
 
 namespace App\Domains\Client\Models;
 
+use App\Domains\Client\Enums\ClientPlan;
 use App\Domains\Event\Models\Event;
 use Carbon\CarbonImmutable;
 use Database\Factories\ClientFactory;
@@ -23,16 +24,24 @@ use Illuminate\Notifications\Notifiable;
  * @property string $name
  * @property string $email
  * @property CarbonImmutable|null $email_verified_at
+ * @property ClientPlan $plan
+ * @property CarbonImmutable|null $plan_expires_at when a subscription (Business, Enterprise) ends; null = no end date
+ * @property int $event_credits Celebration events paid for and not used yet
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  */
 #[UseFactory(ClientFactory::class)]
-#[Fillable(['name', 'email', 'email_verified_at', 'password'])]
+#[Fillable(['name', 'email', 'email_verified_at', 'password', 'plan', 'plan_expires_at', 'event_credits'])]
 #[Hidden(['password', 'remember_token'])]
 class Client extends Authenticatable implements CanResetPasswordContract
 {
     /** @use HasFactory<ClientFactory> */
     use CanResetPassword, HasFactory, HasUuids, Notifiable;
+
+    protected $attributes = [
+        'plan' => 'starter',
+        'event_credits' => 0,
+    ];
 
     /** @return array<string, string> */
     protected function casts(): array
@@ -40,7 +49,18 @@ class Client extends Authenticatable implements CanResetPasswordContract
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'plan' => ClientPlan::class,
+            'plan_expires_at' => 'datetime',
+            'event_credits' => 'integer',
         ];
+    }
+
+    /** A subscription plan that hasn't ended (plans without subscriptions are always active). */
+    public function planActive(): bool
+    {
+        return ! $this->plan->isSubscription()
+            || $this->plan_expires_at === null
+            || $this->plan_expires_at->isFuture();
     }
 
     /** @return HasMany<Event, $this> */

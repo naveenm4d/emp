@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Client\Enums\ClientPlan;
 use App\Domains\Client\Models\Client;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -18,7 +19,8 @@ it('registers a client and signs them in', function () {
     ])->assertRedirect('/app');
 
     $client = Client::sole();
-    expect($client->email)->toBe('grace@example.com');
+    expect($client->email)->toBe('grace@example.com')
+        ->and($client->fresh()->plan)->toBe(ClientPlan::Starter);
     $this->assertAuthenticatedAs($client, 'client');
 });
 

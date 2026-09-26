@@ -5,12 +5,18 @@ namespace App\Domains\Staff\Providers;
 use App\Core\Providers\DomainServiceProvider;
 use App\Domains\Staff\Console\Commands\CreateStaffMemberCommand;
 use App\Domains\Staff\Contracts\PlatformStatsServiceInterface;
+use App\Domains\Staff\Contracts\StaffActivityQueryServiceInterface;
+use App\Domains\Staff\Contracts\StaffActivityRepositoryInterface;
+use App\Domains\Staff\Contracts\StaffActivityServiceInterface;
 use App\Domains\Staff\Contracts\StaffMemberRepositoryInterface;
 use App\Domains\Staff\Contracts\StaffMemberServiceInterface;
 use App\Domains\Staff\Enums\StaffPermission;
 use App\Domains\Staff\Models\StaffMember;
+use App\Domains\Staff\Repositories\StaffActivityRepository;
 use App\Domains\Staff\Repositories\StaffMemberRepository;
 use App\Domains\Staff\Services\PlatformStatsService;
+use App\Domains\Staff\Services\StaffActivityQueryService;
+use App\Domains\Staff\Services\StaffActivityService;
 use App\Domains\Staff\Services\StaffMemberService;
 use Illuminate\Support\Facades\Gate;
 
@@ -21,6 +27,9 @@ class StaffServiceProvider extends DomainServiceProvider
         StaffMemberRepositoryInterface::class => StaffMemberRepository::class,
         StaffMemberServiceInterface::class => StaffMemberService::class,
         PlatformStatsServiceInterface::class => PlatformStatsService::class,
+        StaffActivityRepositoryInterface::class => StaffActivityRepository::class,
+        StaffActivityServiceInterface::class => StaffActivityService::class,
+        StaffActivityQueryServiceInterface::class => StaffActivityQueryService::class,
     ];
 
     protected function bootDomain(): void

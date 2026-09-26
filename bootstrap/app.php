@@ -1,8 +1,10 @@
 <?php
 
 use App\Core\Exceptions\DomainException;
+use App\Core\Http\Middleware\EnsurePlanFeature;
 use App\Core\Http\Middleware\HandleInertiaRequests;
 use App\Domains\Staff\Http\Middleware\EnsureStaffIsActive;
+use App\Domains\Staff\Http\Middleware\LogStaffActivity;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -57,6 +59,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'staff.active' => EnsureStaffIsActive::class,
+            'staff.activity' => LogStaffActivity::class,
+            'plan.feature' => EnsurePlanFeature::class,
         ]);
 
         $middleware->redirectGuestsTo(fn (Request $request) => $isAdmin($request)
