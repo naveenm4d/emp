@@ -4,7 +4,11 @@
 
 export type Option = { value: string; label: string };
 
-export type ClientPlanKey = 'starter' | 'celebration' | 'business' | 'enterprise';
+export type ClientPlanKey =
+    | 'starter'
+    | 'celebration'
+    | 'business'
+    | 'enterprise';
 
 export type PlanFeature =
     | 'public_registration'
@@ -131,10 +135,28 @@ export type Event = {
     template?: EventTemplate;
     rendered_at: string | null;
     guests_count?: number;
+    /** Response figures, on event lists only. */
+    attending_count?: number;
+    declined_count?: number;
+    /** Approved guests sent their link who haven't replied. */
+    waiting_count?: number;
+    /** Registrations waiting for approval. */
+    to_approve_count?: number;
+    /** Confirmed guests with their party. */
+    headcount?: number;
+    /** Guests whose latest message failed / hasn't gone out yet. */
+    failed_messages_count?: number;
+    queued_messages_count?: number;
     client?: Client;
     created_at: string;
     updated_at: string;
 };
+
+/** Figures for the client's events header (upcoming / drafts / waiting). */
+/** Guests whose latest message failed / is still queued. */
+export type MessageIssues = { failed: number; queued: number };
+
+export type EventTotals = { upcoming: number; drafts: number; waiting: number };
 
 export type Guest = {
     id: string;
@@ -194,7 +216,44 @@ export type EventTable = {
     name: string;
     seat_count: number;
     shape: TableShape;
+    /** Where it stands on the floor plan (canvas units); null until placed. */
+    x: number | null;
+    y: number | null;
     seats: Seat[];
+};
+
+export type VenueElementKind =
+    | 'stage'
+    | 'poruwa'
+    | 'dance_floor'
+    | 'buffet'
+    | 'bar'
+    | 'cake_table'
+    | 'dj'
+    | 'photo_booth'
+    | 'entrance'
+    | 'registration'
+    | 'restrooms'
+    | 'custom';
+
+/** The stage, poruwa, buffet, … on the seating floor plan (VenueElementResource). */
+export type VenueElement = {
+    id: string;
+    kind: VenueElementKind;
+    /** Only custom elements have one; `display_label` falls back to the kind. */
+    label: string | null;
+    display_label: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+};
+
+export type VenueElementKindOption = {
+    value: VenueElementKind;
+    label: string;
+    width: number;
+    height: number;
 };
 
 /** A guest as the seating page sees them (SeatingGuestResource). */
@@ -249,6 +308,13 @@ export type GuestSummary = {
     rsvp_confirmed: number;
     rsvp_declined: number;
     rsvp_maybe: number;
+    /** Sent their link, no reply yet. */
+    rsvp_pending: number;
+    /** Link not sent yet. */
+    rsvp_not_sent: number;
+    /** Plus-ones and children of confirmed guests (the rest of the headcount). */
+    confirmed_additional: number;
+    confirmed_children: number;
     /** Confirmed guests with their plus-ones and children. */
     headcount: number;
     /** Everyone holding a seat (pending or approved, not declined) with their party. */
@@ -396,6 +462,7 @@ export type EventTemplate = {
     id: string;
     key: string;
     name: string;
+    thumbnail_url: string | null;
     version: string;
     latest_version: string | null;
     has_update: boolean;

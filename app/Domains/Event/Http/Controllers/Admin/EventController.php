@@ -8,6 +8,7 @@ use App\Domains\Client\Models\Client;
 use App\Domains\Event\Contracts\EventQueryServiceInterface;
 use App\Domains\Event\Contracts\EventServiceInterface;
 use App\Domains\Event\DTOs\EventFilters;
+use App\Domains\Event\Enums\EventPeriod;
 use App\Domains\Event\Enums\EventState;
 use App\Domains\Event\Enums\EventType;
 use App\Domains\Event\Enums\RegistrationType;
@@ -37,12 +38,13 @@ class EventController extends InertiaController
 
     public function index(Request $request): Response
     {
-        $filters = EventFilters::fromArray($request->query());
+        $filters = EventFilters::fromArray($request->query(), defaultPeriod: EventPeriod::Upcoming);
 
         return Inertia::render('admin/events/index', [
             'events' => EventResource::collection($this->events->all($filters)),
             'filters' => $filters->toArray(),
             'states' => EventState::options(),
+            'registrationTypes' => RegistrationType::options(),
         ]);
     }
 

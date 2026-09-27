@@ -46,4 +46,12 @@ class NotificationQueryService implements NotificationQueryServiceInterface
     {
         return $this->notifications->countByStatus(NotificationStatus::Failed);
     }
+
+    public function messageIssuesForEvents(array $eventIds): array
+    {
+        return array_map(fn (array $statuses) => [
+            'failed' => $statuses[NotificationStatus::Failed->value] ?? 0,
+            'queued' => $statuses[NotificationStatus::Pending->value] ?? 0,
+        ], $this->notifications->latestStatusCountsForEvents($eventIds));
+    }
 }

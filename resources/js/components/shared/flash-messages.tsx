@@ -45,16 +45,16 @@ export function FlashMessages() {
                 className={cn(
                     'flex items-start gap-2.5 rounded-lg border bg-card p-3 pr-2 text-sm shadow-lg',
                     visible.type === 'success'
-                        ? 'border-emerald-200'
-                        : 'border-red-200',
+                        ? 'border-success/30'
+                        : 'border-destructive/30',
                 )}
             >
                 <Icon
                     className={cn(
                         'mt-0.5 h-4 w-4 shrink-0',
                         visible.type === 'success'
-                            ? 'text-emerald-600'
-                            : 'text-red-600',
+                            ? 'text-success'
+                            : 'text-destructive',
                     )}
                 />
                 <p className="flex-1 text-foreground">{visible.message}</p>

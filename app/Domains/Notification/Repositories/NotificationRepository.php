@@ -9,6 +9,7 @@ use App\Domains\Notification\Enums\NotificationStatus;
 use App\Domains\Notification\Models\Notification;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @extends BaseRepository<Notification>
@@ -61,6 +62,35 @@ class NotificationRepository extends BaseRepository implements NotificationRepos
             ->latest('updated_at')
             ->paginate($perPage)
             ->withQueryString();
+    }
+
+    public function latestStatusCountsForEvents(array $eventIds): array
+    {
+        if ($eventIds === []) {
+            return [];
+        }
+
+        // Each guest's most recent message: a resend replaces an older failure.
+        $latest = $this->query()
+            ->toBase()
+            ->selectRaw('distinct on (guest_id) event_id, status')
+            ->whereIn('event_id', $eventIds)
+            ->whereNotNull('guest_id')
+            ->orderBy('guest_id')
+            ->orderByDesc('created_at');
+
+        $counts = [];
+
+        DB::query()
+            ->fromSub($latest, 'latest')
+            ->selectRaw('event_id, status, count(*) as aggregate')
+            ->groupBy('event_id', 'status')
+            ->get()
+            ->each(function (object $row) use (&$counts): void {
+                $counts[$row->event_id][$row->status] = (int) $row->aggregate;
+            });
+
+        return $counts;
     }
 
     public function countByStatus(NotificationStatus $status): int

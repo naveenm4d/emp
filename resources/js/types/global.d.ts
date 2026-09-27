@@ -1,4 +1,9 @@
-import type { Client, ClientPlanUsage, StaffMember } from '@/types/models';
+import type {
+    Client,
+    ClientPlanUsage,
+    Event,
+    StaffMember,
+} from '@/types/models';
 
 declare module '@inertiajs/core' {
     export interface InertiaConfig {
@@ -6,10 +11,14 @@ declare module '@inertiajs/core' {
             name: string;
             area: 'web' | 'client' | 'admin';
             auth: {
-                client?: (Omit<Client, 'plan'> & { plan: ClientPlanUsage }) | null;
+                client?:
+                    | (Omit<Client, 'plan'> & { plan: ClientPlanUsage })
+                    | null;
                 staff?: StaffMember | null;
             };
             flash: { success: string | null; error: string | null };
+            /** Client's upcoming events for the event switcher; only after a partial reload asks for it. */
+            eventSwitcher?: Event[];
             [key: string]: unknown;
         };
     }

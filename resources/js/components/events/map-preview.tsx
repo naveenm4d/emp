@@ -49,7 +49,7 @@ export function MapPreview({ mapUrl, previewUrl }: MapPreviewProps) {
 
     if (!embedUrl) {
         return (
-            <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+            <p className="flex items-center gap-1.5 text-xs text-warning">
                 <MapPin className="size-3.5" />
                 Couldn't find a location in this link. Paste a Google Maps link
                 (Share → Copy link).

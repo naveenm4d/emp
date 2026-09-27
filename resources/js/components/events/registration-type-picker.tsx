@@ -17,7 +17,7 @@ export function RegistrationTypeDetails({
             {option.details.map((detail) => (
                 <li key={detail.label} className="flex gap-1.5">
                     {detail.ok ? (
-                        <Check className="mt-px size-3.5 shrink-0 text-emerald-600" />
+                        <Check className="mt-px size-3.5 shrink-0 text-success" />
                     ) : (
                         <X className="mt-px size-3.5 shrink-0 text-muted-foreground" />
                     )}
@@ -99,7 +99,7 @@ export function RegistrationTypePicker({
                                 {option.description}
                             </span>
                             {!available && (
-                                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                                <span className="text-xs font-medium text-warning">
                                     From the Celebration plan
                                 </span>
                             )}

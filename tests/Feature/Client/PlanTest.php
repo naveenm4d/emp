@@ -3,8 +3,10 @@
 use App\Domains\Client\Models\Client;
 use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Models\Guest;
+use App\Domains\Notification\Models\Notification;
 use App\Domains\Rsvp\Models\Rsvp;
 use App\Domains\Seating\Models\EventTable;
+use App\Domains\Seating\Models\VenueElement;
 use App\Domains\Template\Models\Template;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -102,16 +104,28 @@ it('gives Enterprise higher message limits, which an event override still beats'
     expect($event->fresh()->invitationLimit())->toBe(2);
 });
 
-it('keeps the Seating, RSVPs and Messages pages off the Starter plan', function (string $method, string $path) {
+it('locks the Seating, RSVPs and Messages pages on Starter without loading their data', function (string $path, string $component, string $data) {
     $client = signIn(Client::factory()->starter()->create());
     $event = Event::factory()->for($client)->create();
 
-    $this->{$method}(str_replace('{event}', $event->id, $path))->assertForbidden();
+    $this->get(str_replace('{event}', $event->id, $path))->assertInertia(fn (Assert $page) => $page
+        ->component($component)
+        ->where('locked', true)
+        ->where('event.data.id', $event->id)
+        ->missing($data));
 })->with([
-    'seating page' => ['get', '/app/events/{event}/seating'],
-    'RSVPs tab' => ['get', '/app/events/{event}/rsvps'],
-    'Messages tab' => ['get', '/app/events/{event}/notifications'],
+    'seating page' => ['/app/events/{event}/seating', 'client/events/seating', 'tables'],
+    'RSVPs tab' => ['/app/events/{event}/rsvps', 'client/rsvps/index', 'rsvps'],
+    'Messages tab' => ['/app/events/{event}/notifications', 'client/notifications/index', 'notifications'],
 ]);
+
+it('keeps a message\'s details off the Starter plan', function () {
+    $client = signIn(Client::factory()->starter()->create());
+    $event = Event::factory()->for($client)->create();
+    $notification = Notification::factory()->for(Guest::factory()->for($event))->create(['event_id' => $event->id]);
+
+    $this->get("/app/notifications/{$notification->id}")->assertForbidden();
+});
 
 it('flashes the upgrade message for seating writes on Starter', function () {
     $client = signIn(Client::factory()->starter()->create());
@@ -125,9 +139,9 @@ it('opens Seating, RSVPs and Messages on Celebration', function () {
     $client = signIn(Client::factory()->celebration()->create());
     $event = Event::factory()->for($client)->create();
 
-    $this->get("/app/events/{$event->id}/seating")->assertOk();
-    $this->get("/app/events/{$event->id}/rsvps")->assertOk();
-    $this->get("/app/events/{$event->id}/notifications")->assertOk();
+    foreach (['seating', 'rsvps', 'notifications'] as $page) {
+        $this->get("/app/events/{$event->id}/{$page}")->assertInertia(fn (Assert $inertia) => $inertia->missing('locked'));
+    }
 });
 
 it('shares the plan and what is left with the dashboard', function () {
@@ -142,4 +156,27 @@ it('shares the plan and what is left with the dashboard', function () {
         ->where('auth.client.plan.max_guests_per_event', 50)
         ->where('auth.client.plan.features', [])
         ->where('auth.client.plan.message_limits', ['invitations' => 1, 'reminders' => 1]));
+});
+
+it('shows the client their membership', function () {
+    signIn(Client::factory()->celebration(2)->create());
+
+    $this->get('/app/membership')->assertInertia(fn (Assert $page) => $page
+        ->component('client/membership')
+        ->where('auth.client.plan.plan', 'celebration')
+        ->where('auth.client.plan.event_credits', 2));
+});
+
+it('sends guests from the membership page to the login page', function () {
+    $this->get('/app/membership')->assertRedirect('/app/login');
+});
+
+it('flashes the upgrade message for floor plan writes on Starter', function () {
+    $client = signIn(Client::factory()->starter()->create());
+    $element = VenueElement::factory()->for(Event::factory()->for($client))->create();
+
+    $this->from('/app/events')->delete("/app/venue-elements/{$element->id}")
+        ->assertSessionHas('error', 'Seating is available from the Celebration plan.');
+    $this->from('/app/events')->patch("/app/events/{$element->event_id}/seating/layout", ['tables' => [], 'elements' => []])
+        ->assertSessionHas('error', 'Seating is available from the Celebration plan.');
 });

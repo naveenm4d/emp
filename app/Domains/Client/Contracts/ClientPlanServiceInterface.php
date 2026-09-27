@@ -18,6 +18,9 @@ interface ClientPlanServiceInterface
     /** Uses up one event credit (Celebration). Call inside the event's transaction. */
     public function useEventCredit(Client $client): void;
 
+    /** Whether the client's plan includes the feature. */
+    public function hasFeature(Client $client, PlanFeature $feature): bool;
+
     /** Throws PlanFeatureUnavailableException when the plan doesn't include the feature. */
     public function ensureFeature(Client $client, PlanFeature $feature): void;
 

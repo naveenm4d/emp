@@ -13,7 +13,10 @@ use App\Domains\Guest\Models\Guest;
 use App\Domains\Seating\Contracts\EventTableRepositoryInterface;
 use App\Domains\Seating\Contracts\SeatAssignmentRepositoryInterface;
 use App\Domains\Seating\Contracts\SeatingServiceInterface;
+use App\Domains\Seating\Contracts\VenueElementRepositoryInterface;
+use App\Domains\Seating\DTOs\FloorPlanData;
 use App\Domains\Seating\DTOs\TableData;
+use App\Domains\Seating\DTOs\VenueElementData;
 use App\Domains\Seating\Enums\SeatMode;
 use App\Domains\Seating\Exceptions\GuestNotSeatableException;
 use App\Domains\Seating\Exceptions\GuestNotSeatedException;
@@ -24,6 +27,7 @@ use App\Domains\Seating\Exceptions\TableFullException;
 use App\Domains\Seating\Exceptions\TableNameTakenException;
 use App\Domains\Seating\Models\EventTable;
 use App\Domains\Seating\Models\SeatAssignment;
+use App\Domains\Seating\Models\VenueElement;
 use Illuminate\Database\UniqueConstraintViolationException;
 
 class SeatingService extends BaseService implements SeatingServiceInterface
@@ -33,6 +37,7 @@ class SeatingService extends BaseService implements SeatingServiceInterface
         private readonly SeatAssignmentRepositoryInterface $seats,
         private readonly EventQueryServiceInterface $events,
         private readonly GuestQueryServiceInterface $guests,
+        private readonly VenueElementRepositoryInterface $elements,
     ) {}
 
     public function createTable(Event $event, TableData $data): EventTable
@@ -80,6 +85,39 @@ class SeatingService extends BaseService implements SeatingServiceInterface
         $this->ensureEditable($table->event);
 
         $this->tables->delete($table);
+    }
+
+    public function saveFloorPlan(Event $event, FloorPlanData $data): void
+    {
+        $this->ensureEditable($event);
+
+        $this->locked($event->id, function () use ($event, $data) {
+            $this->tables->move($event->id, $data->tables);
+            $this->elements->place($event->id, $data->elements);
+        });
+    }
+
+    public function createVenueElement(Event $event, VenueElementData $data): VenueElement
+    {
+        $this->ensureEditable($event);
+
+        /** @var VenueElement */
+        return $this->elements->create(['event_id' => $event->id, ...$this->elementAttributes($data)]);
+    }
+
+    public function updateVenueElement(VenueElement $element, VenueElementData $data): VenueElement
+    {
+        $this->ensureEditable($element->event);
+
+        /** @var VenueElement */
+        return $this->elements->update($element, $this->elementAttributes($data));
+    }
+
+    public function deleteVenueElement(VenueElement $element): void
+    {
+        $this->ensureEditable($element->event);
+
+        $this->elements->delete($element);
     }
 
     public function assign(Guest $guest, EventTable $table, int $seatNumber, SeatMode $mode = SeatMode::Party): int
@@ -317,6 +355,19 @@ class SeatingService extends BaseService implements SeatingServiceInterface
         if ($guest->event_id !== $other->event_id || $guest->is($other)) {
             throw new GuestNotSeatableException('Pick another guest of this event.');
         }
+    }
+
+    /** @return array<string, mixed> */
+    private function elementAttributes(VenueElementData $data): array
+    {
+        return [
+            'kind' => $data->kind,
+            'label' => $data->label,
+            'pos_x' => $data->x,
+            'pos_y' => $data->y,
+            'width' => $data->width,
+            'height' => $data->height,
+        ];
     }
 
     private function ensureUniqueName(string $eventId, string $name, ?string $exceptId = null): void

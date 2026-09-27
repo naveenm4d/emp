@@ -2,6 +2,7 @@
 
 use App\Core\Exceptions\DomainException;
 use App\Core\Http\Middleware\EnsurePlanFeature;
+use App\Core\Http\Middleware\HandleAppearance;
 use App\Core\Http\Middleware\HandleInertiaRequests;
 use App\Domains\Staff\Http\Middleware\EnsureStaffIsActive;
 use App\Domains\Staff\Http\Middleware\LogStaffActivity;
@@ -52,7 +53,10 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) use ($isAdmin): void {
+        $middleware->encryptCookies(except: [HandleAppearance::COOKIE]);
+
         $middleware->web(append: [
+            HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

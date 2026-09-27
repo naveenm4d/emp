@@ -51,6 +51,7 @@ export default function ShowInvitation({
                         actions={actions}
                         form={form}
                         response={response}
+                        event={event}
                     />
                 }
             />

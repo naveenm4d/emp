@@ -4,9 +4,12 @@ namespace App\Domains\Seating\Contracts;
 
 use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Models\Guest;
+use App\Domains\Seating\DTOs\FloorPlanData;
 use App\Domains\Seating\DTOs\TableData;
+use App\Domains\Seating\DTOs\VenueElementData;
 use App\Domains\Seating\Enums\SeatMode;
 use App\Domains\Seating\Models\EventTable;
+use App\Domains\Seating\Models\VenueElement;
 
 /**
  * Tables and who sits where. A guest's party (plus-ones, children) always
@@ -21,6 +24,15 @@ interface SeatingServiceInterface
 
     /** Frees its seats. */
     public function deleteTable(EventTable $table): void;
+
+    /** Moves tables and moves / resizes venue elements on the floor plan (only the event's own). */
+    public function saveFloorPlan(Event $event, FloorPlanData $data): void;
+
+    public function createVenueElement(Event $event, VenueElementData $data): VenueElement;
+
+    public function updateVenueElement(VenueElement $element, VenueElementData $data): VenueElement;
+
+    public function deleteVenueElement(VenueElement $element): void;
 
     /**
      * Seats the guest's party at the table, from the given (free) seat on

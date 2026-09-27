@@ -3,8 +3,10 @@
 namespace App\Domains\Seating\Repositories;
 
 use App\Core\Repositories\BaseRepository;
+use App\Domains\Guest\Enums\GuestRsvpStatus;
 use App\Domains\Seating\Contracts\SeatAssignmentRepositoryInterface;
 use App\Domains\Seating\Models\SeatAssignment;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -20,6 +22,15 @@ class SeatAssignmentRepository extends BaseRepository implements SeatAssignmentR
     public function forGuest(string $guestId): Collection
     {
         return $this->query()->where('guest_id', $guestId)->orderBy('party_member')->get();
+    }
+
+    public function countConfirmedForEvent(string $eventId): int
+    {
+        return $this->query()
+            ->whereHas('guest', fn (Builder $guests) => $guests
+                ->where('event_id', $eventId)
+                ->where('rsvp_status', GuestRsvpStatus::Confirmed))
+            ->count();
     }
 
     public function takenSeats(string $tableId): array

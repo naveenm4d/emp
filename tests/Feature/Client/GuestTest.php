@@ -2,8 +2,10 @@
 
 use App\Domains\Client\Models\Client;
 use App\Domains\Event\Models\Event;
+use App\Domains\Event\Models\RegistrationQuestion;
 use App\Domains\Guest\Enums\ApprovalStatus;
 use App\Domains\Guest\Models\Guest;
+use App\Domains\Guest\Models\RegistrationAnswer;
 use App\Domains\Notification\Models\Notification;
 use App\Domains\Rsvp\Models\Rsvp;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -139,25 +141,46 @@ it('lists guests alphabetically and keeps the order after an update', function (
             ->where('guests.data.2.name', 'Zoe'));
 });
 
-it('returns the guest\'s RSVP links and messages for the details timeline', function () {
+it('loads the open guest\'s RSVP links, messages and answers into the details panel', function () {
     $guest = Guest::factory()->for($this->event)->create();
     $old = Rsvp::factory()->for($guest)->for($this->event)->create(['status' => 'expired', 'created_at' => now()->subDays(3)]);
     $new = Rsvp::factory()->for($guest)->for($this->event)->sent()->create();
     Notification::factory()->for($guest)->for($this->event)->create(['rsvp_id' => $new->id, 'kind' => 'rsvp_invitation', 'created_at' => now()->subHour()]);
     Notification::factory()->for($guest)->for($this->event)->create(['rsvp_id' => $new->id, 'kind' => 'rsvp_reminder']);
     Notification::factory()->for($this->event)->create();
+    $second = RegistrationQuestion::factory()->for($this->event)->create(['label' => 'Second', 'sort_order' => 2]);
+    $first = RegistrationQuestion::factory()->for($this->event)->create(['label' => 'First', 'sort_order' => 1]);
+    RegistrationAnswer::factory()->for($guest)->create(['question_id' => $second->id]);
+    RegistrationAnswer::factory()->for($guest)->create(['question_id' => $first->id]);
 
-    $this->getJson("/app/guests/{$guest->id}/details")
+    $this->get("/app/events/{$this->event->id}/guests?guest={$guest->id}")
         ->assertOk()
-        ->assertJsonPath('rsvps.0.id', $new->id)
-        ->assertJsonPath('rsvps.1.id', $old->id)
-        ->assertJsonCount(2, 'messages')
-        ->assertJsonPath('messages.0.kind', 'rsvp_reminder')
-        ->assertJsonPath('messages.1.kind', 'rsvp_invitation');
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('guestDetails.guest_id', $guest->id)
+            ->where('guestDetails.rsvps.0.id', $new->id)
+            ->where('guestDetails.rsvps.1.id', $old->id)
+            ->has('guestDetails.messages', 2)
+            ->where('guestDetails.messages.0.kind', 'rsvp_reminder')
+            ->where('guestDetails.messages.1.kind', 'rsvp_invitation')
+            ->where('guestDetails.answers.0.question', 'First')
+            ->where('guestDetails.answers.1.question', 'Second'));
 });
 
-it('forbids another client\'s guest details', function () {
-    $this->getJson('/app/guests/'.Guest::factory()->create()->id.'/details')->assertForbidden();
+it('loads guest details on the RSVPs page too, and nothing without a guest', function () {
+    $guest = Guest::factory()->for($this->event)->create();
+    Rsvp::factory()->for($guest)->for($this->event)->sent()->create();
+
+    $this->get("/app/events/{$this->event->id}/rsvps?guest={$guest->id}")
+        ->assertInertia(fn (Assert $page) => $page->where('guestDetails.guest_id', $guest->id));
+
+    $this->get("/app/events/{$this->event->id}/guests")
+        ->assertInertia(fn (Assert $page) => $page->where('guestDetails', null));
+});
+
+it('only loads details of the event\'s own guests', function () {
+    $other = Guest::factory()->create();
+
+    $this->get("/app/events/{$this->event->id}/guests?guest={$other->id}")->assertNotFound();
 });
 
 it('has no approval on guest-list-only events', function () {

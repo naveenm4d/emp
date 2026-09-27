@@ -1,31 +1,28 @@
 import { router } from '@inertiajs/react';
+import type { LucideIcon } from 'lucide-react';
 import {
     BellRing,
     Check,
+    CircleCheck,
     Clock,
-    Copy,
-    MoreHorizontal,
+    PanelRightOpen,
     Pencil,
     RotateCw,
+    Share2,
     Send,
     Trash2,
     X,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 
 import { rsvpDisplayStatus } from '@/components/rsvps/rsvp-status';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { ConfirmBar, useConfirm } from '@/components/shared/confirm-bar';
 import { approve, destroy, reject, waitlist } from '@/routes/client/guests';
 import { store as createRsvp } from '@/routes/client/guests/rsvps';
 import { remind, resend, send } from '@/routes/client/rsvps';
 import { messageAllowance } from '@/lib/guests';
+import { cn } from '@/lib/utils';
 import type { Guest, MessageLimits, RegistrationType } from '@/types';
 
 type GuestActionsProps = {
@@ -38,19 +35,136 @@ type GuestActionsProps = {
 };
 
 /**
- * Per-row actions: the one next step for the guest as a button (approve,
- * invite, send or remind), everything else in a ⋯ menu.
+ * A guest row's actions: its one next step as a button (invite them, send
+ * the link that isn't out yet, or remind them) and an icon that opens the
+ * details panel, where everything else is.
  */
 export function GuestActions({
+    guest,
+    messageLimits,
+    onView,
+}: Pick<GuestActionsProps, 'guest' | 'messageLimits'> & {
+    /** Opens the guest details panel. */
+    onView: () => void;
+}) {
+    const rsvp = guest.latest_rsvp;
+    const status = rsvp ? rsvpDisplayStatus(rsvp) : null;
+    const canInvite =
+        guest.approval_status === 'approved' &&
+        (!status ||
+            ['accepted', 'declined', 'maybe', 'expired'].includes(status));
+    const noPhone = !guest.phone;
+    const noPhoneHint = 'Add a phone number to send on WhatsApp';
+    const allowance = messageAllowance(guest, messageLimits);
+    const post = (url: string, data: Record<string, boolean> = {}) =>
+        router.post(url, data, { preserveScroll: true });
+
+    const action = canInvite
+        ? {
+              label: status ? 'Re-invite' : 'Invite',
+              icon: Send,
+              disabled: noPhone || !allowance.invitations,
+              hint: noPhone
+                  ? noPhoneHint
+                  : (allowance.invitationsHint ??
+                    'Send an RSVP link on WhatsApp'),
+              run: () => post(createRsvp.url(guest), { send: true }),
+          }
+        : rsvp && status === 'pending'
+          ? {
+                label: 'Invite',
+                icon: Send,
+                disabled: noPhone || !allowance.invitations,
+                hint: noPhone
+                    ? noPhoneHint
+                    : (allowance.invitationsHint ??
+                      'Send the RSVP link on WhatsApp'),
+                run: () => post(send.url(rsvp)),
+            }
+          : rsvp && status === 'sent'
+            ? {
+                  label: 'Remind',
+                  icon: BellRing,
+                  disabled: noPhone || !allowance.reminders,
+                  hint: noPhone
+                      ? noPhoneHint
+                      : (allowance.remindersHint ??
+                        'Remind the guest to reply'),
+                  run: () => post(remind.url(rsvp)),
+              }
+            : null;
+
+    return (
+        <div className="flex items-center justify-end gap-1">
+            {action && (
+                <Button
+                    size="sm"
+                    variant="outline"
+                    title={action.hint}
+                    disabled={action.disabled}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        action.run();
+                    }}
+                >
+                    <action.icon /> {action.label}
+                </Button>
+            )}
+            <button
+                type="button"
+                aria-label={`View details: ${guest.name}`}
+                title="View details"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onView();
+                }}
+                className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+                <PanelRightOpen className="size-4" strokeWidth={1.9} />
+            </button>
+        </div>
+    );
+}
+
+type QuickAction = {
+    key: string;
+    label: string;
+    icon: LucideIcon;
+    onClick?: () => void;
+    href?: string;
+    disabled?: boolean;
+    title?: string;
+    /** The guest's next step, drawn filled. */
+    primary?: boolean;
+    danger?: boolean;
+};
+
+/**
+ * Every action for one guest as round icon buttons with a label (the guest
+ * details panel): the next step first and filled, then the link, contact,
+ * approval, edit and remove. Same rules as GuestActions.
+ */
+export function GuestQuickActions({
     guest,
     registrationType,
     messageLimits,
     onEdit,
 }: GuestActionsProps) {
-    const requiresApproval = registrationType === 'approval_required';
-    // Guest-list-only events have no approval; everyone on the list is approved.
-    const allowsApproval = registrationType !== 'guest_list_only';
+    const [copied, setCopied] = useState(false);
+    const confirmation = useConfirm();
 
+    useEffect(() => {
+        if (!copied) {
+            return;
+        }
+
+        const timer = setTimeout(() => setCopied(false), 1500);
+
+        return () => clearTimeout(timer);
+    }, [copied]);
+
+    const requiresApproval = registrationType === 'approval_required';
+    const allowsApproval = registrationType !== 'guest_list_only';
     const post = (url: string, data: Record<string, boolean> = {}) =>
         router.post(url, data, { preserveScroll: true });
 
@@ -64,160 +178,188 @@ export function GuestActions({
     const noPhone = !guest.phone;
     const noPhoneHint = 'Add a phone number to send on WhatsApp';
     const allowance = messageAllowance(guest, messageLimits);
+    const link = guest.link_url ?? rsvp?.rsvp_url ?? null;
 
-    // Pending requests are approved from the button; waitlisted / rejected
-    // guests (and leftovers after the type changed) from the menu.
-    const approveIsPrimary =
+    const actions: (QuickAction | false)[] = [
         allowsApproval &&
-        !isApproved &&
-        (guest.approval_status === 'pending' || !requiresApproval);
+            !isApproved && {
+                key: 'approve',
+                label: 'Approve',
+                icon: Check,
+                primary: true,
+                onClick: () => post(approve.url(guest)),
+            },
+        canInvite && {
+            key: 'invite',
+            label: status ? 'Re-invite' : 'Invite',
+            icon: Send,
+            primary: true,
+            disabled: noPhone || !allowance.invitations,
+            title: noPhone
+                ? noPhoneHint
+                : (allowance.invitationsHint ??
+                  'Create and send an RSVP link on WhatsApp'),
+            onClick: () => post(createRsvp.url(guest), { send: true }),
+        },
+        !!rsvp &&
+            status === 'pending' && {
+                key: 'send',
+                label: 'Send',
+                icon: Send,
+                primary: true,
+                disabled: noPhone || !allowance.invitations,
+                title: noPhone
+                    ? noPhoneHint
+                    : (allowance.invitationsHint ??
+                      'Send the RSVP link on WhatsApp'),
+                onClick: () => post(send.url(rsvp)),
+            },
+        !!rsvp &&
+            status === 'sent' && {
+                key: 'remind',
+                label: 'Remind',
+                icon: BellRing,
+                primary: true,
+                disabled: noPhone || !allowance.reminders,
+                title: noPhone
+                    ? noPhoneHint
+                    : (allowance.remindersHint ?? 'Remind the guest to reply'),
+                onClick: () => post(remind.url(rsvp)),
+            },
+        !!rsvp &&
+            status === 'sent' && {
+                key: 'resend',
+                label: 'Resend',
+                icon: RotateCw,
+                disabled: noPhone || !allowance.invitations,
+                title: allowance.invitationsHint ?? 'Send the invitation again',
+                onClick: () => post(resend.url(rsvp)),
+            },
+        !!link && {
+            key: 'share',
+            label: copied ? 'Copied' : 'Share link',
+            icon: copied ? CircleCheck : Share2,
+            title: 'Share their personal RSVP link',
+            onClick: () => shareLink(guest.name, link, () => setCopied(true)),
+        },
+        requiresApproval &&
+            guest.approval_status !== 'waitlisted' && {
+                key: 'waitlist',
+                label: 'Waitlist',
+                icon: Clock,
+                onClick: () => post(waitlist.url(guest)),
+            },
+        requiresApproval &&
+            guest.approval_status !== 'rejected' && {
+                key: 'reject',
+                label: 'Reject',
+                icon: X,
+                danger: true,
+                onClick: () =>
+                    confirmation.ask({
+                        title: `Reject ${guest.name}? They won’t be invited.`,
+                        confirmLabel: 'Reject',
+                        onConfirm: () => post(reject.url(guest)),
+                    }),
+            },
+        { key: 'edit', label: 'Edit', icon: Pencil, onClick: onEdit },
+        {
+            key: 'remove',
+            label: 'Remove',
+            icon: Trash2,
+            danger: true,
+            onClick: () =>
+                confirmation.ask({
+                    title: `Remove ${guest.name} from the guest list? Their RSVP link stops working.`,
+                    confirmLabel: 'Remove',
+                    onConfirm: () =>
+                        router.delete(destroy.url(guest), {
+                            preserveScroll: true,
+                        }),
+                }),
+        },
+    ];
 
-    let primary: ReactNode = null;
+    // Only one filled "next step".
+    let hasPrimary = false;
+    const shown = actions.filter(Boolean).map((action) => {
+        const item = action as QuickAction;
+        const primary = !!item.primary && !hasPrimary;
+        hasPrimary ||= primary;
 
-    if (approveIsPrimary) {
-        primary = (
-            <Button
-                size="sm"
-                variant="outline"
-                onClick={() => post(approve.url(guest))}
-            >
-                <Check className="text-emerald-600" /> Approve
-            </Button>
-        );
-    } else if (canInvite) {
-        primary = (
-            <Button
-                size="sm"
-                variant="outline"
-                title={
-                    noPhone
-                        ? noPhoneHint
-                        : (allowance.invitationsHint ??
-                          'Create and send an RSVP link on WhatsApp')
-                }
-                disabled={noPhone || !allowance.invitations}
-                onClick={() => post(createRsvp.url(guest), { send: true })}
-            >
-                <Send /> Invite
-            </Button>
-        );
-    } else if (rsvp && status === 'pending') {
-        primary = (
-            <Button
-                size="sm"
-                variant="outline"
-                title={
-                    noPhone
-                        ? noPhoneHint
-                        : (allowance.invitationsHint ??
-                          'Send the RSVP link on WhatsApp')
-                }
-                disabled={noPhone || !allowance.invitations}
-                onClick={() => post(send.url(rsvp))}
-            >
-                <Send /> Send
-            </Button>
-        );
-    } else if (rsvp && status === 'sent') {
-        primary = (
-            <Button
-                size="sm"
-                variant="outline"
-                title={
-                    noPhone
-                        ? noPhoneHint
-                        : (allowance.remindersHint ??
-                          'Remind the guest to reply')
-                }
-                disabled={noPhone || !allowance.reminders}
-                onClick={() => post(remind.url(rsvp))}
-            >
-                <BellRing /> Remind
-            </Button>
-        );
-    }
-
-    const linkActive = status === 'pending' || status === 'sent';
-    const approvalItems = [
-        allowsApproval && !isApproved && !approveIsPrimary && (
-            <DropdownMenuItem
-                key="approve"
-                onClick={() => post(approve.url(guest))}
-            >
-                <Check className="text-emerald-600" /> Approve
-            </DropdownMenuItem>
-        ),
-        requiresApproval && guest.approval_status !== 'waitlisted' && (
-            <DropdownMenuItem
-                key="waitlist"
-                onClick={() => post(waitlist.url(guest))}
-            >
-                <Clock className="text-violet-600" /> Waitlist
-            </DropdownMenuItem>
-        ),
-        requiresApproval && guest.approval_status !== 'rejected' && (
-            <DropdownMenuItem
-                key="reject"
-                onClick={() => post(reject.url(guest))}
-            >
-                <X className="text-red-600" /> Reject
-            </DropdownMenuItem>
-        ),
-    ].filter(Boolean);
+        return { ...item, primary };
+    });
 
     return (
-        <div className="flex items-center justify-end gap-1">
-            {primary}
-            <DropdownMenu>
-                <DropdownMenuTrigger
-                    aria-label={`More actions for ${guest.name}`}
-                    className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none data-popup-open:bg-muted"
-                >
-                    <MoreHorizontal className="size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                    {rsvp && status === 'sent' && (
-                        <DropdownMenuItem
-                            disabled={noPhone || !allowance.invitations}
-                            onClick={() => post(resend.url(rsvp))}
-                        >
-                            <RotateCw /> Resend invitation
-                        </DropdownMenuItem>
-                    )}
-                    {rsvp && linkActive && (
-                        <DropdownMenuItem
-                            onClick={() =>
-                                navigator.clipboard.writeText(
-                                    guest.link_url ?? rsvp.rsvp_url,
-                                )
-                            }
-                        >
-                            <Copy /> Copy RSVP link
-                        </DropdownMenuItem>
-                    )}
-                    {rsvp && linkActive && <DropdownMenuSeparator />}
+        <div className="relative grid grid-cols-4 gap-x-2 gap-y-3.5 rounded-2xl">
+            <ConfirmBar
+                request={confirmation.request}
+                onCancel={confirmation.cancel}
+            />
+            {shown.map((action) => {
+                const Icon = action.icon;
+                const circle = cn(
+                    'flex size-12 items-center justify-center rounded-full transition-colors',
+                    action.primary
+                        ? 'bg-strong text-strong-foreground'
+                        : action.danger
+                          ? 'bg-destructive-muted text-destructive'
+                          : 'bg-card text-foreground shadow-card group-hover:bg-raised',
+                );
+                const content = (
+                    <>
+                        <span className={circle}>
+                            <Icon className="size-5" strokeWidth={1.75} />
+                        </span>
+                        <span className="max-w-full truncate text-[11px] font-semibold text-muted-foreground">
+                            {action.label}
+                        </span>
+                    </>
+                );
+                const className =
+                    'group flex min-w-0 flex-col items-center gap-1.5 outline-none focus-visible:[&>span:first-child]:ring-3 focus-visible:[&>span:first-child]:ring-ring/50 disabled:opacity-40';
 
-                    {approvalItems}
-                    {approvalItems.length > 0 && <DropdownMenuSeparator />}
-
-                    <DropdownMenuItem onClick={onEdit}>
-                        <Pencil /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() =>
-                            confirm(
-                                `Remove ${guest.name} from the guest list?`,
-                            ) &&
-                            router.delete(destroy.url(guest), {
-                                preserveScroll: true,
-                            })
+                return action.href ? (
+                    <a
+                        key={action.key}
+                        href={action.href}
+                        target={
+                            action.href.startsWith('http')
+                                ? '_blank'
+                                : undefined
                         }
+                        rel="noreferrer"
+                        title={action.title ?? action.label}
+                        className={className}
                     >
-                        <Trash2 /> Remove
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+                        {content}
+                    </a>
+                ) : (
+                    <button
+                        key={action.key}
+                        type="button"
+                        title={action.title ?? action.label}
+                        disabled={action.disabled}
+                        onClick={action.onClick}
+                        className={className}
+                    >
+                        {content}
+                    </button>
+                );
+            })}
         </div>
     );
+}
+
+/** Opens the device's share sheet with the guest's link, or copies it where there is none. */
+export function shareLink(name: string, url: string, onCopied: () => void) {
+    if (typeof navigator.share === 'function') {
+        void navigator
+            .share({ title: `RSVP link for ${name}`, url })
+            .catch(() => {});
+
+        return;
+    }
+
+    void navigator.clipboard.writeText(url).then(onCopied);
 }

@@ -41,4 +41,14 @@ class EventTableRepository extends BaseRepository implements EventTableRepositor
     {
         return (int) $this->query()->where('event_id', $eventId)->max('sort_order') + 1;
     }
+
+    public function move(string $eventId, array $positions): void
+    {
+        foreach ($positions as $id => $position) {
+            $this->query()->where('event_id', $eventId)->whereKey($id)->update([
+                'pos_x' => $position['x'],
+                'pos_y' => $position['y'],
+            ]);
+        }
+    }
 }

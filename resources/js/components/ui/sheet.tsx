@@ -25,19 +25,19 @@ function SheetContent({
     <SheetPrimitive.Portal>
       <SheetPrimitive.Backdrop
         data-slot="sheet-backdrop"
-        className="fixed inset-0 z-50 bg-black/40 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0"
+        className="fixed inset-0 z-50 bg-black/60 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0"
       />
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col overflow-hidden rounded-t-2xl bg-background text-sm shadow-lg ring-1 ring-foreground/10 transition-transform duration-200 ease-out outline-none data-ending-style:translate-y-full data-starting-style:translate-y-full",
+          "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col overflow-hidden rounded-t-[22px] bg-card text-sm text-card-foreground shadow-lg transition-transform duration-200 ease-out outline-none data-ending-style:translate-y-full data-starting-style:translate-y-full",
           "sm:inset-y-0 sm:right-0 sm:left-auto sm:max-h-none sm:w-full sm:max-w-md sm:rounded-none sm:rounded-l-2xl sm:data-ending-style:translate-x-full sm:data-ending-style:translate-y-0 sm:data-starting-style:translate-x-full sm:data-starting-style:translate-y-0",
           className
         )}
         {...props}
       >
         {/* Drag-handle hint on phones */}
-        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30 sm:hidden" />
+        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-foreground/20 sm:hidden" />
         {children}
         <SheetPrimitive.Close
           aria-label="Close"
@@ -78,7 +78,7 @@ function SheetTitle({ className, ...props }: SheetPrimitive.Title.Props) {
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn("text-base font-medium", className)}
+      className={cn("text-xl font-bold", className)}
       {...props}
     />
   )

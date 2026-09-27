@@ -10,6 +10,7 @@ use App\Domains\Event\Enums\RegistrationType;
 use App\Domains\Guest\Models\Guest;
 use App\Domains\Rsvp\Models\Rsvp;
 use App\Domains\Seating\Models\EventTable;
+use App\Domains\Seating\Models\VenueElement;
 use App\Domains\Template\Models\TemplateVersion;
 use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
@@ -268,6 +269,16 @@ class Event extends Model
     public function tables(): HasMany
     {
         return $this->hasMany(EventTable::class)->orderBy('sort_order')->orderBy('created_at');
+    }
+
+    /**
+     * The stage, poruwa, buffet, … on the seating floor plan.
+     *
+     * @return HasMany<VenueElement, $this>
+     */
+    public function venueElements(): HasMany
+    {
+        return $this->hasMany(VenueElement::class);
     }
 
     /** @return HasMany<EventLink, $this> */

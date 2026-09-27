@@ -3,6 +3,8 @@
 namespace App\Domains\Seating\Http\Controllers\Dashboard;
 
 use App\Core\Http\Controllers\InertiaController;
+use App\Domains\Client\Contracts\ClientPlanServiceInterface;
+use App\Domains\Client\Enums\PlanFeature;
 use App\Domains\Event\Http\Resources\EventResource;
 use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Models\Guest;
@@ -10,12 +12,15 @@ use App\Domains\Seating\Contracts\SeatingQueryServiceInterface;
 use App\Domains\Seating\Contracts\SeatingServiceInterface;
 use App\Domains\Seating\Enums\SeatMode;
 use App\Domains\Seating\Enums\TableShape;
+use App\Domains\Seating\Enums\VenueElementKind;
 use App\Domains\Seating\Http\Requests\Dashboard\AssignSeatRequest;
+use App\Domains\Seating\Http\Requests\Dashboard\SaveFloorPlanRequest;
 use App\Domains\Seating\Http\Requests\Dashboard\SeatingPairRequest;
 use App\Domains\Seating\Http\Requests\Dashboard\StoreTableRequest;
 use App\Domains\Seating\Http\Requests\Dashboard\UpdateTableRequest;
 use App\Domains\Seating\Http\Resources\EventTableResource;
 use App\Domains\Seating\Http\Resources\SeatingGuestResource;
+use App\Domains\Seating\Http\Resources\VenueElementResource;
 use App\Domains\Seating\Models\EventTable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,11 +35,18 @@ class SeatingController extends InertiaController
     public function __construct(
         private readonly SeatingServiceInterface $seating,
         private readonly SeatingQueryServiceInterface $queries,
+        private readonly ClientPlanServiceInterface $plans,
     ) {}
 
     public function index(Event $event): Response
     {
         $this->authorize('view', $event);
+
+        // Not in the plan: the tab shows an upgrade prompt, so nothing else is loaded.
+        if (! $this->plans->hasFeature($event->client, PlanFeature::Seating)) {
+            return Inertia::render('client/events/seating', ['event' => EventResource::make($event), 'locked' => true]);
+        }
+
         $event->load(['templateVersion.template.latestVersion', 'publicLink']);
 
         $tables = $this->queries->tables($event);
@@ -46,7 +58,17 @@ class SeatingController extends InertiaController
             'guests' => SeatingGuestResource::collection($guests)->resolve(),
             'summary' => $this->queries->summary($tables, $guests),
             'tableShapes' => TableShape::options(),
+            'venueElements' => VenueElementResource::collection($this->queries->venueElements($event))->resolve(),
+            'venueElementKinds' => VenueElementKind::options(),
         ]);
+    }
+
+    /** Saves where tables and venue elements stand on the floor plan (after a drag; no flash). */
+    public function layout(SaveFloorPlanRequest $request, Event $event): RedirectResponse
+    {
+        $this->seating->saveFloorPlan($event, $request->toData());
+
+        return back();
     }
 
     public function storeTable(StoreTableRequest $request, Event $event): RedirectResponse

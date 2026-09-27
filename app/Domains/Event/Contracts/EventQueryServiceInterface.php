@@ -9,10 +9,32 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface EventQueryServiceInterface
 {
-    /** @return LengthAwarePaginator<int, Event> */
+    /**
+     * The client's events with response figures and message issues.
+     *
+     * @return LengthAwarePaginator<int, Event>
+     */
     public function forClient(Client $client, EventFilters $filters): LengthAwarePaginator;
 
-    /** @return LengthAwarePaginator<int, Event> */
+    /**
+     * Upcoming events (soonest first) for the event switcher.
+     *
+     * @return LengthAwarePaginator<int, Event>
+     */
+    public function forSwitcher(Client $client): LengthAwarePaginator;
+
+    /**
+     * Upcoming and draft event counts, and parties waiting on a reply across upcoming events.
+     *
+     * @return array{upcoming: int, drafts: int, waiting: int}
+     */
+    public function totalsForClient(Client $client): array;
+
+    /**
+     * Every event with response figures and message issues (staff).
+     *
+     * @return LengthAwarePaginator<int, Event>
+     */
     public function all(EventFilters $filters): LengthAwarePaginator;
 
     /** The newest event with this slug (slugs are not unique); only for redirecting old /e/{slug} links. */

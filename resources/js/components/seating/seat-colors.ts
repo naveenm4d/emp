@@ -25,16 +25,20 @@ export const seatColors: Record<
     { fill: string; bg: string; label: string }
 > = {
     confirmed: {
-        fill: 'fill-emerald-500',
-        bg: 'bg-emerald-500',
+        fill: 'fill-success',
+        bg: 'bg-success',
         label: 'Confirmed',
     },
-    pending: { fill: 'fill-amber-400', bg: 'bg-amber-400', label: 'Pending' },
-    maybe: { fill: 'fill-sky-500', bg: 'bg-sky-500', label: 'Maybe' },
-    declined: { fill: 'fill-red-500', bg: 'bg-red-500', label: 'Declined' },
+    pending: { fill: 'fill-warning', bg: 'bg-warning', label: 'Pending' },
+    maybe: { fill: 'fill-info', bg: 'bg-info', label: 'Maybe' },
+    declined: {
+        fill: 'fill-destructive',
+        bg: 'bg-destructive',
+        label: 'Declined',
+    },
     empty: {
-        fill: 'fill-muted stroke-border',
-        bg: 'bg-muted ring-1 ring-border',
+        fill: 'fill-foreground/6 stroke-input',
+        bg: 'bg-foreground/6 ring-1 ring-input',
         label: 'Empty',
     },
 };

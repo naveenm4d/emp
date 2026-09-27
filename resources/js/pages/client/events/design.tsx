@@ -7,16 +7,20 @@ import {
     LayoutGrid,
     Loader2,
     MousePointerClick,
+    LayoutList,
     Music,
+    Palette,
     RefreshCw,
     RotateCcw,
     Trash2,
+    Type,
     Upload,
     Video,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import { EventTabs } from '@/components/events/event-tabs';
+import { ConfirmBar, useConfirm } from '@/components/shared/confirm-bar';
 import { PageHeader } from '@/components/shared/page-header';
 import { TemplateGallery } from '@/components/templates/template-picker';
 import { TemplatePreviewDialog } from '@/components/templates/template-preview-dialog';
@@ -35,7 +39,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { InvitationFrame } from '@/components/web/invitation/invitation-frame';
 import { RsvpActions } from '@/components/web/invitation/rsvp-actions';
 import { useFonts } from '@/components/web/invitation/use-fonts';
-import ClientLayout from '@/layouts/client-layout';
+import EventLayout from '@/layouts/event-layout';
 import { cn } from '@/lib/utils';
 import {
     preview as previewDesign,
@@ -124,6 +128,14 @@ function DesignEditor({
     const [browsing, setBrowsing] = useState(false);
     const [previewing, setPreviewing] = useState<Template | null>(null);
     const [selected, setSelected] = useState<Selection>(null);
+    // Phones show one group of controls at a time (2c); the canvas picks it too.
+    const [tab, setTab] = useState<EditorTab>('text');
+
+    useEffect(() => {
+        if (selected) {
+            setTab(selected.kind === 'text' ? 'text' : 'media');
+        }
+    }, [selected]);
 
     // Changes stay in this draft (and the canvas) until the client saves;
     // only saving stores them and regenerates the guest invitation.
@@ -324,12 +336,26 @@ function DesignEditor({
     const textKeys = Object.keys(schema.texts);
     const colorKeys = Object.keys(schema.colors);
     const sectionKeys = Object.keys(schema.sections);
+    const tabs = EDITOR_TABS.filter(
+        (item) =>
+            ({
+                text: textKeys.length,
+                media: mediaSlots.length,
+                colors: colorKeys.length,
+                sections: sectionKeys.length,
+                music: audioSlots.length,
+            })[item.value] > 0,
+    );
+    const shown = tabs.some((item) => item.value === tab)
+        ? tab
+        : tabs[0]?.value;
 
     return (
-        <ClientLayout>
+        <EventLayout event={event}>
             <Head title={`Invitation · ${event.title}`} />
             <PageHeader
-                title={event.title}
+                eyebrow={event.title}
+                title="Invitation design"
                 description={
                     event.template && (
                         <span className="flex flex-wrap items-center gap-2">
@@ -361,17 +387,15 @@ function DesignEditor({
                 }
             />
 
-            <EventTabs event={event} />
-
             <Notices event={event} design={design} editable={editable} />
 
             <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-                <Card className="overflow-hidden p-0 lg:sticky lg:top-4">
+                <Card className="overflow-hidden p-0 lg:sticky lg:top-[8.25rem]">
                     <div className="flex items-center gap-2 border-b px-4 py-2 text-xs text-muted-foreground">
                         <MousePointerClick className="size-3.5" />
                         Click text or a photo in the invitation to edit it.
                     </div>
-                    <div className="max-h-[calc(100dvh-9rem)] overflow-y-auto bg-white">
+                    <div className="max-h-[52dvh] overflow-y-auto bg-white md:max-h-[calc(100dvh-17rem)]">
                         <InvitationFrame
                             html={canvasHtml}
                             scripts={editor.scripts}
@@ -388,6 +412,39 @@ function DesignEditor({
                 </Card>
 
                 <div className="space-y-4">
+                    {tabs.length > 1 && (
+                        <div
+                            role="tablist"
+                            aria-label="Edit"
+                            className="grid gap-1 md:hidden"
+                            style={{
+                                gridTemplateColumns: `repeat(${tabs.length}, 1fr)`,
+                            }}
+                        >
+                            {tabs.map((item) => (
+                                <button
+                                    key={item.value}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={shown === item.value}
+                                    onClick={() => setTab(item.value)}
+                                    className={cn(
+                                        'flex flex-col items-center gap-1 rounded-xl py-2 text-xs font-semibold',
+                                        shown === item.value
+                                            ? 'bg-foreground/8 text-foreground'
+                                            : 'text-subtle',
+                                    )}
+                                >
+                                    <item.icon
+                                        className="size-5.5"
+                                        strokeWidth={1.75}
+                                    />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {editable && (
                         <SaveBar
                             dirty={dirty}
@@ -400,7 +457,7 @@ function DesignEditor({
                     )}
 
                     {textKeys.length > 0 && (
-                        <Panel title="Text">
+                        <Panel title="Text" active={shown === 'text'}>
                             {textKeys.map((key) => (
                                 <TextControl
                                     key={key}
@@ -421,7 +478,10 @@ function DesignEditor({
                     )}
 
                     {mediaSlots.length > 0 && (
-                        <Panel title="Photos & videos">
+                        <Panel
+                            title="Photos & videos"
+                            active={shown === 'media'}
+                        >
                             {mediaSlots.map((slot) => (
                                 <SlotControl
                                     key={slot.key}
@@ -444,7 +504,7 @@ function DesignEditor({
                     )}
 
                     {colorKeys.length > 0 && (
-                        <Panel title="Colours">
+                        <Panel title="Colours" active={shown === 'colors'}>
                             {colorKeys.map((key) => (
                                 <ColorControl
                                     key={key}
@@ -460,7 +520,7 @@ function DesignEditor({
                     )}
 
                     {sectionKeys.length > 0 && (
-                        <Panel title="Sections">
+                        <Panel title="Sections" active={shown === 'sections'}>
                             {sectionKeys.map((key) => (
                                 <label
                                     key={key}
@@ -483,7 +543,7 @@ function DesignEditor({
                     )}
 
                     {audioSlots.length > 0 && (
-                        <Panel title="Music">
+                        <Panel title="Music" active={shown === 'music'}>
                             {audioSlots.map((slot) => (
                                 <SlotControl
                                     key={slot.key}
@@ -563,7 +623,7 @@ function DesignEditor({
                     onClick: changeTemplate,
                 }}
             />
-        </ClientLayout>
+        </EventLayout>
     );
 }
 
@@ -596,7 +656,7 @@ function SaveBar({
     return (
         <Card
             className={cn(
-                'sticky top-4 z-10 p-4',
+                'sticky top-4 z-10 p-4 md:top-[8.25rem]',
                 dirty && 'ring-2 ring-primary/40',
             )}
         >
@@ -611,7 +671,7 @@ function SaveBar({
                         <span className="font-medium">Unsaved changes</span>
                     ) : (
                         <>
-                            <CheckCircle2 className="size-4 text-emerald-600" />
+                            <CheckCircle2 className="size-4 text-success" />
                             <span className="text-muted-foreground">
                                 Guests see the saved version.
                             </span>
@@ -646,15 +706,28 @@ function SaveBar({
     );
 }
 
+type EditorTab = 'text' | 'media' | 'colors' | 'sections' | 'music';
+
+const EDITOR_TABS: { value: EditorTab; label: string; icon: LucideIcon }[] = [
+    { value: 'text', label: 'Text', icon: Type },
+    { value: 'media', label: 'Photo', icon: Image },
+    { value: 'colors', label: 'Colours', icon: Palette },
+    { value: 'sections', label: 'Sections', icon: LayoutList },
+    { value: 'music', label: 'Music', icon: Music },
+];
+
 function Panel({
     title,
+    active = true,
     children,
 }: {
     title: string;
+    /** On phones only the chosen tab's panel shows. */
+    active?: boolean;
     children: React.ReactNode;
 }) {
     return (
-        <Card>
+        <Card className={cn(!active && 'max-md:hidden')}>
             <CardHeader>
                 <CardTitle>{title}</CardTitle>
             </CardHeader>
@@ -944,7 +1017,7 @@ function Notices({
             )}
 
             {design.missing.length > 0 ? (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-muted p-3 text-sm text-warning">
                     <AlertTriangle className="mt-0.5 size-4 shrink-0" />
                     <span>
                         Upload {design.missing.join(', ')} before publishing.
@@ -954,7 +1027,7 @@ function Notices({
                 </div>
             ) : (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <CheckCircle2 className="size-4 text-emerald-600" />
+                    <CheckCircle2 className="size-4 text-success" />
                     Your invitation has everything it needs.
                 </div>
             )}
@@ -963,22 +1036,34 @@ function Notices({
 }
 
 function RemoveButton({ event, mediaId }: { event: Event; mediaId: string }) {
-    return (
-        <Button
-            size="sm"
-            variant="ghost"
-            aria-label="Remove"
-            onClick={(e) => {
-                e.stopPropagation();
+    const confirmation = useConfirm();
 
-                if (confirm('Remove this file from your invitation?')) {
-                    router.delete(destroy.url({ event, media: mediaId }), {
-                        preserveScroll: true,
+    return (
+        <span className="relative inline-flex">
+            <Button
+                size="sm"
+                variant="ghost"
+                aria-label="Remove"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    confirmation.ask({
+                        title: 'Remove this file?',
+                        confirmLabel: 'Remove',
+                        onConfirm: () =>
+                            router.delete(
+                                destroy.url({ event, media: mediaId }),
+                                { preserveScroll: true },
+                            ),
                     });
-                }
-            }}
-        >
-            <Trash2 />
-        </Button>
+                }}
+            >
+                <Trash2 />
+            </Button>
+            <ConfirmBar
+                variant="pop"
+                request={confirmation.request}
+                onCancel={confirmation.cancel}
+            />
+        </span>
     );
 }

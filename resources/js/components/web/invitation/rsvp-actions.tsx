@@ -1,13 +1,11 @@
-import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
-import { DeclineDialog } from '@/components/web/invitation/decline-dialog';
-import {
-    hasRegistrationDetails,
-    RegistrationDialog,
-} from '@/components/web/invitation/registration-dialog';
+import { RegistrationDialog } from '@/components/web/invitation/registration-dialog';
+import type { Attendance } from '@/components/web/invitation/registration-dialog';
+import { formatDayMonth } from '@/lib/format';
 import type {
     InvitationPageProps,
+    PublicEvent,
     RegistrationForm,
     RegistrationResponse,
     Rsvp,
@@ -20,6 +18,8 @@ type RsvpActionsProps = Pick<
     /** What the event asks for; without it (design editor) the buttons are inert. */
     form?: RegistrationForm | null;
     response?: RegistrationResponse | null;
+    /** For the popup's header ("Nimali & Kasun · 14 Nov"). */
+    event?: Pick<PublicEvent, 'title' | 'event_date'> | null;
 };
 
 type State =
@@ -29,8 +29,6 @@ type State =
     | 'maybe'
     | 'expired'
     | 'preview';
-
-type Answer = 'accepted' | 'declined' | 'maybe';
 
 function stateOf(mode: string, rsvp: Rsvp | null): State {
     if (mode === 'preview' || !rsvp) {
@@ -61,11 +59,24 @@ const messages: Record<State, string> = {
     preview: 'Will you be joining us?',
 };
 
+/** "Nimali & Kasun · 14 Nov" for the popup's header. */
+export function rsvpSubtitle(
+    event?: { title: string; event_date: string | null } | null,
+): string {
+    if (!event) {
+        return 'Your invitation';
+    }
+
+    return event.event_date
+        ? `${event.title} · ${formatDayMonth(event.event_date)}`
+        : event.title;
+}
+
 /**
- * Accept / maybe / decline. Rendered inside the invitation's shadow root, so
- * it uses plain class names (.emp-rsvp…) that templates can style. When the
- * event asks for details, accepting opens the EMP registration popup;
- * declining asks for confirmation, with an optional note to the host.
+ * The one RSVP button templates show (placed by `{{ rsvp }}`). Rendered
+ * inside the invitation's shadow root, so it uses plain class names
+ * (.emp-rsvp…) that templates can style. It opens the EMP RSVP popup (2b),
+ * where the guest says whether they're coming and gives the details.
  */
 export function RsvpActions({
     mode,
@@ -73,88 +84,44 @@ export function RsvpActions({
     actions,
     form,
     response,
+    event,
 }: RsvpActionsProps) {
-    const [processing, setProcessing] = useState(false);
-    const [changing, setChanging] = useState(false);
-    const [dialog, setDialog] = useState<'accepted' | 'maybe' | null>(null);
-    const [declining, setDeclining] = useState(false);
+    const [open, setOpen] = useState(false);
     const state = stateOf(mode, rsvp);
     const preview = state === 'preview';
-    const asksDetails = form ? hasRegistrationDetails(form) : false;
-
-    const post = (attendance: Answer) =>
-        actions &&
-        router.post(
-            actions.respond,
-            { attendance },
-            {
-                preserveScroll: true,
-                onStart: () => setProcessing(true),
-                onFinish: () => setProcessing(false),
-                onSuccess: () => setChanging(false),
-            },
-        );
-
-    const answer = (attendance: Answer) => {
-        if (attendance === 'declined') {
-            // Confirmed in a dialog, with an optional note to the host.
-            setDeclining(true);
-        } else if (asksDetails) {
-            setDialog(attendance);
-        } else if (!preview) {
-            post(attendance);
-        }
-    };
-
-    const showButtons = state === 'awaiting' || preview || changing;
-    // In the design editor there is no form to preview, so the buttons stay inert.
-    const inert = (preview && !form) || processing;
+    const answered =
+        state === 'accepted' || state === 'declined' || state === 'maybe';
+    // In the design editor there is no form to preview, so the button stays inert.
+    const inert = preview && !form;
 
     return (
-        <div className="emp-rsvp" data-state={changing ? 'awaiting' : state}>
-            <p className="emp-rsvp__message" role="status">
-                {changing ? messages.awaiting : messages[state]}
-            </p>
-            {showButtons && (
-                <div className="emp-rsvp__actions">
-                    <button
-                        type="button"
-                        className="emp-rsvp__button emp-rsvp__button--accept"
-                        disabled={inert}
-                        onClick={() => answer('accepted')}
-                    >
-                        Accept
-                    </button>
-                    {form?.allow_maybe && (
+        <div className="emp-rsvp" data-state={state}>
+            {answered && (
+                <p className="emp-rsvp__message" role="status">
+                    {messages[state]}
+                </p>
+            )}
+            {state === 'expired' ? (
+                <p className="emp-rsvp__message" role="status">
+                    {messages.expired}
+                </p>
+            ) : (
+                (!answered || rsvp?.can_change) && (
+                    <div className="emp-rsvp__actions">
                         <button
                             type="button"
-                            className="emp-rsvp__button emp-rsvp__button--maybe"
+                            className={
+                                answered
+                                    ? 'emp-rsvp__button emp-rsvp__button--change'
+                                    : 'emp-rsvp__button emp-rsvp__button--accept'
+                            }
                             disabled={inert}
-                            onClick={() => answer('maybe')}
+                            onClick={() => setOpen(true)}
                         >
-                            Maybe
+                            {answered ? 'Change response' : 'RSVP'}
                         </button>
-                    )}
-                    <button
-                        type="button"
-                        className="emp-rsvp__button emp-rsvp__button--decline"
-                        disabled={inert}
-                        onClick={() => answer('declined')}
-                    >
-                        Decline
-                    </button>
-                </div>
-            )}
-            {!showButtons && rsvp?.can_change && (
-                <div className="emp-rsvp__actions">
-                    <button
-                        type="button"
-                        className="emp-rsvp__button emp-rsvp__button--change"
-                        onClick={() => setChanging(true)}
-                    >
-                        Change response
-                    </button>
-                </div>
+                    </div>
+                )
             )}
             {preview && (
                 <p className="emp-rsvp__note">
@@ -163,28 +130,18 @@ export function RsvpActions({
             )}
             {form && (
                 <RegistrationDialog
-                    open={dialog !== null}
-                    onOpenChange={(open) => !open && setDialog(null)}
+                    // Starts fresh each time it opens.
+                    key={open ? 'open' : 'closed'}
+                    open={open}
+                    onOpenChange={setOpen}
                     mode={preview ? 'preview' : 'rsvp'}
                     form={form}
-                    url={actions?.respond ?? null}
-                    attendance={dialog ?? 'accepted'}
+                    url={preview ? null : (actions?.respond ?? null)}
+                    subtitle={rsvpSubtitle(event)}
                     initial={response}
-                    title={
-                        dialog === 'maybe'
-                            ? 'You might be coming'
-                            : "Great, you're coming!"
-                    }
-                    description="A few details for the host."
-                    onSaved={() => setChanging(false)}
+                    initialAttendance={answered ? (state as Attendance) : null}
                 />
             )}
-            <DeclineDialog
-                open={declining}
-                onOpenChange={setDeclining}
-                url={preview ? null : (actions?.respond ?? null)}
-                onDeclined={() => setChanging(false)}
-            />
         </div>
     );
 }

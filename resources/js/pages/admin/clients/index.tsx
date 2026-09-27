@@ -47,7 +47,7 @@ export default function ClientsIndex({
                 }
             />
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="overflow-hidden rounded-lg bg-card shadow-card">
                 {clients.data.length === 0 ? (
                     <EmptyState icon={Building2} title="No clients found" />
                 ) : (
@@ -85,7 +85,7 @@ export default function ClientsIndex({
                                     <TableCell>
                                         {client.plan_label}
                                         {client.plan_active === false && (
-                                            <span className="ml-1.5 text-xs text-amber-700 dark:text-amber-400">
+                                            <span className="ml-1.5 text-xs text-warning">
                                                 expired
                                             </span>
                                         )}

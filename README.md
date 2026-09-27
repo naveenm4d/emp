@@ -4,11 +4,11 @@ The EMP event management platform as a single Laravel 13 + Inertia v3 + React 19
 
 ## Who uses what
 
-| Actor                                  | Name in code              | Interface                                                     | Auth                                |
-| -------------------------------------- | ------------------------- | ------------------------------------------------------------- | ----------------------------------- |
-| Subscribed customer who creates events | **Client**                | Client dashboard, `/app`                                      | session guard `client`              |
-| EMP platform staff                     | **Staff** (`StaffMember`) | Internal console, `/internal`                                 | session guard `staff` + permissions |
-| Event attendee                         | **Guest** (no account)    | Site: `/`, `/{slug}/{code}`, `/preview/{event}`               | none: short link code               |
+| Actor                                  | Name in code              | Interface                                       | Auth                                |
+| -------------------------------------- | ------------------------- | ----------------------------------------------- | ----------------------------------- |
+| Subscribed customer who creates events | **Client**                | Client dashboard, `/app`                        | session guard `client`              |
+| EMP platform staff                     | **Staff** (`StaffMember`) | Internal console, `/internal`                   | session guard `staff` + permissions |
+| Event attendee                         | **Guest** (no account)    | Site: `/`, `/{slug}/{code}`, `/preview/{event}` | none: short link code               |
 
 ## Layout
 
@@ -59,15 +59,15 @@ Domains/Event/
 
 Public Inertia pages with their own root view (`resources/views/site.blade.php`), stylesheet (`resources/css/site.css`) and a strict Content-Security-Policy (only this app's nonce'd scripts run; see `config/csp.php`).
 
-| Method   | Path                                   |                                                                      |
-| -------- | -------------------------------------- | -------------------------------------------------------------------- |
-| GET      | `/`                                    | marketing homepage; its CTAs lead to `/app`                          |
-| GET      | `/{slug}/{code}`                       | short link: the event's public page, or a guest's invitation + RSVP  |
-| POST     | `/{slug}/{code}/register`              | public registration (capacity, duplicates, approval)                 |
-| POST     | `/{slug}/{code}/accept` · `/decline`   | idempotent; an expired invitation flashes an error                   |
-| GET      | `/e/{slug}`, `/rsvp/{token}`           | older link formats; 301 to the short link                            |
-| GET      | `/preview/{event}`                     | client preview of the invitation; needs the dashboard's signed link  |
-| GET/POST | `/webhooks/whatsapp`                   | Meta verification; HMAC-signed status callbacks (no session / CSRF)  |
+| Method   | Path                                 |                                                                     |
+| -------- | ------------------------------------ | ------------------------------------------------------------------- |
+| GET      | `/`                                  | marketing homepage; its CTAs lead to `/app`                         |
+| GET      | `/{slug}/{code}`                     | short link: the event's public page, or a guest's invitation + RSVP |
+| POST     | `/{slug}/{code}/register`            | public registration (capacity, duplicates, approval)                |
+| POST     | `/{slug}/{code}/accept` · `/decline` | idempotent; an expired invitation flashes an error                  |
+| GET      | `/e/{slug}`, `/rsvp/{token}`         | older link formats; 301 to the short link                           |
+| GET      | `/preview/{event}`                   | client preview of the invitation; needs the dashboard's signed link |
+| GET/POST | `/webhooks/whatsapp`                 | Meta verification; HMAC-signed status callbacks (no session / CSRF) |
 
 Unknown tokens and pages show `site/errors/not-found`, a bad or expired preview signature shows `site/errors/link-expired`, and throttling or server errors show `site/errors/unavailable`. Invitation pages put the event's title, description and cover image into `og:` meta tags so shared links preview nicely.
 
@@ -94,7 +94,7 @@ Invitations work like WordPress themes. The template code is fixed, and the clie
     | `{{ event.title }}`, `event.date`, `event.start_time`, `event.location_name`, … | event details                                                    |
     | `{{ guest.name }}`                                                              | filled per guest when the invitation is viewed                   |
     | `{{ asset:images/bg.png }}`                                                     | a file from the package's `assets/` folder                       |
-    | `{{ rsvp }}`                                                                    | where the site mounts the Accept / Decline buttons     |
+    | `{{ rsvp }}`                                                                    | where the site mounts the Accept / Decline buttons               |
     | `{{#if name}} … {{/if}}`                                                        | keeps the block only when `name` has a value                     |
 
     **The media slots come from the code itself.** A media placeholder outside every `{{#if}}` is required, and an event cannot be published until it is uploaded. A media placeholder used only inside `{{#if}}` blocks is optional.

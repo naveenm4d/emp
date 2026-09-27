@@ -33,15 +33,16 @@ export function Pricing({ dashboardUrl }: { dashboardUrl: string }) {
                     />
                     <Reveal delay={200}>
                         <p className="text-ivory/60 mt-5 text-lg">
-                            Start free. Pay per event when it’s your big day, or
-                            subscribe if you plan events for a living.
+                            Start free. Pay per event when it’s your big day,
+                            subscribe if you organize events for a living, or
+                            talk to us about your organization.
                         </p>
                     </Reveal>
 
                     <Reveal delay={300}>
                         <div
                             role="radiogroup"
-                            aria-label="Studio billing period"
+                            aria-label="Business billing period"
                             className="border-ivory/15 bg-ivory/5 relative mt-10 inline-grid grid-cols-2 rounded-full border p-1 text-sm"
                         >
                             <span
@@ -86,12 +87,12 @@ export function Pricing({ dashboardUrl }: { dashboardUrl: string }) {
                     </Reveal>
                 </div>
 
-                <div className="mt-16 grid items-stretch gap-5 lg:grid-cols-3">
+                <div className="mt-16 grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-4">
                     {plans.map((plan, i) => (
                         <Reveal
                             key={plan.id}
                             delay={i * 120}
-                            className={cn(plan.featured && 'lg:-my-4')}
+                            className={cn(plan.featured && 'xl:-my-4')}
                         >
                             <PlanCard
                                 plan={plan}
@@ -125,15 +126,16 @@ function PlanCard({
     billing: Billing;
     dashboardUrl: string;
 }) {
-    const price = plan.price[billing];
-    const changes = plan.price.monthly !== plan.price.yearly;
+    const price = plan.price?.[billing] ?? null;
+    const changes =
+        plan.price !== null && plan.price.monthly !== plan.price.yearly;
 
     return (
         <article
             className={cn(
                 'relative flex h-full flex-col rounded-[1.75rem] p-8 transition-transform duration-500 hover:-translate-y-1',
                 plan.featured
-                    ? 'gold-ring shadow-[0_40px_120px_-40px_rgb(176_141_87/0.55)] lg:py-12'
+                    ? 'gold-ring shadow-[0_40px_120px_-40px_rgb(176_141_87/0.55)] xl:py-12'
                     : 'border-ivory/10 bg-ivory/[0.03] border',
             )}
         >
@@ -148,20 +150,23 @@ function PlanCard({
             <div className="mt-8 flex flex-wrap items-baseline gap-x-2 overflow-hidden">
                 <span
                     key={changes ? billing : 'fixed'}
-                    className="animate-slide-up font-display text-[2.6rem] leading-none font-medium tracking-tight whitespace-nowrap tabular-nums xl:text-5xl"
+                    className="animate-slide-up font-display text-[2.6rem] leading-none font-medium tracking-tight whitespace-nowrap tabular-nums"
                 >
-                    {formatLkr(price)}
+                    {price === null ? 'Custom' : formatLkr(price)}
                 </span>
                 <span className="text-ivory/50 text-sm">
                     {plan.unit[billing]}
                 </span>
             </div>
-            {changes && (
+            {changes && price !== null && (
                 <p className="text-gold-soft mt-1 h-5 text-xs">
                     {billing === 'yearly'
                         ? `${formatLkr(Math.round(price / 12))}/mo, billed yearly`
                         : 'or save 2 months with yearly billing'}
                 </p>
+            )}
+            {plan.note && (
+                <p className="text-ivory/55 mt-1 text-xs">{plan.note}</p>
             )}
 
             <a
@@ -191,7 +196,7 @@ function PlanCard({
 
 function Comparison() {
     return (
-        <details className="group mx-auto mt-14 max-w-4xl">
+        <details className="group mx-auto mt-14 max-w-5xl">
             <summary className="border-ivory/15 text-ivory/80 hover:bg-ivory/5 mx-auto flex w-fit cursor-pointer items-center gap-2 rounded-full border px-5 py-2.5 text-sm transition-colors">
                 Compare all features
                 <ChevronDown className="size-4 transition-transform duration-300 group-open:rotate-180" />
@@ -199,7 +204,7 @@ function Comparison() {
             <div className="faq-body">
                 <div className="overflow-hidden">
                     <div className="border-ivory/10 mt-8 overflow-x-auto rounded-2xl border">
-                        <table className="w-full min-w-[560px] text-left text-sm">
+                        <table className="w-full min-w-[720px] text-left text-sm">
                             <thead>
                                 <tr className="border-ivory/10 text-ivory/60 border-b">
                                     <th

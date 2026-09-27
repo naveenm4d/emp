@@ -159,7 +159,7 @@ export function EventForm({
                             </p>
                             {event?.template &&
                                 form.data.template_id !== event.template.id && (
-                                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                                    <p className="text-xs text-warning">
                                         Switching templates keeps your uploads,
                                         but media the new template has no place
                                         for is not shown.
@@ -340,7 +340,7 @@ export function EventForm({
                             event.registration_type !== 'guest_list_only' &&
                             form.data.registration_type ===
                                 'guest_list_only' && (
-                                <p className="text-xs text-amber-700 dark:text-amber-400">
+                                <p className="text-xs text-warning">
                                     The public link stops accepting
                                     registrations and shows an "invited guests
                                     only" page. Guests already on the list stay.

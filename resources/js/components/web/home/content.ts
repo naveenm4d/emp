@@ -84,11 +84,13 @@ export interface Plan {
     id: string;
     name: string;
     tagline: string;
-    /** Price per billing option. A plan with one price shows it for both. */
-    price: Record<Billing, number>;
+    /** Price per billing option (null = custom pricing). A plan with one price shows it for both. */
+    price: Record<Billing, number> | null;
     unit: Record<Billing, string>;
     cta: string;
     featured?: boolean;
+    /** Shown under the price, e.g. the extra-guests add-on. */
+    note?: string;
     features: string[];
 }
 
@@ -96,16 +98,16 @@ export const plans: Plan[] = [
     {
         id: 'starter',
         name: 'Starter',
-        tagline: 'For a small get-together.',
+        tagline: 'Try EMP with one small event.',
         price: { monthly: 0, yearly: 0 },
         unit: { monthly: 'free forever', yearly: 'free forever' },
         cta: 'Start free',
         features: [
-            '1 active event',
+            '1 event',
             'Up to 50 guests',
-            'Classic template',
+            'Guest list with personal RSVP links',
+            'WhatsApp delivery: 1 invitation + 1 reminder per guest',
             'One-tap RSVP',
-            'WhatsApp delivery',
         ],
     },
     {
@@ -116,46 +118,92 @@ export const plans: Plan[] = [
         unit: { monthly: 'per event', yearly: 'per event' },
         cta: 'Plan my event',
         featured: true,
+        note: '+ Rs. 1,000 per extra 100 guests',
         features: [
             'Up to 500 guests',
             'Every standard template',
             'Photos, video & background music',
-            'Guest approval & capacity limits',
-            'Public registration link',
-            'Delivery & read tracking',
+            'Guest approval, capacity & public registration',
+            'Seating plan',
+            'RSVP tracking & delivery / read receipts',
         ],
     },
     {
-        id: 'studio',
-        name: 'Studio',
-        tagline: 'For planners and venues.',
+        id: 'business',
+        name: 'Business',
+        tagline: 'For professional event organizers, companies and agencies.',
         price: { monthly: 14990, yearly: 149900 },
         unit: { monthly: 'per month', yearly: 'per year' },
-        cta: 'Talk to us',
+        cta: 'Start with Business',
+        note: '+ Rs. 1,000 per extra 100 guests',
         features: [
             'Unlimited events',
             'Up to 2,000 guests per event',
             'Custom templates for your brand',
+            'Seating plans',
             'Priority WhatsApp sending',
+            '3 team members',
+        ],
+    },
+    {
+        id: 'enterprise',
+        name: 'Enterprise',
+        tagline:
+            'For large companies, universities, institutions and organizations.',
+        price: null,
+        unit: { monthly: 'custom pricing', yearly: 'custom pricing' },
+        cta: 'Contact sales',
+        features: [
+            'Everything in Business',
+            'Unlimited guests',
+            'Higher message limits',
             'Dedicated account manager',
+            'Custom integrations & SLA',
+            'Invoicing',
         ],
     },
 ];
 
 export const comparison: {
     label: string;
-    values: [string | boolean, string | boolean, string | boolean];
+    values: [
+        string | boolean,
+        string | boolean,
+        string | boolean,
+        string | boolean,
+    ];
 }[] = [
-    { label: 'Active events', values: ['1', '1 per purchase', 'Unlimited'] },
-    { label: 'Guests per event', values: ['50', '500', '2,000'] },
-    { label: 'Templates', values: ['Classic', 'All standard', 'All + custom'] },
-    { label: 'WhatsApp delivery', values: [true, true, true] },
-    { label: 'Delivery & read tracking', values: [false, true, true] },
-    { label: 'Photos & video', values: ['Photos', true, true] },
-    { label: 'Background music', values: [false, true, true] },
-    { label: 'Guest approval & capacity', values: [false, true, true] },
-    { label: 'Public registration link', values: [false, true, true] },
-    { label: 'Account manager', values: [false, false, true] },
+    {
+        label: 'Events',
+        values: ['1', '1 per purchase', 'Unlimited', 'Unlimited'],
+    },
+    { label: 'Guests per event', values: ['50', '500', '2,000', 'Unlimited'] },
+    {
+        label: 'Extra guests',
+        values: [false, 'Rs. 1,000 / 100', 'Rs. 1,000 / 100', 'Included'],
+    },
+    {
+        label: 'Messages per guest',
+        values: [
+            '1 + 1 reminder',
+            '3 + 3 reminders',
+            '3 + 3 reminders',
+            '5 + 5 reminders',
+        ],
+    },
+    {
+        label: 'Templates',
+        values: ['Standard', 'All standard', 'All + custom', 'All + custom'],
+    },
+    {
+        label: 'Public registration & approval',
+        values: [false, true, true, true],
+    },
+    { label: 'Seating plans', values: [false, true, true, true] },
+    { label: 'RSVP tracking', values: [false, true, true, true] },
+    { label: 'Message log & read receipts', values: [false, true, true, true] },
+    { label: 'Account manager', values: [false, false, false, true] },
+    { label: 'Invoicing', values: [false, false, false, true] },
 ];
 
 export const faqs = [
@@ -181,7 +229,19 @@ export const faqs = [
     },
     {
         q: 'Are premium templates included?',
-        a: 'Standard templates are included in Celebration and Studio. Some premium designer templates have their own one-time price, which is shown before you choose one.',
+        a: 'Standard templates are included in every paid plan. Some premium designer templates have their own one-time price, which is shown before you choose one.',
+    },
+    {
+        q: 'What does “one event” on Starter mean?',
+        a: 'Starter is free for one event, ever: deleting it doesn’t free up another. For more events, pick Celebration (pay per event) or Business (unlimited events).',
+    },
+    {
+        q: 'Can I invite more guests than my plan allows?',
+        a: 'Yes, on Celebration and Business: add guests in blocks of 100 for Rs. 1,000 each, per event.',
+    },
+    {
+        q: 'How does Enterprise pricing work?',
+        a: 'Enterprise is priced for your organization: the number of events and guests, message volume, integrations and support. Contact us and we’ll put together a quote.',
     },
 ];
 

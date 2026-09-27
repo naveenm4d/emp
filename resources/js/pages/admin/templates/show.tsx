@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, Eye, Trash2 } from 'lucide-react';
 
+import { ConfirmBar, useConfirm } from '@/components/shared/confirm-bar';
 import { FormField } from '@/components/shared/form-field';
 import { PageHeader } from '@/components/shared/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -36,15 +37,14 @@ export default function ShowTemplate({
     const can = useStaffCan();
     const latest = versions.data.find((version) => version.is_latest);
 
-    const remove = () => {
-        if (
-            confirm(
-                `Delete "${template.name}" and all its versions? This cannot be undone.`,
-            )
-        ) {
-            router.delete(destroy.url(template));
-        }
-    };
+    const confirmation = useConfirm();
+
+    const remove = () =>
+        confirmation.ask({
+            title: `Delete "${template.name}" and all its versions? This can’t be undone.`,
+            confirmLabel: 'Delete',
+            onConfirm: () => router.delete(destroy.url(template)),
+        });
 
     return (
         <AdminLayout>
@@ -69,36 +69,44 @@ export default function ShowTemplate({
                     </span>
                 }
                 actions={
-                    <>
-                        <Link
-                            href={index.url()}
-                            className={buttonVariants({ variant: 'ghost' })}
-                        >
-                            <ArrowLeft /> Templates
-                        </Link>
-                        {latest && (
+                    confirmation.request ? (
+                        <ConfirmBar
+                            variant="inline"
+                            request={confirmation.request}
+                            onCancel={confirmation.cancel}
+                        />
+                    ) : (
+                        <>
                             <Link
-                                href={preview.url({
-                                    template: template.id,
-                                    version: latest.id,
-                                })}
-                                className={buttonVariants({
-                                    variant: 'outline',
-                                })}
+                                href={index.url()}
+                                className={buttonVariants({ variant: 'ghost' })}
                             >
-                                <Eye /> Preview
+                                <ArrowLeft /> Templates
                             </Link>
-                        )}
-                        {can('templates.manage') && (
-                            <Button
-                                variant="ghost"
-                                onClick={remove}
-                                aria-label="Delete template"
-                            >
-                                <Trash2 />
-                            </Button>
-                        )}
-                    </>
+                            {latest && (
+                                <Link
+                                    href={preview.url({
+                                        template: template.id,
+                                        version: latest.id,
+                                    })}
+                                    className={buttonVariants({
+                                        variant: 'outline',
+                                    })}
+                                >
+                                    <Eye /> Preview
+                                </Link>
+                            )}
+                            {can('templates.manage') && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={remove}
+                                    aria-label="Delete template"
+                                >
+                                    <Trash2 />
+                                </Button>
+                            )}
+                        </>
+                    )
                 }
             />
 

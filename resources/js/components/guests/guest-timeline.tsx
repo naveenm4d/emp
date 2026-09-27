@@ -1,4 +1,3 @@
-import { useHttp } from '@inertiajs/react';
 import {
     BellRing,
     CircleCheck,
@@ -12,13 +11,12 @@ import {
     UserPlus,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { StatusBadge } from '@/components/shared/status-badge';
 import { formatDateTime, timeAgo } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { details } from '@/routes/client/guests';
 import type { Guest, Notification, Rsvp } from '@/types';
 
 /** A guest's answer to one of the event's custom questions. */
@@ -28,7 +26,9 @@ export type GuestAnswer = {
     value: string | number | boolean | string[];
 };
 
-type TimelineData = {
+/** The `guestDetails` page prop: the open guest's history and answers. */
+export type GuestDetailsData = {
+    guest_id: string;
     rsvps: Rsvp[];
     messages: Notification[];
     answers: GuestAnswer[];
@@ -45,8 +45,8 @@ type Entry = {
 
 const toneClass: Record<Entry['tone'], string> = {
     default: 'bg-primary/10 text-primary',
-    success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-    danger: 'bg-red-500/10 text-red-600 dark:text-red-400',
+    success: 'bg-success-muted text-success',
+    danger: 'bg-destructive-muted text-destructive',
     muted: 'bg-muted text-muted-foreground',
 };
 
@@ -63,43 +63,21 @@ const approvalTitles: Record<Guest['approval_status'], string> = {
  */
 export function GuestTimeline({
     guest,
-    refreshKey,
-    onAnswers,
+    details,
 }: {
     guest: Guest;
-    /** Changes when the guest's statuses change, so the history reloads. */
-    refreshKey: string;
-    /** Receives the guest's custom answers, which come with the history. */
-    onAnswers?: (answers: GuestAnswer[]) => void;
+    /** Null while the partial reload for this guest is on its way. */
+    details: GuestDetailsData | null;
 }) {
-    const http = useHttp<Record<string, never>, TimelineData>();
-    const [failed, setFailed] = useState(false);
-
-    useEffect(() => {
-        setFailed(false);
-        http.get(details.url(guest))
-            .then((data) => onAnswers?.(data.answers))
-            .catch(() => setFailed(true));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [guest.id, refreshKey]);
-
-    if (failed) {
-        return (
-            <p className="text-sm text-muted-foreground">
-                Couldn't load the history. Close and open the guest again.
-            </p>
-        );
-    }
-
-    if (!http.response) {
+    if (!details) {
         return (
             <div className="space-y-4">
                 {[0, 1, 2].map((i) => (
                     <div key={i} className="flex gap-3">
-                        <div className="size-7 shrink-0 animate-pulse rounded-full bg-muted" />
+                        <div className="size-7 shrink-0 animate-pulse rounded-full bg-foreground/6" />
                         <div className="flex-1 space-y-2 pt-1">
-                            <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
-                            <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+                            <div className="h-3 w-2/3 animate-pulse rounded bg-foreground/6" />
+                            <div className="h-3 w-1/3 animate-pulse rounded bg-foreground/6" />
                         </div>
                     </div>
                 ))}
@@ -107,15 +85,15 @@ export function GuestTimeline({
         );
     }
 
-    const entries = buildEntries(guest, http.response);
+    const entries = buildEntries(guest, details);
 
     return (
-        <ol className="relative space-y-5 before:absolute before:top-2 before:bottom-2 before:left-3.5 before:w-px before:bg-border">
+        <ol className="relative space-y-5 before:absolute before:top-2 before:bottom-2 before:left-3.25 before:w-0.5 before:bg-input">
             {entries.map((entry) => (
                 <li key={entry.key} className="relative flex gap-3">
                     <span
                         className={cn(
-                            'relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full ring-4 ring-background',
+                            'relative z-10 flex size-7 shrink-0 items-center justify-center rounded-full ring-4 ring-card',
                             toneClass[entry.tone],
                         )}
                     >
@@ -123,7 +101,7 @@ export function GuestTimeline({
                     </span>
                     <div className="min-w-0 flex-1 pt-0.5">
                         <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-                            <p className="font-medium">{entry.title}</p>
+                            <p className="font-semibold">{entry.title}</p>
                             <time
                                 dateTime={entry.at}
                                 title={formatDateTime(entry.at)}
@@ -143,7 +121,7 @@ export function GuestTimeline({
     );
 }
 
-function buildEntries(guest: Guest, { rsvps, messages }: TimelineData) {
+function buildEntries(guest: Guest, { rsvps, messages }: GuestDetailsData) {
     const entries: Entry[] = [
         {
             key: 'added',

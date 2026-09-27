@@ -82,7 +82,7 @@ export function TablePicker({
                                         className={cn(
                                             'text-xs',
                                             free > 0 && free < need
-                                                ? 'text-amber-700 dark:text-amber-400'
+                                                ? 'text-warning'
                                                 : 'text-muted-foreground',
                                         )}
                                     >

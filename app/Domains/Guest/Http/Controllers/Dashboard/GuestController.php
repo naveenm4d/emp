@@ -13,6 +13,7 @@ use App\Domains\Guest\Enums\GuestRsvpStatus;
 use App\Domains\Guest\Enums\GuestSource;
 use App\Domains\Guest\Http\Requests\Dashboard\StoreGuestRequest;
 use App\Domains\Guest\Http\Requests\Dashboard\UpdateGuestRequest;
+use App\Domains\Guest\Http\Resources\GuestDetails;
 use App\Domains\Guest\Http\Resources\GuestResource;
 use App\Domains\Guest\Models\Guest;
 use App\Domains\Rsvp\Support\RsvpMessage;
@@ -28,7 +29,7 @@ class GuestController extends InertiaController
         private readonly GuestQueryServiceInterface $guestQueries,
     ) {}
 
-    public function index(Request $request, Event $event): Response
+    public function index(Request $request, Event $event, GuestDetails $details): Response
     {
         $this->authorize('view', $event);
 
@@ -39,6 +40,8 @@ class GuestController extends InertiaController
             'guests' => GuestResource::collection($this->guestQueries->forEvent($event, $filters)),
             'summary' => $this->guestQueries->summary($event),
             'filters' => $filters->toArray(),
+            // The guest open in the details panel (?guest=).
+            'guestDetails' => fn () => $details->forRequest($event, $request),
             'defaultInvitationMessage' => RsvpMessage::DEFAULT,
             'defaultReminderMessage' => RsvpMessage::DEFAULT_REMINDER,
             'options' => [

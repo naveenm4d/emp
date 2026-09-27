@@ -2,7 +2,9 @@ import { Head, router } from '@inertiajs/react';
 import { Armchair, Plus, Sparkles, UserPlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import { EventTabs } from '@/components/events/event-tabs';
+import { SeatingPreview } from '@/components/plans/feature-previews';
+import { LockedEventPage } from '@/components/plans/locked-feature';
+import { FloorPlan } from '@/components/seating/floor-plan';
 import { GuestPicker } from '@/components/seating/guest-picker';
 import { SeatLegend, TableCard } from '@/components/seating/table-card';
 import { TableFormDialog } from '@/components/seating/table-form-dialog';
@@ -11,7 +13,9 @@ import { TableSheet } from '@/components/seating/table-sheet';
 import { EmptyState } from '@/components/shared/empty-state';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
-import ClientLayout from '@/layouts/client-layout';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import EventLayout from '@/layouts/event-layout';
+import { cn } from '@/lib/utils';
 import { auto, replace, swap } from '@/routes/client/events/seating';
 import { destroy as freeSeats } from '@/routes/client/guests/seats';
 import { destroy as destroyTable } from '@/routes/client/tables';
@@ -23,15 +27,23 @@ import type {
     Resource,
     SeatingGuest,
     SeatingSummary,
+    VenueElement,
+    VenueElementKindOption,
 } from '@/types';
 
 type Props = {
     event: Resource<Event>;
+    locked?: undefined;
     tables: EventTable[];
     guests: SeatingGuest[];
     summary: SeatingSummary;
     tableShapes: Option[];
+    venueElements: VenueElement[];
+    venueElementKinds: VenueElementKindOption[];
 };
+
+/** Not in the client's plan: the controller sends only the event. */
+type LockedProps = { event: Resource<Event>; locked: true };
 
 /**
  * Who is being moved with the table picker: the whole party, the party
@@ -48,17 +60,35 @@ type Picking =
     | { kind: 'swap'; guest: SeatingGuest }
     | { kind: 'replace'; guest: SeatingGuest };
 
+export default function Seating(props: Props | LockedProps) {
+    if (props.locked) {
+        return (
+            <LockedEventPage
+                event={props.event.data}
+                title="Seating"
+                feature="seating"
+                preview={<SeatingPreview />}
+            />
+        );
+    }
+
+    return <SeatingPage {...props} />;
+}
+
 /**
  * The event's Seating tab: tables with coloured seats (by RSVP status),
  * guests without a seat, and the tools to seat, move, swap or replace them.
- * A guest's plus-ones and children always sit with them.
+ * A guest's plus-ones and children always sit with them. The Map view is a
+ * floor plan where tables and venue elements are dragged into place.
  */
-export default function SeatingPage({
+function SeatingPage({
     event: { data: event },
     tables,
     guests,
     summary,
     tableShapes,
+    venueElements,
+    venueElementKinds,
 }: Props) {
     const editable = event.state !== 'cancelled';
     const byId = useMemo(
@@ -69,6 +99,7 @@ export default function SeatingPage({
     const [openTableId, setOpenTableId] = useState<string | null>(null);
     // The seat clicked on a table drawing, shown expanded in the table's panel.
     const [openSeat, setOpenSeat] = useState<number | null>(null);
+    const [view, setView] = useState<'list' | 'map'>('list');
     const [tableForm, setTableForm] = useState<{
         open: boolean;
         table: EventTable | null;
@@ -259,68 +290,159 @@ export default function SeatingPage({
     })();
 
     return (
-        <ClientLayout>
+        <EventLayout event={event}>
             <Head title={`Seating · ${event.title}`} />
             <PageHeader
-                title={event.title}
-                description={`${summary.seats_taken} / ${summary.seats_total} seats taken · ${summary.confirmed_seated} of ${summary.confirmed_people} confirmed people seated`}
+                eyebrow={event.title}
+                title="Seating"
+                description={`${summary.confirmed_seated} of ${summary.confirmed_people} seated · ${tables.length} ${tables.length === 1 ? 'table' : 'tables'}`}
                 actions={
-                    editable && (
-                        <>
-                            {summary.unseated.length > 0 &&
-                                tables.length > 0 && (
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => post(auto.url(event))}
-                                    >
-                                        <Sparkles /> Auto-seat
-                                    </Button>
-                                )}
-                            <Button
-                                onClick={() =>
-                                    setTableForm({ open: true, table: null })
-                                }
-                            >
-                                <Plus /> Add table
-                            </Button>
-                        </>
-                    )
+                    <>
+                        {tables.length > 0 && (
+                            <SegmentedControl
+                                label="Seating view"
+                                className="w-32"
+                                value={view}
+                                onChange={setView}
+                                items={[
+                                    { value: 'list' as const, label: 'List' },
+                                    { value: 'map' as const, label: 'Map' },
+                                ]}
+                            />
+                        )}
+                        {editable && (
+                            <>
+                                {summary.unseated.length > 0 &&
+                                    tables.length > 0 && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={() =>
+                                                post(auto.url(event))
+                                            }
+                                        >
+                                            <Sparkles />
+                                            <span className="max-sm:sr-only">
+                                                Auto-seat
+                                            </span>
+                                        </Button>
+                                    )}
+                                <Button
+                                    onClick={() =>
+                                        setTableForm({
+                                            open: true,
+                                            table: null,
+                                        })
+                                    }
+                                >
+                                    <Plus />
+                                    <span className="max-sm:sr-only">
+                                        Add table
+                                    </span>
+                                </Button>
+                            </>
+                        )}
+                    </>
                 }
             />
-            <EventTabs event={event} />
 
-            {summary.unseated.length > 0 && (
-                <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
-                    <p className="mb-2 text-sm font-medium">
-                        {summary.unseated.length} confirmed{' '}
-                        {summary.unseated.length === 1
-                            ? 'guest needs'
-                            : 'guests need'}{' '}
-                        a seat
-                    </p>
-                    <ul className="flex flex-wrap gap-2">
+            <div
+                className={cn(
+                    'grid grid-cols-1 gap-4',
+                    // The map takes the full width; unseated parties go under it.
+                    view === 'list' && 'lg:grid-cols-[minmax(0,1fr)_340px]',
+                )}
+            >
+                {tables.length === 0 ? (
+                    <div className="rounded-xl bg-card shadow-card">
+                        <EmptyState
+                            icon={Armchair}
+                            title="No tables yet"
+                            description="Add tables (like Table 1 or A) with their number of seats, then seat your guests."
+                        />
+                    </div>
+                ) : view === 'map' ? (
+                    <div className="min-w-0">
+                        <SeatLegend className="mb-3" />
+                        <FloorPlan
+                            className="-mx-3 md:mx-0 md:rounded-xl"
+                            event={event}
+                            tables={tables}
+                            elements={venueElements}
+                            kinds={venueElementKinds}
+                            editable={editable}
+                            onOpenTable={(table) => {
+                                setOpenSeat(null);
+                                setOpenTableId(table.id);
+                            }}
+                        />
+                        {editable && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                Drag tables and venue elements into place, drag
+                                the floor to move around, and tap a table to see
+                                its seats.
+                            </p>
+                        )}
+                    </div>
+                ) : (
+                    <div>
+                        <SeatLegend className="mb-4" />
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+                            {tables.map((table) => (
+                                <TableCard
+                                    key={table.id}
+                                    table={table}
+                                    onOpen={(seatNumber) => {
+                                        setOpenSeat(seatNumber ?? null);
+                                        setOpenTableId(table.id);
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {summary.unseated.length > 0 && (
+                    <section className="flex h-fit flex-col gap-2.5 rounded-t-[20px] bg-card px-4 pt-3 pb-5 shadow-[0_-6px_20px_rgba(0,0,0,0.14)] max-md:-mx-3 md:rounded-xl md:shadow-card">
+                        <div className="mx-auto h-1 w-10 rounded-full bg-foreground/14 md:hidden" />
+                        <div className="flex items-center justify-between gap-2">
+                            <h2 className="text-base font-bold">
+                                Unseated parties
+                            </h2>
+                            <span className="text-xs text-muted-foreground">
+                                {summary.unseated.length}{' '}
+                                {summary.unseated.length === 1
+                                    ? 'party'
+                                    : 'parties'}{' '}
+                                ·{' '}
+                                {peopleCount(
+                                    summary.unseated.reduce(
+                                        (sum, item) => sum + item.missing,
+                                        0,
+                                    ),
+                                )}
+                            </span>
+                        </div>
                         {summary.unseated.map((item) => {
                             const guest = byId.get(item.guest_id);
 
                             return (
-                                <li
+                                <div
                                     key={item.guest_id}
-                                    className="flex items-center gap-2 rounded-lg bg-background px-2.5 py-1.5 text-sm ring-1 ring-border"
+                                    className="flex items-center gap-2.5 rounded-xl border border-input p-2.5"
                                 >
-                                    <span>
-                                        {item.name}
-                                        <span className="ml-1 text-xs text-muted-foreground">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="truncate text-sm font-semibold">
+                                            {item.name}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
                                             {item.missing === item.party_size
-                                                ? item.party_size > 1
-                                                    ? `party of ${item.party_size}`
-                                                    : ''
+                                                ? peopleCount(item.party_size)
                                                 : `needs ${item.missing} more ${item.missing === 1 ? 'seat' : 'seats'}`}
-                                        </span>
-                                    </span>
-                                    {editable && guest && (
-                                        <Button
-                                            size="xs"
-                                            variant="outline"
+                                        </div>
+                                    </div>
+                                    {editable && guest && tables.length > 0 && (
+                                        <button
+                                            type="button"
                                             onClick={() =>
                                                 setMoving({
                                                     kind:
@@ -330,45 +452,20 @@ export default function SeatingPage({
                                                     guest,
                                                 })
                                             }
+                                            className="inline-flex h-7.5 items-center gap-1 rounded-full border border-input px-2.5 text-xs font-semibold hover:bg-raised"
                                         >
-                                            <UserPlus />
+                                            <UserPlus className="size-3.5" />
                                             {guest.seated > 0
-                                                ? 'Seat the rest at…'
-                                                : 'Seat at…'}
-                                        </Button>
+                                                ? 'Seat the rest'
+                                                : 'Seat'}
+                                        </button>
                                     )}
-                                </li>
+                                </div>
                             );
                         })}
-                    </ul>
-                </div>
-            )}
-
-            {tables.length === 0 ? (
-                <div className="rounded-xl border border-border bg-card">
-                    <EmptyState
-                        icon={Armchair}
-                        title="No tables yet"
-                        description="Add tables (like Table 1 or A) with their number of seats, then seat your guests."
-                    />
-                </div>
-            ) : (
-                <>
-                    <SeatLegend className="mb-4" />
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                        {tables.map((table) => (
-                            <TableCard
-                                key={table.id}
-                                table={table}
-                                onOpen={(seatNumber) => {
-                                    setOpenSeat(seatNumber ?? null);
-                                    setOpenTableId(table.id);
-                                }}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
+                    </section>
+                )}
+            </div>
 
             <TableSheet
                 table={openTable}
@@ -378,16 +475,10 @@ export default function SeatingPage({
                 onClose={() => setOpenTableId(null)}
                 onEdit={(table) => setTableForm({ open: true, table })}
                 onDelete={(table) => {
-                    if (
-                        confirm(
-                            `Remove ${table.name}? Everyone seated there loses their seat.`,
-                        )
-                    ) {
-                        setOpenTableId(null);
-                        router.delete(destroyTable.url(table), {
-                            preserveScroll: true,
-                        });
-                    }
+                    setOpenTableId(null);
+                    router.delete(destroyTable.url(table), {
+                        preserveScroll: true,
+                    });
                 }}
                 onSeatGuest={(table, seatNumber) =>
                     setPicking({ kind: 'seat', table, seatNumber })
@@ -451,6 +542,10 @@ export default function SeatingPage({
                     onPick={moveTo}
                 />
             )}
-        </ClientLayout>
+        </EventLayout>
     );
+}
+
+function peopleCount(count: number): string {
+    return `${count} ${count === 1 ? 'person' : 'people'}`;
 }

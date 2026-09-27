@@ -24,13 +24,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $seat_count
  * @property TableShape $shape how the table is drawn
  * @property int $sort_order
+ * @property int|null $pos_x where it stands on the floor plan (canvas units); null = not placed yet
+ * @property int|null $pos_y
  * @property-read Event $event
  * @property-read Collection<int, SeatAssignment> $seats
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  */
 #[UseFactory(EventTableFactory::class)]
-#[Fillable(['event_id', 'name', 'seat_count', 'shape', 'sort_order'])]
+#[Fillable(['event_id', 'name', 'seat_count', 'shape', 'sort_order', 'pos_x', 'pos_y'])]
 class EventTable extends Model
 {
     /** @use HasFactory<EventTableFactory> */
@@ -49,6 +51,8 @@ class EventTable extends Model
             'shape' => TableShape::class,
             'seat_count' => 'integer',
             'sort_order' => 'integer',
+            'pos_x' => 'integer',
+            'pos_y' => 'integer',
         ];
     }
 

@@ -1,52 +1,89 @@
-import { Link, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
+import type { LucideIcon } from 'lucide-react';
+import {
+    ClipboardList,
+    LayoutGrid,
+    ListChecks,
+    MessageCircle,
+    Palette,
+    Settings,
+    Sofa,
+    Users,
+} from 'lucide-react';
 
 import { useHasPlanFeature } from '@/lib/plans';
-import { cn } from '@/lib/utils';
-import { design, seating, settings, show } from '@/routes/client/events';
+import { design, edit, seating, settings, show } from '@/routes/client/events';
 import { index as guestsIndex } from '@/routes/client/events/guests';
-import { index as rsvpsIndex } from '@/routes/client/events/rsvps';
 import { index as notificationsIndex } from '@/routes/client/events/notifications';
+import { index as rsvpsIndex } from '@/routes/client/events/rsvps';
 import type { Event, PlanFeature } from '@/types';
 
-/** Sub-navigation shared by every page that belongs to one event. */
-export function EventTabs({ event }: { event: Event }) {
+export type EventTab = {
+    label: string;
+    href: string;
+    icon: LucideIcon;
+    active: boolean;
+    /** Kept on the phone tab bar; the rest go under "More". */
+    primary?: boolean;
+    /** Not in the client's plan: the tab stays, its page shows an upgrade prompt. */
+    locked: boolean;
+};
+
+/**
+ * The pages of one event, in the order of the event header (4b). Seating,
+ * RSVPs and Messages aren't part of the Starter plan: their tabs are locked.
+ */
+export function useEventTabs(event: Pick<Event, 'id'>): EventTab[] {
     const path = usePage().url.split('?')[0];
-    // Seating, RSVPs and Messages aren't part of the Starter plan.
     const hasFeature = useHasPlanFeature();
 
-    type Tab = { label: string; href: string; feature?: PlanFeature };
-
-    const all: Tab[] = [
-        { label: 'Overview', href: show.url(event) },
-        { label: 'Design', href: design.url(event) },
-        { label: 'Settings', href: settings.url(event) },
-        { label: 'Guests', href: guestsIndex.url(event) },
-        { label: 'Seating', href: seating.url(event), feature: 'seating' },
-        { label: 'RSVPs', href: rsvpsIndex.url(event), feature: 'rsvp_list' },
+    const all: (Omit<EventTab, 'active' | 'locked'> & {
+        feature?: PlanFeature;
+    })[] = [
+        {
+            label: 'Overview',
+            href: show.url(event.id),
+            icon: LayoutGrid,
+            primary: true,
+        },
+        {
+            label: 'Guests',
+            href: guestsIndex.url(event.id),
+            icon: Users,
+            primary: true,
+        },
+        {
+            label: 'RSVPs',
+            href: rsvpsIndex.url(event.id),
+            icon: ListChecks,
+            feature: 'rsvp_list',
+        },
+        {
+            label: 'RSVP form',
+            href: settings.url(event.id),
+            icon: ClipboardList,
+        },
         {
             label: 'Messages',
-            href: notificationsIndex.url(event),
+            href: notificationsIndex.url(event.id),
+            icon: MessageCircle,
             feature: 'message_log',
+            primary: true,
         },
+        { label: 'Design', href: design.url(event.id), icon: Palette },
+        {
+            label: 'Seating',
+            href: seating.url(event.id),
+            icon: Sofa,
+            feature: 'seating',
+            primary: true,
+        },
+        { label: 'Settings', href: edit.url(event.id), icon: Settings },
     ];
-    const tabs = all.filter((tab) => !tab.feature || hasFeature(tab.feature));
 
-    return (
-        <div className="mb-6 flex gap-1 overflow-x-auto border-b border-border">
-            {tabs.map((tab) => (
-                <Link
-                    key={tab.href}
-                    href={tab.href}
-                    className={cn(
-                        '-mb-px border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
-                        path === tab.href
-                            ? 'border-primary text-foreground'
-                            : 'border-transparent text-muted-foreground hover:text-foreground',
-                    )}
-                >
-                    {tab.label}
-                </Link>
-            ))}
-        </div>
-    );
+    return all.map(({ feature, ...tab }) => ({
+        ...tab,
+        active: path === tab.href,
+        locked: !!feature && !hasFeature(feature),
+    }));
 }

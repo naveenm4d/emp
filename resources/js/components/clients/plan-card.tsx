@@ -72,7 +72,7 @@ export function PlanCard({
                         {usage.message_limits.reminders} reminders per guest
                     </p>
                     {usage.reason && (
-                        <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                        <p className="mt-1 text-xs text-warning">
                             {usage.reason}
                         </p>
                     )}

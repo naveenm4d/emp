@@ -176,7 +176,7 @@ export function TableCard({
                     onOpen();
                 }
             }}
-            className="group flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="group flex cursor-pointer flex-col items-center gap-2 rounded-xl bg-card p-4 shadow-card ring-1 ring-transparent transition-colors hover:ring-primary/40 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
         >
             <svg
                 viewBox={`0 0 ${layout.width} ${layout.height}`}

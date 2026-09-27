@@ -3,7 +3,7 @@ import { ArrowDown, ArrowUp, Eye, Plus, Trash2, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 
-import { EventTabs } from '@/components/events/event-tabs';
+import { ConfirmBar, useConfirm } from '@/components/shared/confirm-bar';
 import { FormField } from '@/components/shared/form-field';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { RegistrationDialog } from '@/components/web/invitation/registration-dialog';
-import ClientLayout from '@/layouts/client-layout';
+import { rsvpSubtitle } from '@/components/web/invitation/rsvp-actions';
+import EventLayout from '@/layouts/event-layout';
 import { update } from '@/routes/client/events/settings';
 import type { Event, Option, Resource } from '@/types';
 import type {
@@ -185,10 +186,11 @@ export default function EventSettingsPage({
     };
 
     return (
-        <ClientLayout>
+        <EventLayout event={event}>
             <Head title={`Settings · ${event.title}`} />
             <PageHeader
-                title={event.title}
+                eyebrow={event.title}
+                title="RSVP form"
                 description="Choose what guests are asked when they register or RSVP."
                 actions={
                     <Button
@@ -201,7 +203,6 @@ export default function EventSettingsPage({
                     </Button>
                 }
             />
-            <EventTabs event={event} />
 
             <form onSubmit={submit} className="grid gap-6 lg:grid-cols-3">
                 <fieldset
@@ -524,14 +525,10 @@ export default function EventSettingsPage({
                 mode={publicRegistration ? 'register' : 'rsvp'}
                 form={preview}
                 url={null}
-                title={
-                    publicRegistration
-                        ? `Join ${event.title}`
-                        : "Great, you're coming!"
-                }
-                description="Preview of what guests fill in."
+                subtitle={rsvpSubtitle(event)}
+                note="Preview of what guests fill in."
             />
-        </ClientLayout>
+        </EventLayout>
     );
 }
 
@@ -558,6 +555,7 @@ function QuestionEditor({
     onMove: (by: -1 | 1) => void;
     onRemove: () => void;
 }) {
+    const confirmation = useConfirm();
     const hasOptions = OPTION_TYPES.includes(question.type);
     const options = question.options ?? [];
     const optionError = Object.entries(errors).find(([key]) =>
@@ -604,7 +602,12 @@ function QuestionEditor({
                         </option>
                     ))}
                 </Select>
-                <div className="flex items-center">
+                <div className="relative flex items-center">
+                    <ConfirmBar
+                        variant="pop"
+                        request={confirmation.request}
+                        onCancel={confirmation.cancel}
+                    />
                     <Button
                         type="button"
                         variant="ghost"
@@ -630,16 +633,15 @@ function QuestionEditor({
                         variant="ghost"
                         size="icon"
                         aria-label="Remove question"
-                        onClick={() => {
-                            if (
-                                !answered ||
-                                window.confirm(
-                                    'Guests already answered this question. Removing it deletes their answers when you save.',
-                                )
-                            ) {
-                                onRemove();
-                            }
-                        }}
+                        onClick={() =>
+                            answered
+                                ? confirmation.ask({
+                                      title: 'Guests answered this. Remove it and their answers when you save?',
+                                      confirmLabel: 'Remove',
+                                      onConfirm: onRemove,
+                                  })
+                                : onRemove()
+                        }
                     >
                         <Trash2 className="size-4" />
                     </Button>

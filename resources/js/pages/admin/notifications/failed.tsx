@@ -35,7 +35,7 @@ export default function FailedNotifications({
                 description="Messages that could not be delivered after automatic retries."
             />
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="overflow-hidden rounded-lg bg-card shadow-card">
                 {notifications.data.length === 0 ? (
                     <EmptyState
                         icon={CheckCircle2}

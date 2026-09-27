@@ -88,7 +88,7 @@ class GuestRepository extends BaseRepository implements GuestRepositoryInterface
             $bindings[] = $status->value;
         }
 
-        foreach ([GuestRsvpStatus::Confirmed, GuestRsvpStatus::Declined, GuestRsvpStatus::Maybe] as $status) {
+        foreach (GuestRsvpStatus::cases() as $status) {
             $select[] = "count(*) filter (where rsvp_status = ?) as rsvp_{$status->value}";
             $bindings[] = $status->value;
         }
@@ -96,6 +96,11 @@ class GuestRepository extends BaseRepository implements GuestRepositoryInterface
         // People expected: confirmed guests with their plus-ones and children.
         $select[] = 'coalesce(sum(1 + additional_guests + children) filter (where rsvp_status = ?), 0) as headcount';
         $bindings[] = GuestRsvpStatus::Confirmed->value;
+
+        // Who makes up that headcount besides the guests themselves.
+        $select[] = 'coalesce(sum(additional_guests) filter (where rsvp_status = ?), 0) as confirmed_additional';
+        $select[] = 'coalesce(sum(children) filter (where rsvp_status = ?), 0) as confirmed_children';
+        array_push($bindings, GuestRsvpStatus::Confirmed->value, GuestRsvpStatus::Confirmed->value);
 
         // Everyone holding a seat (pending or approved) with their party, whether or not they replied.
         $capacity = ApprovalStatus::capacityStatuses();

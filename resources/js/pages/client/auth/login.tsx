@@ -16,7 +16,7 @@ export default function Login({ status }: { status?: string }) {
             description="Manage your events, guests and invitations."
         >
             {status && (
-                <p className="mb-4 rounded-md bg-emerald-50 p-2 text-sm text-emerald-700">
+                <p className="mb-4 rounded-md bg-success-muted p-2 text-sm text-success">
                     {status}
                 </p>
             )}

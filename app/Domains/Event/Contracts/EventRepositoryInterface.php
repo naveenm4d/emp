@@ -24,6 +24,13 @@ interface EventRepositoryInterface extends RepositoryInterface
     /** @return LengthAwarePaginator<int, Event> */
     public function paginateAll(EventFilters $filters, int $perPage): LengthAwarePaginator;
 
+    /**
+     * Figures for a client's events list header.
+     *
+     * @return array{upcoming: int, drafts: int, waiting: int}
+     */
+    public function totalsForClient(string $clientId): array;
+
     /** @return array<string, int> state => count */
     public function countByState(?string $clientId = null): array;
 

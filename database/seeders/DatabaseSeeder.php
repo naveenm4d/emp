@@ -44,7 +44,8 @@ class DatabaseSeeder extends Seeder
         StaffMember::factory()->superAdmin()->create(['name' => 'EMP Admin', 'email' => 'admin@emp.test']);
         StaffMember::factory()->role(StaffRole::Viewer)->create(['name' => 'EMP Viewer', 'email' => 'viewer@emp.test']);
 
-        $client = Client::factory()->create(['name' => 'Demo Client', 'email' => 'client@emp.test']);
+        // On Business for a year, so all three demo events (and seating, RSVPs, messages) work.
+        $client = Client::factory()->business(now()->addYear())->create(['name' => 'Demo Client', 'email' => 'client@emp.test']);
 
         $gala = Event::factory()->for($client)->openForRegistration()->capacity(100)
             ->registrationSettings([

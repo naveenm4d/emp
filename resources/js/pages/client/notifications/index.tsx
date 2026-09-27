@@ -1,7 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { MessageSquare } from 'lucide-react';
 
-import { EventTabs } from '@/components/events/event-tabs';
 import { EmptyState } from '@/components/shared/empty-state';
 import { PageHeader } from '@/components/shared/page-header';
 import { Pagination } from '@/components/shared/pagination';
@@ -14,28 +13,48 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import ClientLayout from '@/layouts/client-layout';
+import { MessagesPreview } from '@/components/plans/feature-previews';
+import { LockedEventPage } from '@/components/plans/locked-feature';
+import EventLayout from '@/layouts/event-layout';
 import { formatDateTime } from '@/lib/format';
 import { show } from '@/routes/client/notifications';
 import type { Event, Notification, Paginated, Resource } from '@/types';
 
-export default function NotificationsIndex({
-    event: { data: event },
-    notifications,
-}: {
+type Props = {
     event: Resource<Event>;
+    locked?: undefined;
     notifications: Paginated<Notification>;
-}) {
+};
+
+/** Not in the client's plan: the controller sends only the event. */
+type LockedProps = { event: Resource<Event>; locked: true };
+
+export default function NotificationsIndex(props: Props | LockedProps) {
+    if (props.locked) {
+        return (
+            <LockedEventPage
+                event={props.event.data}
+                title="Messages"
+                feature="message_log"
+                preview={<MessagesPreview />}
+            />
+        );
+    }
+
+    return <MessagesPage {...props} />;
+}
+
+function MessagesPage({ event: { data: event }, notifications }: Props) {
     return (
-        <ClientLayout>
+        <EventLayout event={event}>
             <Head title={`Messages · ${event.title}`} />
             <PageHeader
-                title={event.title}
+                eyebrow={event.title}
+                title="Messages"
                 description="Messages sent to your guests."
             />
-            <EventTabs event={event} />
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="overflow-hidden rounded-lg bg-card shadow-card">
                 {notifications.data.length === 0 ? (
                     <EmptyState
                         icon={MessageSquare}
@@ -89,6 +108,6 @@ export default function NotificationsIndex({
                 )}
                 <Pagination meta={notifications.meta} />
             </div>
-        </ClientLayout>
+        </EventLayout>
     );
 }

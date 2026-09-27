@@ -46,9 +46,14 @@ class ClientPlanService extends BaseService implements ClientPlanServiceInterfac
         $client->event_credits = $locked->event_credits;
     }
 
+    public function hasFeature(Client $client, PlanFeature $feature): bool
+    {
+        return $client->plan->hasFeature($feature);
+    }
+
     public function ensureFeature(Client $client, PlanFeature $feature): void
     {
-        if (! $client->plan->hasFeature($feature)) {
+        if (! $this->hasFeature($client, $feature)) {
             throw PlanFeatureUnavailableException::for($feature);
         }
     }

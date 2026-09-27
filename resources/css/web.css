@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* Dashboard tokens, so the EMP popups on guest pages (`.nocturne`) are styled. */
+@import './theme.css';
 
 @source '../views';
 

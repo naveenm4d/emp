@@ -1,7 +1,9 @@
 <?php
 
 use App\Domains\Client\Models\Client;
+use App\Domains\Event\Enums\RegistrationType;
 use App\Domains\Event\Models\Event;
+use App\Domains\Notification\Models\Notification;
 use App\Domains\Staff\Enums\StaffPermission;
 use App\Domains\Staff\Enums\StaffRole;
 use App\Domains\Staff\Models\StaffMember;
@@ -104,6 +106,35 @@ it('lists events across all clients with their owner', function () {
             ->component('admin/events/index')
             ->where('events.data.0.client.id', $event->client_id));
 });
+
+it('lists upcoming events by default and filters by registration type', function () {
+    $open = Event::factory()->create(['title' => 'Open day', 'registration_type' => RegistrationType::Open]);
+    Event::factory()->create(['title' => 'Private', 'registration_type' => RegistrationType::GuestListOnly]);
+    Event::factory()->create(['title' => 'Held', 'event_date' => now()->subWeek()->toDateString()]);
+    $this->actingAs(StaffMember::factory()->withPermissions([StaffPermission::EventsRead])->create(), 'staff');
+
+    $this->get('/admin/events')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.period', 'upcoming')
+            ->has('events.data', 2));
+
+    $this->get('/admin/events?period=all&registration_type=open')
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('events.data', 1)
+            ->where('events.data.0.id', $open->id));
+});
+
+it('shares the failed message count only with staff who can read notifications', function (array $permissions, ?int $expected) {
+    Notification::factory()->failed()->count(2)->create();
+    $this->actingAs(StaffMember::factory()->withPermissions([StaffPermission::EventsRead, ...$permissions])->create(), 'staff');
+
+    $response = $this->get('/admin/events');
+
+    $response->assertInertia(fn (Assert $page) => $page->where('failedMessages', $expected));
+})->with([
+    'can read notifications' => [[StaffPermission::NotificationsRead], 2],
+    'cannot' => [[], null],
+]);
 
 it('lists clients with their event counts', function () {
     Event::factory()->count(2)->create(['client_id' => Client::factory()->create()->id]);

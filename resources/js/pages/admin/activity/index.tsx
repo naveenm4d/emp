@@ -87,7 +87,7 @@ export default function ActivityIndex({
                 )}
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="overflow-hidden rounded-lg bg-card shadow-card">
                 {activities.data.length === 0 ? (
                     <EmptyState
                         icon={History}

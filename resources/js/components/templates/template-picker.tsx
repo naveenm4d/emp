@@ -4,13 +4,13 @@ import {
     Image,
     LayoutGrid,
     Music,
+    Search,
     SearchX,
     Video,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { TemplatePreviewDialog } from '@/components/templates/template-preview-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -19,7 +19,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { templatePrice } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -148,12 +147,12 @@ function ChosenDesign({
     onChange: () => void;
 }) {
     return (
-        <div className="flex flex-col gap-4 rounded-lg border border-primary/40 bg-primary/5 p-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-4 rounded-xl bg-accent p-3 sm:flex-row sm:items-center">
             <button
                 type="button"
                 onClick={onPreview}
                 aria-label={`Preview ${template.name}`}
-                className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-md bg-muted sm:w-40"
+                className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-md bg-raised sm:w-40"
             >
                 {template.thumbnail_url ? (
                     <img
@@ -162,7 +161,7 @@ function ChosenDesign({
                         className="h-full w-full object-cover"
                     />
                 ) : (
-                    <span className="flex h-full items-center justify-center bg-gradient-to-br from-muted to-secondary text-3xl font-semibold text-muted-foreground/60">
+                    <span className="flex h-full items-center justify-center text-3xl font-light text-muted-foreground">
                         {template.name.charAt(0)}
                     </span>
                 )}
@@ -256,52 +255,74 @@ export function TemplateGallery({
 
     return (
         <div className={cn('flex flex-col', className)}>
-            <div className="flex flex-wrap items-center gap-2 border-b p-4">
-                <Input
-                    className="min-w-48 flex-1"
-                    placeholder="Search name, tag or author…"
-                    aria-label="Search templates"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
-                <Select
-                    className="w-auto"
+            <div className="flex flex-col gap-3 pb-3">
+                <div className="flex flex-wrap items-center gap-2">
+                    <label className="relative min-w-48 flex-1">
+                        <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-subtle" />
+                        <input
+                            type="search"
+                            className="h-11 w-full rounded-xl bg-background pr-3 pl-10 text-sm outline-none placeholder:text-subtle focus-visible:ring-3 focus-visible:ring-ring/50 md:h-10"
+                            placeholder="Search templates"
+                            aria-label="Search templates"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </label>
+                    <Select
+                        className="hidden w-auto sm:block"
+                        aria-label="Price"
+                        value={price}
+                        onChange={(e) =>
+                            setPrice(e.target.value as PriceFilter)
+                        }
+                    >
+                        <option value="">Any price</option>
+                        <option value="free">Free</option>
+                        <option value="paid">Paid</option>
+                    </Select>
+                    <Select
+                        className="hidden w-auto sm:block"
+                        aria-label="Media"
+                        value={media}
+                        onChange={(e) =>
+                            setMedia(e.target.value as MediaFilter)
+                        }
+                    >
+                        <option value="">Any media</option>
+                        <option value="video">With video</option>
+                        <option value="music">With music</option>
+                    </Select>
+                    <span className="hidden text-xs text-muted-foreground sm:inline">
+                        {filtered.length} of {templates.length}
+                    </span>
+                </div>
+                <div
+                    role="tablist"
                     aria-label="Category"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    className="flex scrollbar-thin gap-4 overflow-x-auto border-b border-border text-sm font-semibold whitespace-nowrap"
                 >
-                    <option value="">All categories</option>
-                    {categories.map(([value, label]) => (
-                        <option key={value} value={value}>
-                            {label}
-                        </option>
-                    ))}
-                </Select>
-                <Select
-                    className="w-auto"
-                    aria-label="Price"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value as PriceFilter)}
-                >
-                    <option value="">Any price</option>
-                    <option value="free">Free</option>
-                    <option value="paid">Paid</option>
-                </Select>
-                <Select
-                    className="w-auto"
-                    aria-label="Media"
-                    value={media}
-                    onChange={(e) => setMedia(e.target.value as MediaFilter)}
-                >
-                    <option value="">Any media</option>
-                    <option value="video">With video</option>
-                    <option value="music">With music</option>
-                </Select>
-                <span className="text-xs text-muted-foreground">
-                    {filtered.length} of {templates.length}
-                </span>
+                    {[['', 'All'] as const, ...categories].map(
+                        ([value, label]) => (
+                            <button
+                                key={value}
+                                type="button"
+                                role="tab"
+                                aria-selected={category === value}
+                                onClick={() => setCategory(value)}
+                                className={cn(
+                                    '-mb-px shrink-0 border-b-3 pb-2 transition-colors',
+                                    category === value
+                                        ? 'border-primary text-foreground'
+                                        : 'border-transparent text-subtle hover:text-foreground',
+                                )}
+                            >
+                                {label}
+                            </button>
+                        ),
+                    )}
+                </div>
             </div>
-            <div className="p-4">
+            <div className="pt-1">
                 {filtered.length === 0 ? (
                     <div className="flex flex-col items-center gap-3 py-16 text-center text-muted-foreground">
                         <SearchX className="size-8" />
@@ -319,7 +340,7 @@ export function TemplateGallery({
                         templates={filtered}
                         selectedId={selectedId}
                         onOpen={onOpen}
-                        className="lg:grid-cols-3 xl:grid-cols-4"
+                        className="md:grid-cols-3 xl:grid-cols-4"
                     />
                 )}
             </div>
@@ -347,7 +368,7 @@ function TemplateGrid({
             aria-label="Invitation templates"
             aria-invalid={invalid}
             className={cn(
-                'grid gap-3 sm:grid-cols-2 xl:grid-cols-3',
+                'grid grid-cols-2 gap-x-3 gap-y-3.5 xl:grid-cols-3',
                 className,
             )}
         >
@@ -362,14 +383,16 @@ function TemplateGrid({
                         aria-current={selected || undefined}
                         aria-label={`Preview ${template.name}${selected ? ' (current design)' : ''}`}
                         onClick={() => onOpen(template)}
-                        className={cn(
-                            'group relative flex flex-col overflow-hidden rounded-lg border text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
-                            selected
-                                ? 'border-primary ring-1 ring-primary'
-                                : 'border-border hover:border-foreground/30',
-                        )}
+                        className="group flex flex-col gap-1.5 rounded-lg text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
-                        <div className="relative aspect-[4/3] bg-muted">
+                        <div
+                            className={cn(
+                                'relative aspect-[3/4] overflow-hidden rounded-lg bg-raised',
+                                selected
+                                    ? 'ring-2 ring-strong'
+                                    : invalid && 'ring-1 ring-destructive',
+                            )}
+                        >
                             {template.thumbnail_url ? (
                                 <img
                                     src={template.thumbnail_url}
@@ -377,40 +400,30 @@ function TemplateGrid({
                                     className="h-full w-full object-cover"
                                 />
                             ) : (
-                                <div className="flex h-full items-center justify-center bg-gradient-to-br from-muted to-secondary text-3xl font-semibold text-muted-foreground/60">
+                                <div className="flex h-full items-center justify-center text-3xl font-light text-muted-foreground">
                                     {template.name.charAt(0)}
                                 </div>
                             )}
                             {selected && (
-                                <span className="absolute top-2 right-2 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                                    <Check className="size-4" />
+                                <span className="absolute top-2 right-2 flex size-5.5 items-center justify-center rounded-full bg-strong text-strong-foreground">
+                                    <Check className="size-3.5" />
                                 </span>
                             )}
                             <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-sm font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                                 <Eye className="mr-1.5 size-4" /> Preview
                             </span>
                         </div>
-                        <div className="flex flex-1 flex-col gap-1.5 p-3">
-                            <div className="flex items-start justify-between gap-2">
-                                <span className="font-medium">
-                                    {template.name}
-                                </span>
-                                <Badge
-                                    variant={
-                                        template.is_free
-                                            ? 'secondary'
-                                            : 'outline'
-                                    }
-                                >
-                                    {templatePrice(template)}
-                                </Badge>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                                {template.category_label} · by {template.author}
-                                {template.version && ` · v${template.version}`}
+                        <div className="flex items-start justify-between gap-2">
+                            <span className="text-[13px] font-semibold">
+                                {template.name}
                             </span>
-                            <MediaSummary template={template} />
+                            <span className="shrink-0 text-xs text-muted-foreground">
+                                {templatePrice(template)}
+                            </span>
                         </div>
+                        <span className="-mt-1 text-xs text-subtle">
+                            {template.category_label}
+                        </span>
                     </button>
                 );
             })}

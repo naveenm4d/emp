@@ -14,6 +14,9 @@ interface SeatAssignmentRepositoryInterface extends RepositoryInterface
     /** @return Collection<int, SeatAssignment> the guest's party, by party member */
     public function forGuest(string $guestId): Collection;
 
+    /** Seats held by guests of the event who confirmed (one per seated person). */
+    public function countConfirmedForEvent(string $eventId): int;
+
     /** @return list<int> taken seat numbers at the table */
     public function takenSeats(string $tableId): array;
 

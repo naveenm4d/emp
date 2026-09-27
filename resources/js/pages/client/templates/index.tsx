@@ -23,7 +23,7 @@ export default function TemplatesIndex({
                 title="Invitation designs"
                 description="Preview any design, then start an event with the one you like."
             />
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="-mx-3 -mt-3 bg-card px-4 pt-3 pb-6 md:mx-0 md:mt-0 md:rounded-xl md:p-4 md:shadow-card">
                 <TemplateGallery
                     templates={templates.data}
                     onOpen={setPreviewing}

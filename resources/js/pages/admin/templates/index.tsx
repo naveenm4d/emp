@@ -107,7 +107,7 @@ export default function TemplatesIndex({
                 </Select>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="overflow-hidden rounded-lg bg-card shadow-card">
                 {templates.data.length === 0 ? (
                     <EmptyState
                         icon={LayoutTemplate}

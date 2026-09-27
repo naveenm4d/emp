@@ -40,7 +40,7 @@ class GuestResource extends JsonResource
             'dietary_restrictions' => $this->dietary_restrictions ?? [],
             'dietary_notes' => $this->dietary_notes,
             'link_url' => $this->whenLoaded('link', fn () => $this->link?->url()),
-            'link_open_count' => $this->whenLoaded('link', fn () => $this->link?->open_count ?? 0),
+            'link_open_count' => $this->whenLoaded('link', fn () => $this->link->open_count ?? 0),
             'link_last_opened_at' => $this->whenLoaded('link', fn () => $this->link?->last_opened_at?->toIso8601String()),
             'latest_rsvp' => RsvpResource::make($this->whenLoaded('latestRsvp')),
             // Invitations / reminders sent so far (not counting failed ones), against the event's limits.

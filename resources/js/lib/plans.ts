@@ -36,3 +36,11 @@ export function planSummary(plan: ClientPlanUsage): string {
 
     return `${plan.label} plan`;
 }
+
+/** What each plan feature is called (matches `PlanFeature::label()`). */
+export const PLAN_FEATURE_LABELS: Record<PlanFeature, string> = {
+    public_registration: 'Public registration',
+    seating: 'Seating plans',
+    rsvp_list: 'RSVP tracking',
+    message_log: 'Message log & read receipts',
+};

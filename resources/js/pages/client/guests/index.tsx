@@ -1,19 +1,26 @@
-import { Head, router, usePoll } from '@inertiajs/react';
-import { Plus, Users } from 'lucide-react';
+import { Head, router, usePage, usePoll } from '@inertiajs/react';
+import {
+    AlertTriangle,
+    Check,
+    CircleDashed,
+    Search,
+    UserPlus,
+    Users,
+    X,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 
-import { EventTabs } from '@/components/events/event-tabs';
 import { GuestActions } from '@/components/guests/guest-actions';
-import { GuestForm } from '@/components/guests/guest-form';
+import { GuestFormDialog } from '@/components/guests/guest-form';
 import { GuestDetailsSheet } from '@/components/guests/guest-details-sheet';
+import type { GuestDetailsData } from '@/components/guests/guest-timeline';
 import { rsvpDisplayStatus } from '@/components/rsvps/rsvp-status';
 import { EmptyState } from '@/components/shared/empty-state';
 import { PageHeader } from '@/components/shared/page-header';
 import { Pagination } from '@/components/shared/pagination';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import {
     Table,
@@ -23,11 +30,17 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import ClientLayout from '@/layouts/client-layout';
-import { showsApproval } from '@/lib/guests';
+import EventLayout from '@/layouts/event-layout';
+import { initials, timeAgo } from '@/lib/format';
+import {
+    invitationState,
+    loadGuestDetails,
+    openGuestId,
+    showsApproval,
+} from '@/lib/guests';
 import { cn } from '@/lib/utils';
 import { index, store } from '@/routes/client/events/guests';
-import { update } from '@/routes/client/guests';
+import { approve, reject, update } from '@/routes/client/guests';
 import type {
     Event,
     Guest,
@@ -49,6 +62,8 @@ type Props = {
     guests: Paginated<Guest>;
     summary: GuestSummary;
     filters: Filters;
+    /** History and answers of the guest open in the panel (?guest=). */
+    guestDetails?: GuestDetailsData | null;
     defaultInvitationMessage: string;
     defaultReminderMessage: string;
     options: {
@@ -63,6 +78,7 @@ export default function GuestsIndex({
     guests,
     summary,
     filters,
+    guestDetails,
     defaultInvitationMessage,
     defaultReminderMessage,
     options,
@@ -71,29 +87,37 @@ export default function GuestsIndex({
     const eventReminder = event.reminder_message ?? defaultReminderMessage;
 
     const [adding, setAdding] = useState(false);
+    // A fresh add form each time the popup opens.
+    const [addKey, setAddKey] = useState(0);
     const [editing, setEditing] = useState<string | null>(null);
 
     // Picks up RSVP replies and WhatsApp delivery updates without a manual reload.
-    usePoll(5000, { only: ['guests', 'summary'] });
+    usePoll(5000, { only: ['guests', 'summary', 'guestDetails'] });
 
     const approval = showsApproval(event, summary);
 
     // Looked up in the (polled) list, so the details panel and edit form stay current.
-    const [selected, setSelected] = useState<string | null>(null);
+    const { url } = usePage();
+    const [selected, setSelected] = useState<string | null>(() =>
+        openGuestId(url),
+    );
+    const select = (guestId: string | null) => {
+        if (guestId === selected) {
+            return;
+        }
+
+        setSelected(guestId);
+        loadGuestDetails(guestId);
+    };
     const selectedGuest =
         guests.data.find((guest) => guest.id === selected) ?? null;
     const editingGuest =
         guests.data.find((guest) => guest.id === editing) ?? null;
 
-    /** Opens the edit form above the list and brings it into view (it may be off-screen on phones). */
+    /** Closes the details panel and opens the edit popup. */
     const startEditing = (guestId: string) => {
-        setSelected(null);
+        select(null);
         setEditing(guestId);
-        requestAnimationFrame(() =>
-            document
-                .getElementById('guest-edit')
-                ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-        );
     };
 
     const filter = (changes: Partial<Filters>) =>
@@ -110,102 +134,121 @@ export default function GuestsIndex({
             : `${summary.total} / ${event.guest_limit} guests`;
 
     return (
-        <ClientLayout>
+        <EventLayout event={event}>
             <Head title={`Guests · ${event.title}`} />
             <PageHeader
-                title={event.title}
+                eyebrow={event.title}
+                title="Guests"
                 description={
-                    (approval
-                        ? `${guestCount} · ${summary.approved} approved · ${summary.pending} pending · ${summary.waitlisted} waitlisted`
-                        : guestCount) +
-                    ` · headcount ${summary.headcount} confirmed, ${summary.headcount_total} expected`
+                    <span className="hidden md:inline">
+                        {(approval
+                            ? `${guestCount} · ${summary.approved} approved · ${summary.pending} pending · ${summary.waitlisted} waitlisted`
+                            : guestCount) +
+                            ` · headcount ${summary.headcount} confirmed, ${summary.headcount_total} expected`}
+                    </span>
                 }
                 actions={
                     event.state !== 'cancelled' && (
-                        <Button onClick={() => setAdding(true)}>
-                            <Plus /> Add guest
+                        <Button
+                            size="lg"
+                            onClick={() => {
+                                setAddKey((key) => key + 1);
+                                setAdding(true);
+                            }}
+                            className="fixed right-4 bottom-24 z-30 h-13 rounded-full px-5 text-sm shadow-[0_6px_14px_color-mix(in_srgb,var(--primary)_35%,transparent)] md:static md:h-10 md:rounded-md md:shadow-none"
+                        >
+                            <UserPlus /> Add guest
                         </Button>
                     )
                 }
             />
-            <EventTabs event={event} />
 
-            {adding && (
-                <Card className="mb-4">
-                    <CardContent>
-                        <GuestForm
-                            defaultMessage={eventMessage}
-                            defaultReminderMessage={eventReminder}
-                            submitLabel="Add"
-                            onCancel={() => setAdding(false)}
-                            onSubmit={(form) =>
-                                form.post(store.url(event), {
-                                    preserveScroll: true,
-                                    onSuccess: () => form.reset(),
-                                })
-                            }
-                        />
-                    </CardContent>
-                </Card>
-            )}
+            <GuestFormDialog
+                key={`add-${addKey}`}
+                open={adding}
+                onOpenChange={setAdding}
+                subtitle={event.title}
+                defaultMessage={eventMessage}
+                defaultReminderMessage={eventReminder}
+                onSubmit={(form, done) =>
+                    form.post(store.url(event), {
+                        preserveScroll: true,
+                        onSuccess: (page) => !page.props.flash.error && done(),
+                    })
+                }
+            />
 
             {editingGuest && (
-                <Card id="guest-edit" className="mb-4 scroll-mt-4">
-                    <CardContent className="space-y-3">
-                        <p className="text-sm font-medium">
-                            Edit {editingGuest.name}
-                        </p>
-                        <GuestForm
-                            key={editingGuest.id}
-                            guest={editingGuest}
-                            defaultMessage={eventMessage}
-                            defaultReminderMessage={eventReminder}
-                            submitLabel="Save"
-                            onCancel={() => setEditing(null)}
-                            onSubmit={(form) =>
-                                form.patch(update.url(editingGuest), {
-                                    preserveScroll: true,
-                                    onSuccess: () => setEditing(null),
-                                })
-                            }
-                        />
-                    </CardContent>
-                </Card>
-            )}
-
-            <div className="mb-4 flex flex-wrap gap-2">
-                <Input
-                    className="w-full sm:max-w-xs"
-                    placeholder="Search name, email or phone…"
-                    defaultValue={filters.search ?? ''}
-                    onKeyDown={(e) =>
-                        e.key === 'Enter' &&
-                        filter({ search: e.currentTarget.value || null })
+                <GuestFormDialog
+                    key={editingGuest.id}
+                    open
+                    onOpenChange={(open) => !open && setEditing(null)}
+                    guest={editingGuest}
+                    subtitle={event.title}
+                    defaultMessage={eventMessage}
+                    defaultReminderMessage={eventReminder}
+                    onSubmit={(form, done) =>
+                        form.patch(update.url(editingGuest), {
+                            preserveScroll: true,
+                            onSuccess: (page) =>
+                                !page.props.flash.error && done(),
+                        })
                     }
                 />
-                {approval && (
-                    <FilterSelect
-                        label="All approvals"
-                        value={filters.approval_status}
-                        options={options.approval_statuses}
-                        onChange={(v) => filter({ approval_status: v })}
+            )}
+
+            <div className="mb-3 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+                <label className="relative md:w-72">
+                    <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-subtle" />
+                    <input
+                        type="search"
+                        className="h-11 w-full rounded-xl bg-card pr-3 pl-10 text-sm shadow-card outline-none placeholder:text-subtle focus-visible:ring-3 focus-visible:ring-ring/50 md:h-10"
+                        placeholder="Name, phone or email"
+                        defaultValue={filters.search ?? ''}
+                        onKeyDown={(e) =>
+                            e.key === 'Enter' &&
+                            filter({ search: e.currentTarget.value || null })
+                        }
                     />
-                )}
-                <FilterSelect
-                    label="All RSVPs"
-                    value={filters.rsvp_status}
-                    options={options.rsvp_statuses}
-                    onChange={(v) => filter({ rsvp_status: v })}
-                />
-                <FilterSelect
-                    label="All sources"
-                    value={filters.source}
-                    options={options.sources}
-                    onChange={(v) => filter({ source: v })}
-                />
+                </label>
+                <div className="-mx-3 flex scrollbar-thin gap-2 overflow-x-auto px-3 md:mx-0 md:px-0">
+                    {chips(summary, approval).map((chip) => {
+                        const active =
+                            filters.approval_status ===
+                                (chip.filters.approval_status ?? null) &&
+                            filters.rsvp_status ===
+                                (chip.filters.rsvp_status ?? null);
+
+                        return (
+                            <FilterChip
+                                key={chip.label}
+                                active={active}
+                                count={chip.count}
+                                highlight={chip.highlight}
+                                onClick={() =>
+                                    filter({
+                                        approval_status: null,
+                                        rsvp_status: null,
+                                        ...chip.filters,
+                                    })
+                                }
+                            >
+                                {chip.label}
+                            </FilterChip>
+                        );
+                    })}
+                </div>
+                <div className="hidden md:ml-auto md:block">
+                    <FilterSelect
+                        label="All sources"
+                        value={filters.source}
+                        options={options.sources}
+                        onChange={(v) => filter({ source: v })}
+                    />
+                </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="-mx-3 overflow-hidden bg-card md:mx-0 md:rounded-lg md:shadow-card">
                 {guests.data.length === 0 ? (
                     <EmptyState
                         icon={Users}
@@ -214,41 +257,12 @@ export default function GuestsIndex({
                     />
                 ) : (
                     <>
-                        {/* Phones: one tappable card per guest */}
-                        <ul className="divide-y divide-border md:hidden">
-                            {guests.data.map((guest) => (
-                                <li
-                                    key={guest.id}
-                                    className="flex items-start gap-3 p-4"
-                                >
-                                    <button
-                                        type="button"
-                                        className="min-w-0 flex-1 text-left"
-                                        onClick={() => setSelected(guest.id)}
-                                    >
-                                        <p className="truncate font-medium">
-                                            {guest.name}
-                                        </p>
-                                        <p className="truncate text-xs text-muted-foreground">
-                                            {contactLine(guest)}
-                                        </p>
-                                        <GuestBadges
-                                            guest={guest}
-                                            approval={approval}
-                                            className="mt-2"
-                                        />
-                                    </button>
-                                    <GuestActions
-                                        guest={guest}
-                                        registrationType={
-                                            event.registration_type
-                                        }
-                                        messageLimits={event.message_limits}
-                                        onEdit={() => startEditing(guest.id)}
-                                    />
-                                </li>
-                            ))}
-                        </ul>
+                        {/* Phones (1c): approvals first, then everyone; tap for details */}
+                        <MobileGuestList
+                            guests={guests.data}
+                            approval={approval}
+                            onSelect={select}
+                        />
 
                         {/* Tablets and up: a table; click a row for details */}
                         <Table className="hidden md:table">
@@ -279,7 +293,7 @@ export default function GuestsIndex({
                                         tabIndex={0}
                                         aria-label={`Show details for ${guest.name}`}
                                         className="cursor-pointer"
-                                        onClick={() => setSelected(guest.id)}
+                                        onClick={() => select(guest.id)}
                                         onKeyDown={(e) => {
                                             if (
                                                 e.target === e.currentTarget &&
@@ -287,7 +301,7 @@ export default function GuestsIndex({
                                                     e.key === ' ')
                                             ) {
                                                 e.preventDefault();
-                                                setSelected(guest.id);
+                                                select(guest.id);
                                             }
                                         }}
                                     >
@@ -344,15 +358,10 @@ export default function GuestsIndex({
                                         >
                                             <GuestActions
                                                 guest={guest}
-                                                registrationType={
-                                                    event.registration_type
-                                                }
                                                 messageLimits={
                                                     event.message_limits
                                                 }
-                                                onEdit={() =>
-                                                    startEditing(guest.id)
-                                                }
+                                                onView={() => select(guest.id)}
                                             />
                                         </TableCell>
                                     </TableRow>
@@ -366,13 +375,14 @@ export default function GuestsIndex({
 
             <GuestDetailsSheet
                 guest={selectedGuest}
-                onClose={() => setSelected(null)}
+                details={guestDetails}
+                onClose={() => select(null)}
                 registrationType={event.registration_type}
                 messageLimits={event.message_limits}
                 showsApproval={approval}
                 onEdit={(guest) => startEditing(guest.id)}
             />
-        </ClientLayout>
+        </EventLayout>
     );
 }
 
@@ -425,33 +435,6 @@ function OptionalBadge({ status }: { status?: string | null }) {
     );
 }
 
-/** The key statuses as badges, for the phone card layout. */
-function GuestBadges({
-    guest,
-    approval,
-    className,
-}: {
-    guest: Guest;
-    approval: boolean;
-    className?: string;
-}) {
-    const rsvp = guest.latest_rsvp;
-
-    return (
-        <div className={cn('flex flex-wrap gap-1.5', className)}>
-            {approval && <StatusBadge status={guest.approval_status} />}
-            <StatusBadge status={guest.rsvp_status} />
-            <PartySize guest={guest} />
-            {rsvp?.message && (
-                <StatusBadge
-                    status={rsvp.message.status}
-                    label={`Message ${rsvp.message.status}`}
-                />
-            )}
-        </div>
-    );
-}
-
 /**
  * "+2" when the guest brings plus-ones or children, with what they were
  * invited with when their answer differs. Nothing once they declined.
@@ -484,6 +467,275 @@ function PartySize({ guest }: { guest: Guest }) {
         >
             +{bringing}
             {changed && ` (invited +${invited})`}
+        </span>
+    );
+}
+
+type Chip = {
+    label: string;
+    count: number;
+    filters: Partial<Filters>;
+    highlight?: boolean;
+};
+
+/** The quick filters of 1c, with their counts from the summary. */
+function chips(summary: GuestSummary, approval: boolean): Chip[] {
+    return [
+        { label: 'All', count: summary.total, filters: {} },
+        ...(approval
+            ? [
+                  {
+                      label: 'To approve',
+                      count: summary.pending,
+                      filters: { approval_status: 'pending' },
+                      highlight: summary.pending > 0,
+                  },
+              ]
+            : []),
+        {
+            label: 'Attending',
+            count: summary.rsvp_confirmed,
+            filters: { rsvp_status: 'confirmed' },
+        },
+        {
+            label: 'No reply',
+            count: summary.rsvp_pending,
+            filters: { rsvp_status: 'pending' },
+        },
+        {
+            label: 'Declined',
+            count: summary.rsvp_declined,
+            filters: { rsvp_status: 'declined' },
+        },
+        {
+            label: 'Not invited',
+            count: summary.rsvp_not_sent,
+            filters: { rsvp_status: 'not_sent' },
+        },
+    ];
+}
+
+function FilterChip({
+    active,
+    count,
+    highlight,
+    onClick,
+    children,
+}: {
+    active: boolean;
+    count: number;
+    highlight?: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            aria-pressed={active}
+            onClick={onClick}
+            className={cn(
+                'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-semibold whitespace-nowrap',
+                active
+                    ? 'bg-strong text-strong-foreground'
+                    : 'border border-input',
+            )}
+        >
+            {children}
+            {highlight && !active ? (
+                <span className="rounded-full bg-primary px-1.5 py-px text-[10px] text-primary-foreground">
+                    {count}
+                </span>
+            ) : (
+                <span className={active ? 'opacity-70' : 'text-subtle'}>
+                    {count}
+                </span>
+            )}
+        </button>
+    );
+}
+
+const replyPills: Record<
+    Guest['rsvp_status'],
+    { label: string; icon: LucideIcon; className: string }
+> = {
+    confirmed: {
+        label: 'Attending',
+        icon: Check,
+        className: 'bg-success-muted text-success',
+    },
+    declined: {
+        label: 'Declined',
+        icon: X,
+        className: 'bg-destructive-muted text-destructive',
+    },
+    maybe: {
+        label: 'Maybe',
+        icon: CircleDashed,
+        className: 'bg-warning-muted text-warning',
+    },
+    pending: {
+        label: 'No reply',
+        icon: CircleDashed,
+        className: 'bg-foreground/6 text-muted-foreground',
+    },
+    not_sent: {
+        label: 'Not invited',
+        icon: CircleDashed,
+        className: 'bg-foreground/6 text-muted-foreground',
+    },
+};
+
+/** "Party of 4 · 1 child", "Invite opened", "Invitation failed"… */
+function guestLine(guest: Guest): { text: string; failed: boolean } {
+    if (guest.rsvp_status === 'confirmed' || guest.rsvp_status === 'maybe') {
+        const children =
+            guest.children > 0
+                ? ` · ${guest.children} ${guest.children === 1 ? 'child' : 'children'}`
+                : '';
+
+        return {
+            text: `Party of ${guest.party_size}${children}`,
+            failed: false,
+        };
+    }
+
+    if (guest.rsvp_status === 'pending') {
+        const state = invitationState(guest);
+
+        return { text: state.label, failed: state.failed };
+    }
+
+    return { text: contactLine(guest), failed: false };
+}
+
+function MobileGuestList({
+    guests,
+    approval,
+    onSelect,
+}: {
+    guests: Guest[];
+    approval: boolean;
+    onSelect: (guestId: string) => void;
+}) {
+    const toApprove = approval
+        ? guests.filter((guest) => guest.approval_status === 'pending')
+        : [];
+    const others = guests.filter((guest) => !toApprove.includes(guest));
+    const post = (url: string) =>
+        router.post(url, {}, { preserveScroll: true });
+
+    return (
+        <div className="md:hidden">
+            {toApprove.length > 0 && (
+                <>
+                    <GroupLabel>Waiting for approval</GroupLabel>
+                    {toApprove.map((guest) => (
+                        <div
+                            key={guest.id}
+                            className="flex items-center gap-3 border-b border-border px-4 py-3"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => onSelect(guest.id)}
+                                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                            >
+                                <Avatar name={guest.name} accent />
+                                <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-sm font-semibold">
+                                        {guest.name}
+                                    </span>
+                                    <span className="block truncate text-xs text-subtle">
+                                        Party of {guest.party_size} · registered{' '}
+                                        {timeAgo(guest.created_at)}
+                                    </span>
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                aria-label={`Reject ${guest.name}`}
+                                onClick={() => post(reject.url(guest))}
+                                className="flex size-9 items-center justify-center rounded-full border border-input text-destructive"
+                            >
+                                <X className="size-4.5" />
+                            </button>
+                            <button
+                                type="button"
+                                aria-label={`Approve ${guest.name}`}
+                                onClick={() => post(approve.url(guest))}
+                                className="flex size-9 items-center justify-center rounded-full bg-success text-success-foreground"
+                            >
+                                <Check className="size-4.5" />
+                            </button>
+                        </div>
+                    ))}
+                    <GroupLabel>All guests</GroupLabel>
+                </>
+            )}
+            {others.map((guest) => {
+                const pill = replyPills[guest.rsvp_status];
+                const line = guestLine(guest);
+
+                return (
+                    <button
+                        key={guest.id}
+                        type="button"
+                        onClick={() => onSelect(guest.id)}
+                        className="flex w-full items-center gap-3 border-b border-border px-4 py-3 text-left last:border-b-0"
+                    >
+                        <Avatar name={guest.name} />
+                        <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold">
+                                {guest.name}
+                            </span>
+                            <span
+                                className={cn(
+                                    'flex items-center gap-1 truncate text-xs',
+                                    line.failed
+                                        ? 'text-destructive'
+                                        : 'text-subtle',
+                                )}
+                            >
+                                {line.failed && (
+                                    <AlertTriangle className="size-3.5" />
+                                )}
+                                {line.text}
+                            </span>
+                        </span>
+                        <span
+                            className={cn(
+                                'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.75 text-[11px] font-semibold',
+                                pill.className,
+                            )}
+                        >
+                            <pill.icon className="size-3" />
+                            {pill.label}
+                        </span>
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+function GroupLabel({ children }: { children: React.ReactNode }) {
+    return (
+        <div className="bg-background px-4 py-2 text-[11px] font-bold tracking-[0.06em] text-subtle uppercase">
+            {children}
+        </div>
+    );
+}
+
+function Avatar({ name, accent = false }: { name: string; accent?: boolean }) {
+    return (
+        <span
+            className={cn(
+                'flex size-10 shrink-0 items-center justify-center rounded-full text-[13px] font-bold',
+                accent
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-foreground/6 text-muted-foreground',
+            )}
+        >
+            {initials(name)}
         </span>
     );
 }

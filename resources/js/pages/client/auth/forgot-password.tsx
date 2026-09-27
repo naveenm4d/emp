@@ -16,7 +16,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
             description="We will email you a link to choose a new password."
         >
             {status && (
-                <p className="mb-4 rounded-md bg-emerald-50 p-2 text-sm text-emerald-700">
+                <p className="mb-4 rounded-md bg-success-muted p-2 text-sm text-success">
                     {status}
                 </p>
             )}

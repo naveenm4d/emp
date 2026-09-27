@@ -1,12 +1,22 @@
+import type { LucideIcon } from 'lucide-react';
+import {
+    AlertTriangle,
+    Check,
+    CircleDashed,
+    Globe,
+    Pencil,
+    X,
+} from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 
 const tones: Record<string, string> = {
-    green: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20',
-    blue: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20',
-    amber: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20',
-    violet: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20',
-    gray: 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-white/5 dark:text-gray-300 dark:border-white/10',
-    red: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/20',
+    green: 'bg-success-muted text-success',
+    blue: 'bg-info-muted text-info',
+    amber: 'bg-warning-muted text-warning',
+    violet: 'bg-accent text-accent-foreground',
+    gray: 'bg-foreground/[0.06] text-muted-foreground',
+    red: 'bg-destructive-muted text-destructive',
 };
 
 const statusTone: Record<string, keyof typeof tones> = {
@@ -20,7 +30,7 @@ const statusTone: Record<string, keyof typeof tones> = {
     sent: 'blue',
     super_admin: 'violet',
     admin: 'blue',
-    draft: 'amber',
+    draft: 'gray',
     pending: 'amber',
     maybe: 'amber',
     waitlisted: 'violet',
@@ -34,6 +44,21 @@ const statusTone: Record<string, keyof typeof tones> = {
     failed: 'red',
 };
 
+/** Leading icons for the statuses the design draws with one. */
+const statusIcon: Record<string, LucideIcon> = {
+    published: Globe,
+    draft: Pencil,
+    confirmed: Check,
+    accepted: Check,
+    approved: Check,
+    declined: X,
+    rejected: X,
+    cancelled: X,
+    failed: AlertTriangle,
+    sent: CircleDashed,
+    not_sent: CircleDashed,
+};
+
 type StatusBadgeProps = {
     status: string;
     label?: string;
@@ -41,15 +66,21 @@ type StatusBadgeProps = {
 };
 
 export function StatusBadge({ status, label, className }: StatusBadgeProps) {
+    const Icon = statusIcon[status];
+
     return (
         <span
             className={cn(
-                'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+                'inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold whitespace-nowrap',
                 tones[statusTone[status] ?? 'gray'],
                 className,
             )}
         >
-            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+            {Icon ? (
+                <Icon className="size-3" strokeWidth={2} />
+            ) : (
+                <span className="size-1.5 rounded-full bg-current opacity-70" />
+            )}
             {label ??
                 status
                     .replace(/_/g, ' ')

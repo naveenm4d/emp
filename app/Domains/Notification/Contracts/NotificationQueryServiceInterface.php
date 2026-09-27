@@ -30,4 +30,12 @@ interface NotificationQueryServiceInterface
     public function count(): int;
 
     public function countFailed(): int;
+
+    /**
+     * How many guests' latest message failed or is still queued, per event.
+     *
+     * @param  list<string>  $eventIds
+     * @return array<string, array{failed: int, queued: int}>
+     */
+    public function messageIssuesForEvents(array $eventIds): array;
 }

@@ -13,6 +13,13 @@ interface GuestQueryServiceInterface
     /** @return LengthAwarePaginator<int, Guest> */
     public function forEvent(Event $event, GuestFilters $filters): LengthAwarePaginator;
 
+    /**
+     * The first few approved guests who were sent their link and haven't replied.
+     *
+     * @return LengthAwarePaginator<int, Guest>
+     */
+    public function waitingForEvent(Event $event, int $limit): LengthAwarePaginator;
+
     /** @return array<string, int> */
     public function summary(Event $event): array;
 

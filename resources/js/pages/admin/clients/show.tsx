@@ -110,7 +110,7 @@ export default function ShowClient({
                         </Select>
                     </div>
 
-                    <div className="overflow-hidden rounded-xl border border-border bg-card">
+                    <div className="overflow-hidden rounded-lg bg-card shadow-card">
                         {events.data.length === 0 ? (
                             <EmptyState
                                 icon={CalendarDays}

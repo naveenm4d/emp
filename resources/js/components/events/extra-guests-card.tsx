@@ -85,7 +85,9 @@ export function ExtraGuestsCard({
                             rows={1}
                             maxLength={500}
                             value={form.data.note}
-                            onChange={(e) => form.setData('note', e.target.value)}
+                            onChange={(e) =>
+                                form.setData('note', e.target.value)
+                            }
                         />
                     </FormField>
                     <Button type="submit" disabled={form.processing}>

@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, ExternalLink, Trash2 } from 'lucide-react';
 
+import { ConfirmBar, useConfirm } from '@/components/shared/confirm-bar';
 import { EventForm } from '@/components/events/event-form';
 import { ExtraGuestsCard } from '@/components/events/extra-guests-card';
 import { MessageLimitsCard } from '@/components/events/message-limits-card';
@@ -51,19 +52,27 @@ export default function AdminEditEvent({
     const can = useStaffCan();
     const route = { client: client.id, event: event.id };
 
+    const confirmation = useConfirm();
+
     const transition = (next: EventState) => {
-        if (
-            next === 'cancelled' &&
-            !confirm('Cancel this event? This cannot be undone.')
-        ) {
+        const apply = () =>
+            router.patch(
+                state.url(route),
+                { state: next },
+                { preserveScroll: true },
+            );
+
+        if (next === 'cancelled') {
+            confirmation.ask({
+                title: 'Cancel this event? This can’t be undone.',
+                confirmLabel: 'Cancel event',
+                onConfirm: apply,
+            });
+
             return;
         }
 
-        router.patch(
-            state.url(route),
-            { state: next },
-            { preserveScroll: true },
-        );
+        apply();
     };
 
     const toggleRegistration = () =>
@@ -73,15 +82,12 @@ export default function AdminEditEvent({
             { preserveScroll: true },
         );
 
-    const remove = () => {
-        if (
-            confirm(
-                `Delete "${event.title}" and all its guests? This cannot be undone.`,
-            )
-        ) {
-            router.delete(destroy.url(route));
-        }
-    };
+    const remove = () =>
+        confirmation.ask({
+            title: `Delete "${event.title}" and all its guests? This can’t be undone.`,
+            confirmLabel: 'Delete',
+            onConfirm: () => router.delete(destroy.url(route)),
+        });
 
     return (
         <AdminLayout>
@@ -106,38 +112,46 @@ export default function AdminEditEvent({
                     </span>
                 }
                 actions={
-                    <>
-                        <Link
-                            href={show.url(client)}
-                            className={buttonVariants({ variant: 'ghost' })}
-                        >
-                            <ArrowLeft /> Client
-                        </Link>
-                        {event.allowed_transitions.map((next) => (
-                            <Button
-                                key={next}
-                                variant={
-                                    next === 'cancelled'
-                                        ? 'destructive'
-                                        : next === 'published'
-                                          ? 'default'
-                                          : 'outline'
-                                }
-                                onClick={() => transition(next)}
+                    confirmation.request ? (
+                        <ConfirmBar
+                            variant="inline"
+                            request={confirmation.request}
+                            onCancel={confirmation.cancel}
+                        />
+                    ) : (
+                        <>
+                            <Link
+                                href={show.url(client)}
+                                className={buttonVariants({ variant: 'ghost' })}
                             >
-                                {transitionLabels[next]}
-                            </Button>
-                        ))}
-                        {can('events.delete') && (
-                            <Button
-                                variant="ghost"
-                                onClick={remove}
-                                aria-label="Delete event"
-                            >
-                                <Trash2 />
-                            </Button>
-                        )}
-                    </>
+                                <ArrowLeft /> Client
+                            </Link>
+                            {event.allowed_transitions.map((next) => (
+                                <Button
+                                    key={next}
+                                    variant={
+                                        next === 'cancelled'
+                                            ? 'destructive'
+                                            : next === 'published'
+                                              ? 'default'
+                                              : 'outline'
+                                    }
+                                    onClick={() => transition(next)}
+                                >
+                                    {transitionLabels[next]}
+                                </Button>
+                            ))}
+                            {can('events.delete') && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={remove}
+                                    aria-label="Delete event"
+                                >
+                                    <Trash2 />
+                                </Button>
+                            )}
+                        </>
+                    )
                 }
             />
 

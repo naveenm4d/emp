@@ -10,6 +10,7 @@
 */
 
 use App\Domains\Client\Http\Controllers\Dashboard\AuthController;
+use App\Domains\Client\Http\Controllers\Dashboard\MembershipController;
 use App\Domains\Client\Http\Controllers\Dashboard\PasswordResetController;
 use App\Domains\Client\Http\Controllers\Dashboard\ProfileController;
 use App\Domains\Event\Http\Controllers\Dashboard\EventController;
@@ -18,14 +19,15 @@ use App\Domains\Event\Http\Controllers\Dashboard\EventMediaController;
 use App\Domains\Event\Http\Controllers\Dashboard\EventRegistrationController;
 use App\Domains\Event\Http\Controllers\Dashboard\EventSettingsController;
 use App\Domains\Event\Http\Controllers\Dashboard\EventStateController;
+use App\Domains\Event\Http\Controllers\Dashboard\HomeController;
 use App\Domains\Event\Http\Controllers\Dashboard\MapPreviewController;
 use App\Domains\Guest\Http\Controllers\Dashboard\GuestApprovalController;
 use App\Domains\Guest\Http\Controllers\Dashboard\GuestController;
-use App\Domains\Guest\Http\Controllers\Dashboard\GuestDetailsController;
 use App\Domains\Notification\Http\Controllers\Dashboard\NotificationController;
 use App\Domains\Rsvp\Http\Controllers\Dashboard\RsvpController;
 use App\Domains\Rsvp\Http\Controllers\Dashboard\RsvpDeliveryController;
 use App\Domains\Seating\Http\Controllers\Dashboard\SeatingController;
+use App\Domains\Seating\Http\Controllers\Dashboard\VenueElementController;
 use App\Domains\Template\Http\Controllers\Dashboard\TemplateController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,7 +46,7 @@ Route::middleware('guest:client')->group(function () {
 Route::middleware('auth:client')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
-    Route::redirect('/', '/app/events')->name('dashboard');
+    Route::get('/', HomeController::class)->name('dashboard');
 
     // Events
     Route::resource('events', EventController::class);
@@ -66,9 +68,9 @@ Route::middleware('auth:client')->group(function () {
     Route::get('events/{event}/settings', [EventSettingsController::class, 'edit'])->name('events.settings');
     Route::put('events/{event}/settings', [EventSettingsController::class, 'update'])->name('events.settings.update');
 
-    // Seating: tables and who sits where (not on the Starter plan)
+    // Seating: tables and who sits where (not on the Starter plan; the page shows an upgrade prompt)
+    Route::get('events/{event}/seating', [SeatingController::class, 'index'])->name('events.seating');
     Route::middleware('plan.feature:seating')->group(function () {
-        Route::get('events/{event}/seating', [SeatingController::class, 'index'])->name('events.seating');
         Route::post('events/{event}/tables', [SeatingController::class, 'storeTable'])->name('events.tables.store');
         Route::patch('tables/{table}', [SeatingController::class, 'updateTable'])->name('tables.update');
         Route::delete('tables/{table}', [SeatingController::class, 'destroyTable'])->name('tables.destroy');
@@ -77,12 +79,17 @@ Route::middleware('auth:client')->group(function () {
         Route::post('events/{event}/seating/swap', [SeatingController::class, 'swap'])->name('events.seating.swap');
         Route::post('events/{event}/seating/replace', [SeatingController::class, 'replace'])->name('events.seating.replace');
         Route::post('events/{event}/seating/auto', [SeatingController::class, 'autoSeat'])->name('events.seating.auto');
+
+        // Floor plan: where tables stand, and venue elements (stage, poruwa, buffet, …)
+        Route::patch('events/{event}/seating/layout', [SeatingController::class, 'layout'])->name('events.seating.layout');
+        Route::post('events/{event}/venue-elements', [VenueElementController::class, 'store'])->name('events.venue-elements.store');
+        Route::patch('venue-elements/{venueElement}', [VenueElementController::class, 'update'])->name('venue-elements.update');
+        Route::delete('venue-elements/{venueElement}', [VenueElementController::class, 'destroy'])->name('venue-elements.destroy');
     });
 
     // Guests
     Route::get('events/{event}/guests', [GuestController::class, 'index'])->name('events.guests.index');
     Route::post('events/{event}/guests', [GuestController::class, 'store'])->name('events.guests.store');
-    Route::get('guests/{guest}/details', GuestDetailsController::class)->name('guests.details');
     Route::patch('guests/{guest}', [GuestController::class, 'update'])->name('guests.update');
     Route::delete('guests/{guest}', [GuestController::class, 'destroy'])->name('guests.destroy');
     Route::post('guests/{guest}/approve', [GuestApprovalController::class, 'approve'])->name('guests.approve');
@@ -90,16 +97,16 @@ Route::middleware('auth:client')->group(function () {
     Route::post('guests/{guest}/waitlist', [GuestApprovalController::class, 'waitlist'])->name('guests.waitlist');
 
     // RSVP links sent to guests
-    Route::get('events/{event}/rsvps', [RsvpController::class, 'index'])->middleware('plan.feature:rsvp_list')->name('events.rsvps.index');
+    Route::get('events/{event}/rsvps', [RsvpController::class, 'index'])->name('events.rsvps.index');
     Route::post('guests/{guest}/rsvps', [RsvpController::class, 'store'])->name('guests.rsvps.store');
     Route::post('rsvps/{rsvp}/send', [RsvpDeliveryController::class, 'send'])->name('rsvps.send');
     Route::post('rsvps/{rsvp}/resend', [RsvpDeliveryController::class, 'resend'])->name('rsvps.resend');
     Route::post('rsvps/{rsvp}/remind', [RsvpDeliveryController::class, 'remind'])->name('rsvps.remind');
     Route::post('rsvps/{rsvp}/expire', [RsvpDeliveryController::class, 'expire'])->name('rsvps.expire');
 
-    // Notifications: the message log (not on the Starter plan)
+    // Notifications: the message log (not on the Starter plan; the page shows an upgrade prompt)
+    Route::get('events/{event}/notifications', [NotificationController::class, 'index'])->name('events.notifications.index');
     Route::middleware('plan.feature:message_log')->group(function () {
-        Route::get('events/{event}/notifications', [NotificationController::class, 'index'])->name('events.notifications.index');
         Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.show');
     });
 
@@ -111,4 +118,7 @@ Route::middleware('auth:client')->group(function () {
     Route::get('profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+    // Membership: the client's plan and what it includes
+    Route::get('membership', MembershipController::class)->name('membership');
 });

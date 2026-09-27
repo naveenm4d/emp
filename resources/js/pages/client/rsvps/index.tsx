@@ -1,9 +1,9 @@
-import { Head, router, usePoll } from '@inertiajs/react';
+import { Head, router, usePage, usePoll } from '@inertiajs/react';
 import { Mail } from 'lucide-react';
 import { useState } from 'react';
 
-import { EventTabs } from '@/components/events/event-tabs';
 import { GuestDetailsSheet } from '@/components/guests/guest-details-sheet';
+import type { GuestDetailsData } from '@/components/guests/guest-timeline';
 import { RsvpActions } from '@/components/rsvps/rsvp-actions';
 import { rsvpDisplayStatus } from '@/components/rsvps/rsvp-status';
 import { EmptyState } from '@/components/shared/empty-state';
@@ -19,7 +19,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import ClientLayout from '@/layouts/client-layout';
+import { RsvpPreview } from '@/components/plans/feature-previews';
+import { LockedEventPage } from '@/components/plans/locked-feature';
+import EventLayout from '@/layouts/event-layout';
+import { loadGuestDetails, openGuestId } from '@/lib/guests';
 import { index as guestsIndex } from '@/routes/client/events/guests';
 import { index } from '@/routes/client/events/rsvps';
 import type {
@@ -34,38 +37,71 @@ import type {
 
 type Props = {
     event: Resource<Event>;
+    locked?: undefined;
     rsvps: Paginated<Rsvp>;
     summary: RsvpSummary;
     filters: { status: string | null };
+    /** History and answers of the guest open in the panel (?guest=). */
+    guestDetails?: GuestDetailsData | null;
     statuses: Option[];
 };
 
-export default function RsvpsIndex({
+/** Not in the client's plan: the controller sends only the event. */
+type LockedProps = { event: Resource<Event>; locked: true };
+
+export default function RsvpsIndex(props: Props | LockedProps) {
+    if (props.locked) {
+        return (
+            <LockedEventPage
+                event={props.event.data}
+                title="RSVPs"
+                feature="rsvp_list"
+                preview={<RsvpPreview />}
+            />
+        );
+    }
+
+    return <RsvpsPage {...props} />;
+}
+
+function RsvpsPage({
     event: { data: event },
     rsvps,
     summary,
     filters,
+    guestDetails,
     statuses,
 }: Props) {
     // Picks up replies and WhatsApp delivery updates without a manual reload.
-    usePoll(5000, { only: ['rsvps', 'summary'] });
+    usePoll(5000, { only: ['rsvps', 'summary', 'guestDetails'] });
 
     // The details panel shows the guest with the clicked RSVP link, looked up
     // in the (polled) list so it stays current.
-    const [selected, setSelected] = useState<string | null>(null);
+    const { url } = usePage();
+    const [selected, setSelected] = useState<string | null>(() => {
+        const guestId = openGuestId(url);
+
+        return (
+            rsvps.data.find((rsvp) => rsvp.guest?.id === guestId)?.id ?? null
+        );
+    });
+    const select = (rsvp: Rsvp | null) => {
+        setSelected(rsvp?.id ?? null);
+        loadGuestDetails(rsvp?.guest?.id ?? null);
+    };
     const selectedRsvp = rsvps.data.find((rsvp) => rsvp.id === selected);
     const selectedGuest: Guest | null = selectedRsvp?.guest
         ? { ...selectedRsvp.guest, latest_rsvp: selectedRsvp }
         : null;
 
     return (
-        <ClientLayout>
+        <EventLayout event={event}>
             <Head title={`RSVPs · ${event.title}`} />
             <PageHeader
-                title={event.title}
+                eyebrow={event.title}
+                title="RSVPs"
                 description={`${summary.total} RSVP links · ${summary.sent} awaiting reply · ${summary.accepted} accepted · ${summary.declined} declined · ${summary.maybe} maybe · ${summary.expired} expired`}
             />
-            <EventTabs event={event} />
 
             <div className="mb-4">
                 <Select
@@ -88,7 +124,7 @@ export default function RsvpsIndex({
                 </Select>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="overflow-hidden rounded-lg bg-card shadow-card">
                 {rsvps.data.length === 0 ? (
                     <EmptyState
                         icon={Mail}
@@ -107,7 +143,7 @@ export default function RsvpsIndex({
                                     <button
                                         type="button"
                                         className="min-w-0 flex-1 text-left"
-                                        onClick={() => setSelected(rsvp.id)}
+                                        onClick={() => select(rsvp)}
                                     >
                                         <p className="truncate font-medium">
                                             {rsvp.guest?.name}
@@ -157,7 +193,7 @@ export default function RsvpsIndex({
                                         tabIndex={0}
                                         aria-label={`Show details for ${rsvp.guest?.name ?? 'this guest'}`}
                                         className="cursor-pointer"
-                                        onClick={() => setSelected(rsvp.id)}
+                                        onClick={() => select(rsvp)}
                                         onKeyDown={(e) => {
                                             if (
                                                 e.target === e.currentTarget &&
@@ -165,7 +201,7 @@ export default function RsvpsIndex({
                                                     e.key === ' ')
                                             ) {
                                                 e.preventDefault();
-                                                setSelected(rsvp.id);
+                                                select(rsvp);
                                             }
                                         }}
                                     >
@@ -219,7 +255,8 @@ export default function RsvpsIndex({
 
             <GuestDetailsSheet
                 guest={selectedGuest}
-                onClose={() => setSelected(null)}
+                details={guestDetails}
+                onClose={() => select(null)}
                 registrationType={event.registration_type}
                 messageLimits={event.message_limits}
                 showsApproval={event.registration_type === 'approval_required'}
@@ -229,6 +266,6 @@ export default function RsvpsIndex({
                     })
                 }
             />
-        </ClientLayout>
+        </EventLayout>
     );
 }

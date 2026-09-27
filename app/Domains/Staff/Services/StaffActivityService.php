@@ -15,7 +15,6 @@ class StaffActivityService extends BaseService implements StaffActivityServiceIn
 {
     public function __construct(
         private readonly StaffActivityRepositoryInterface $activities,
-        private readonly Request $request,
     ) {}
 
     public function record(
@@ -27,6 +26,10 @@ class StaffActivityService extends BaseService implements StaffActivityServiceIn
         array $changes = [],
         ?string $note = null,
     ): StaffActivity {
+        // The current request, looked up now: services (and controllers) can outlive a request.
+        /** @var Request $request */
+        $request = app('request');
+
         /** @var StaffActivity $activity */
         $activity = $this->activities->create([
             'staff_member_id' => $staff?->id,
@@ -37,13 +40,13 @@ class StaffActivityService extends BaseService implements StaffActivityServiceIn
             'client_id' => $clientId,
             'changes' => $changes === [] ? null : $changes,
             'note' => $note,
-            'ip' => $this->request->ip(),
-            'user_agent' => Str::limit((string) $this->request->userAgent(), 497),
+            'ip' => $request->ip(),
+            'user_agent' => Str::limit((string) $request->userAgent(), 497),
             'created_at' => now(),
         ]);
 
         // The request's action is logged; the middleware mustn't log it again.
-        $this->request->attributes->set(StaffActivity::RECORDED, true);
+        $request->attributes->set(StaffActivity::RECORDED, true);
 
         return $activity;
     }

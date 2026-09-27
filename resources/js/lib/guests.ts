@@ -1,3 +1,5 @@
+import { router } from '@inertiajs/react';
+
 import type { Event, Guest, GuestSummary, MessageLimits } from '@/types';
 
 /**
@@ -50,4 +52,64 @@ export function messageAllowance(
         remindersHint:
             reminders || !limits ? null : reason(limits.reminders, 'reminder'),
     };
+}
+
+/**
+ * Where a guest's invitation stands: "Invitation failed", "Invite opened",
+ * "Delivered"… (the latest RSVP message, and whether the link was opened).
+ */
+export function invitationState(
+    guest: Pick<Guest, 'latest_rsvp' | 'link_open_count'>,
+): { label: string; failed: boolean } {
+    const status = guest.latest_rsvp?.message?.status;
+
+    if (status === 'failed') {
+        return { label: 'Invitation failed', failed: true };
+    }
+
+    if ((guest.link_open_count ?? 0) > 0) {
+        return { label: 'Invite opened', failed: false };
+    }
+
+    const labels: Record<string, string> = {
+        pending: 'Queued',
+        sent: 'Sent',
+        delivered: 'Delivered',
+        read: 'Read',
+    };
+
+    return { label: status ? labels[status] : 'Not sent', failed: false };
+}
+
+/** "1 of 2 reminders", "2 of 2 · limit reached". */
+export function remindersUsed(
+    guest: Pick<Guest, 'messages_sent'>,
+    limits: MessageLimits,
+): { label: string; atLimit: boolean } {
+    const used = guest.messages_sent?.reminders ?? 0;
+    const atLimit = used >= limits.reminders;
+
+    return {
+        label: atLimit
+            ? `${used} of ${limits.reminders} · limit reached`
+            : `${used} of ${limits.reminders} reminders`,
+        atLimit,
+    };
+}
+
+/** The guest open in the details panel, kept in the URL as `?guest={id}`. */
+export function openGuestId(url: string): string | null {
+    return new URL(url, window.location.origin).searchParams.get('guest');
+}
+
+/**
+ * Opens (or, with null, closes) a guest's details panel: puts the guest in the
+ * URL and loads just their history and answers into the `guestDetails` prop.
+ */
+export function loadGuestDetails(guestId: string | null): void {
+    router.reload({
+        data: { guest: guestId ?? undefined },
+        only: ['guestDetails'],
+        replace: true,
+    });
 }

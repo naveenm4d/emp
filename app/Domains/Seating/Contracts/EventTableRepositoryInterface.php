@@ -17,4 +17,11 @@ interface EventTableRepositoryInterface extends RepositoryInterface
     public function nameExists(string $eventId, string $name, ?string $exceptId = null): bool;
 
     public function nextSortOrder(string $eventId): int;
+
+    /**
+     * Moves the event's tables on the floor plan; ids of other events are ignored.
+     *
+     * @param  array<string, array{x: int, y: int}>  $positions  by table id
+     */
+    public function move(string $eventId, array $positions): void;
 }

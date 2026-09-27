@@ -24,6 +24,9 @@ class EventTableResource extends JsonResource
             'name' => $this->name,
             'seat_count' => $this->seat_count,
             'shape' => $this->shape->value,
+            // Where it stands on the floor plan; null until placed.
+            'x' => $this->pos_x,
+            'y' => $this->pos_y,
             'seats' => array_map(function (int $number) use ($taken) {
                 /** @var SeatAssignment|null $seat */
                 $seat = $taken->get($number);

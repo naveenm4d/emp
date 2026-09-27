@@ -32,6 +32,14 @@ interface NotificationRepositoryInterface extends RepositoryInterface
     /** @return LengthAwarePaginator<int, Notification> */
     public function paginateByStatus(NotificationStatus $status, int $perPage): LengthAwarePaginator;
 
+    /**
+     * Guests per status of their latest message, by event.
+     *
+     * @param  list<string>  $eventIds
+     * @return array<string, array<string, int>> event id => status => guests
+     */
+    public function latestStatusCountsForEvents(array $eventIds): array;
+
     public function countByStatus(NotificationStatus $status): int;
 
     /** @return Collection<int, string> ids */

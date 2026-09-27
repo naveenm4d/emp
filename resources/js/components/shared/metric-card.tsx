@@ -22,16 +22,16 @@ export function MetricCard({
     return (
         <div
             className={cn(
-                'space-y-3 rounded-xl border border-border bg-card p-5',
+                'space-y-2 rounded-xl bg-card p-4 shadow-card',
                 className,
             )}
         >
             <div className="flex items-center justify-between">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                <p className="text-xs font-semibold text-muted-foreground">
                     {title}
                 </p>
                 {Icon && (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-raised">
                         <Icon
                             className="h-4 w-4 text-muted-foreground"
                             strokeWidth={1.75}
@@ -42,8 +42,10 @@ export function MetricCard({
             <div>
                 <p
                     className={cn(
-                        'text-2xl font-bold tracking-tight tabular-nums',
-                        tone === 'danger' ? 'text-red-600' : 'text-foreground',
+                        'text-[26px] leading-tight font-bold tabular-nums',
+                        tone === 'danger'
+                            ? 'text-destructive'
+                            : 'text-foreground',
                     )}
                 >
                     {value}

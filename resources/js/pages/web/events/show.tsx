@@ -5,6 +5,7 @@ import { FlashToast } from '@/components/web/flash-toast';
 import { BackgroundMusic } from '@/components/web/invitation/background-music';
 import { InvitationFrame } from '@/components/web/invitation/invitation-frame';
 import { RegistrationDialog } from '@/components/web/invitation/registration-dialog';
+import { rsvpSubtitle } from '@/components/web/invitation/rsvp-actions';
 import { useFonts } from '@/components/web/invitation/use-fonts';
 import type { EventPageProps } from '@/types/web';
 
@@ -70,8 +71,8 @@ export default function ShowEvent({
                     mode="register"
                     form={form}
                     url={actions.register}
-                    title={`Join ${event.title}`}
-                    description={
+                    subtitle={rsvpSubtitle(event)}
+                    note={
                         event.requires_approval
                             ? 'Registrations are approved by the host.'
                             : 'Leave your details so the host can reach you.'

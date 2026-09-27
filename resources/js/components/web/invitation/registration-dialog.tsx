@@ -1,18 +1,29 @@
 import { useForm } from '@inertiajs/react';
+import type { LucideIcon } from 'lucide-react';
+import {
+    ArrowLeft,
+    Check,
+    CircleHelp,
+    HeartCrack,
+    Minus,
+    PartyPopper,
+    Plus,
+} from 'lucide-react';
 import type { FormEvent, ReactNode } from 'react';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import type {
     AnswerValue,
     ContactField,
@@ -23,12 +34,12 @@ import type {
 
 /**
  * register: public sign-up (name + contact + details).
- * rsvp:     a guest's answer from their personal link (details only).
+ * rsvp:     a guest's answer from their personal link.
  * preview:  what guests will see; nothing is sent.
  */
 export type RegistrationDialogMode = 'register' | 'rsvp' | 'preview';
 
-type Attendance = 'accepted' | 'maybe';
+export type Attendance = 'accepted' | 'maybe' | 'declined';
 
 type FormData = {
     name: string;
@@ -42,8 +53,10 @@ type FormData = {
     dietary_restrictions: string[];
     dietary_notes: string;
     answers: Record<string, AnswerValue>;
-    attendance?: Attendance;
+    note: string;
 };
+
+type Step = 'details' | 'response' | 'confirm';
 
 const contactFields: {
     key: ContactField;
@@ -62,17 +75,7 @@ const contactFields: {
     { key: 'address', label: 'Address', autoComplete: 'street-address' },
 ];
 
-/** The form asks for more than the guest's attendance. */
-export function hasRegistrationDetails(form: RegistrationForm): boolean {
-    return (
-        Object.values(form.contact).some((field) => field !== 'off') ||
-        form.plus_ones ||
-        form.children ||
-        form.dietary_options.length > 0 ||
-        form.dietary_notes ||
-        form.questions.length > 0
-    );
-}
+const detailKeys = ['name', ...contactFields.map((field) => field.key)];
 
 type RegistrationDialogProps = {
     open: boolean;
@@ -81,20 +84,28 @@ type RegistrationDialogProps = {
     form: RegistrationForm;
     /** Where to post; null in preview. */
     url: string | null;
-    title: string;
-    description?: string;
-    /** RSVP only: the answer being given. */
-    attendance?: Attendance;
+    /** Line above the step title: "Nimali & Kasun · 14 Nov". */
+    subtitle: string;
+    /** Extra line on the details step (e.g. "Registrations are approved by the host."). */
+    note?: string;
     /** RSVP only: what the guest answered before. */
     initial?: RegistrationResponse | null;
+    initialAttendance?: Attendance | null;
     /** Called after the server accepted the form (not for flash errors). */
     onSaved?: () => void;
 };
 
+const STEP_TITLES: Record<Step, string> = {
+    details: 'Your details',
+    response: 'Your response',
+    confirm: 'Check and send',
+};
+
 /**
- * The details an event asks for (Settings tab), shown as a popup from the
- * EMP app rather than the template. Portals to <body>, so it sits outside
- * the invitation's shadow root and template styles don't reach it.
+ * The guest's reply as the EMP popup (2b), opened from the template's one
+ * RSVP button: details (when asked), attending or not with the party and the
+ * event's questions, then a last check. Portals to <body>, outside the
+ * invitation's shadow root, in the fixed Nocturne palette.
  */
 export function RegistrationDialog({
     open,
@@ -102,10 +113,10 @@ export function RegistrationDialog({
     mode,
     form: config,
     url,
-    title,
-    description,
-    attendance,
+    subtitle,
+    note,
     initial,
+    initialAttendance,
     onSaved,
 }: RegistrationDialogProps) {
     const form = useForm<FormData>({
@@ -120,7 +131,26 @@ export function RegistrationDialog({
         dietary_restrictions: initial?.dietary_restrictions ?? [],
         dietary_notes: initial?.dietary_notes ?? '',
         answers: initial?.answers ?? {},
+        note: '',
     });
+
+    // Registering means attending; an RSVP starts with the question.
+    const [attendance, setAttendance] = useState<Attendance | null>(
+        mode === 'register' ? 'accepted' : (initialAttendance ?? null),
+    );
+
+    const shownContact = contactFields.filter(
+        (field) => config.contact[field.key] !== 'off',
+    );
+    const steps: Step[] = [
+        ...(mode === 'register' || shownContact.length > 0
+            ? (['details'] as const)
+            : []),
+        'response',
+        'confirm',
+    ];
+    const [step, setStep] = useState<Step>(steps[0]);
+    const index = steps.indexOf(step);
 
     const error = (key: string) =>
         form.errors[key as keyof FormData] ??
@@ -128,21 +158,52 @@ export function RegistrationDialog({
             field.startsWith(`${key}.`),
         )?.[1];
 
+    const attending = attendance === 'accepted' || attendance === 'maybe';
+    // Children are asked once the guest brings someone (or when there are no plus-ones to pick).
+    const justMe = config.plus_ones && form.data.additional_guests === 0;
+    const asksChildren = config.children && !justMe;
+    const partySize =
+        1 +
+        (config.plus_ones ? form.data.additional_guests : 0) +
+        (asksChildren ? form.data.children : 0);
+    const preview = mode === 'preview' || !url;
+
+    const back = () =>
+        index > 0 ? setStep(steps[index - 1]) : onOpenChange(false);
+
     const submit = (e: FormEvent) => {
         e.preventDefault();
 
-        if (mode === 'preview' || !url) {
+        if (step !== 'confirm') {
+            setStep(steps[index + 1]);
+
             return;
         }
 
-        form.transform((data) => ({
-            ...data,
-            // "Just me" comes alone, so without children.
-            children: justMe ? 0 : data.children,
-            ...(mode === 'rsvp' ? { attendance } : {}),
-        }));
+        if (preview || !attendance) {
+            return;
+        }
+
+        form.transform((data) =>
+            attendance === 'declined'
+                ? { attendance, note: data.note }
+                : {
+                      ...data,
+                      // "Just me" comes alone, so without children.
+                      children: justMe ? 0 : data.children,
+                      ...(mode === 'rsvp' ? { attendance } : {}),
+                  },
+        );
         form.post(url, {
             preserveScroll: true,
+            onError: (errors) =>
+                setStep(
+                    Object.keys(errors).some((key) =>
+                        detailKeys.includes(key),
+                    ) && steps.includes('details')
+                        ? 'details'
+                        : 'response',
+                ),
             onSuccess: (page) => {
                 // Domain errors (full, closed, duplicate, expired) come back as a flash error.
                 if (!page.props.flash.error) {
@@ -159,50 +220,88 @@ export function RegistrationDialog({
     const toggle = (list: string[], value: string, on: boolean) =>
         on ? [...list, value] : list.filter((item) => item !== value);
 
-    // Children are asked once the guest brings someone (or when there are no plus-ones to pick).
-    const justMe = config.plus_ones && form.data.additional_guests === 0;
-    const asksChildren = config.children && !justMe;
-
-    const shownContact = contactFields.filter(
-        (field) => config.contact[field.key] !== 'off',
-    );
+    const continueLabel =
+        step === 'confirm'
+            ? form.processing
+                ? 'Sending…'
+                : mode === 'register'
+                  ? 'Register'
+                  : 'Send reply'
+            : `Continue${step === 'response' && attending && partySize > 1 ? ` · ${partySize} guests` : ''}`;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
-                    {description && (
-                        <DialogDescription>{description}</DialogDescription>
-                    )}
-                </DialogHeader>
-
+            <DialogContent className={NOCTURNE_POPUP}>
                 <form
                     onSubmit={submit}
                     className="flex min-h-0 flex-1 flex-col"
                     noValidate
                 >
-                    <div className="grid gap-4 overflow-y-auto p-4">
-                        {mode === 'register' && (
-                            <Field
-                                id="reg-name"
-                                label="Name"
-                                required
-                                error={form.errors.name}
+                    <div className="flex flex-col gap-3 px-4 pt-5 pr-12">
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={back}
+                                aria-label={index > 0 ? 'Back' : 'Close'}
+                                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card shadow-card"
                             >
-                                <Input
-                                    id="reg-name"
-                                    autoComplete="name"
-                                    value={form.data.name}
-                                    onChange={(e) =>
-                                        form.setData('name', e.target.value)
-                                    }
+                                <ArrowLeft className="size-4.5" />
+                            </button>
+                            <div className="min-w-0 flex-1">
+                                <DialogDescription className="truncate text-xs">
+                                    {subtitle}
+                                </DialogDescription>
+                                <DialogTitle className="text-base font-bold">
+                                    {STEP_TITLES[step]}
+                                </DialogTitle>
+                            </div>
+                            <span className="text-xs font-semibold text-muted-foreground">
+                                {index + 1} of {steps.length}
+                            </span>
+                        </div>
+                        <div className="flex gap-1" aria-hidden>
+                            {steps.map((item, position) => (
+                                <span
+                                    key={item}
+                                    className={cn(
+                                        'h-1 flex-1 rounded-full',
+                                        position <= index
+                                            ? 'bg-primary'
+                                            : 'bg-foreground/14',
+                                    )}
                                 />
-                            </Field>
-                        )}
+                            ))}
+                        </div>
+                    </div>
 
-                        {shownContact.length > 0 && (
-                            <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-5 overflow-y-auto px-4 pt-5 pb-5">
+                        {step === 'details' && (
+                            <>
+                                {note && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {note}
+                                    </p>
+                                )}
+                                {mode === 'register' && (
+                                    <Field
+                                        id="reg-name"
+                                        label="Name"
+                                        required
+                                        error={form.errors.name}
+                                    >
+                                        <Input
+                                            id="reg-name"
+                                            autoComplete="name"
+                                            value={form.data.name}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'name',
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                    </Field>
+                                )}
                                 {shownContact.map((field) => (
                                     <Field
                                         key={field.key}
@@ -213,11 +312,6 @@ export function RegistrationDialog({
                                             'required'
                                         }
                                         error={error(field.key)}
-                                        className={
-                                            field.key === 'address'
-                                                ? 'sm:col-span-2'
-                                                : undefined
-                                        }
                                     >
                                         <Input
                                             id={`reg-${field.key}`}
@@ -233,166 +327,371 @@ export function RegistrationDialog({
                                         />
                                     </Field>
                                 ))}
-                            </div>
+                            </>
                         )}
 
-                        {(config.plus_ones || config.children) && (
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                {config.plus_ones && (
-                                    <Field
-                                        id="reg-additional"
-                                        label="Additional guests"
-                                        hint={`Up to ${config.max_additional_guests}`}
-                                        error={error('additional_guests')}
-                                    >
-                                        <Select
-                                            id="reg-additional"
-                                            value={form.data.additional_guests}
-                                            onChange={(e) =>
-                                                form.setData(
-                                                    'additional_guests',
-                                                    Number(e.target.value),
-                                                )
-                                            }
+                        {step === 'response' && (
+                            <>
+                                {mode !== 'register' && (
+                                    <section className="grid gap-2.5">
+                                        <span className="text-sm font-bold">
+                                            Will you attend?
+                                        </span>
+                                        <div
+                                            role="radiogroup"
+                                            aria-label="Will you attend?"
+                                            className={cn(
+                                                'grid gap-2.5',
+                                                config.allow_maybe
+                                                    ? 'grid-cols-3'
+                                                    : 'grid-cols-2',
+                                            )}
                                         >
-                                            {range(
-                                                config.max_additional_guests,
-                                            ).map((count) => (
-                                                <option
-                                                    key={count}
-                                                    value={count}
-                                                >
-                                                    {count === 0
-                                                        ? 'Just me'
-                                                        : `+${count}`}
-                                                </option>
-                                            ))}
-                                        </Select>
-                                    </Field>
+                                            <AttendCard
+                                                icon={PartyPopper}
+                                                label="Joyfully accept"
+                                                checked={
+                                                    attendance === 'accepted'
+                                                }
+                                                onSelect={() =>
+                                                    setAttendance('accepted')
+                                                }
+                                            />
+                                            {config.allow_maybe && (
+                                                <AttendCard
+                                                    icon={CircleHelp}
+                                                    label="Not sure yet"
+                                                    checked={
+                                                        attendance === 'maybe'
+                                                    }
+                                                    onSelect={() =>
+                                                        setAttendance('maybe')
+                                                    }
+                                                />
+                                            )}
+                                            <AttendCard
+                                                icon={HeartCrack}
+                                                label="Regretfully decline"
+                                                checked={
+                                                    attendance === 'declined'
+                                                }
+                                                onSelect={() =>
+                                                    setAttendance('declined')
+                                                }
+                                            />
+                                        </div>
+                                        <FieldError
+                                            message={error('attendance')}
+                                        />
+                                    </section>
                                 )}
-                                {asksChildren && (
+
+                                {attendance === 'declined' && (
                                     <Field
-                                        id="reg-children"
-                                        label="Children"
-                                        error={error('children')}
+                                        id="decline-note"
+                                        label="Note to the host (optional)"
+                                        error={error('note')}
                                     >
-                                        <Input
-                                            id="reg-children"
-                                            type="number"
-                                            min={0}
-                                            max={config.max_children}
-                                            value={form.data.children}
+                                        <Textarea
+                                            id="decline-note"
+                                            rows={3}
+                                            maxLength={500}
+                                            placeholder="e.g. Sorry, I'll be travelling that week."
+                                            value={form.data.note}
                                             onChange={(e) =>
                                                 form.setData(
-                                                    'children',
-                                                    Number(e.target.value),
+                                                    'note',
+                                                    e.target.value,
                                                 )
                                             }
                                         />
                                     </Field>
                                 )}
-                            </div>
+
+                                {attending && (
+                                    <AttendingDetails
+                                        config={config}
+                                        data={form.data}
+                                        asksChildren={asksChildren}
+                                        error={error}
+                                        setData={form.setData}
+                                        setAnswer={setAnswer}
+                                        toggle={toggle}
+                                    />
+                                )}
+                            </>
                         )}
 
-                        {config.dietary_options.length > 0 && (
-                            <fieldset className="grid gap-2">
-                                <legend className="mb-2 text-sm font-medium">
-                                    Dietary restrictions
-                                </legend>
-                                <div className="flex flex-wrap gap-x-4 gap-y-2">
-                                    {config.dietary_options.map((option) => (
-                                        <label
-                                            key={option.value}
-                                            className="flex items-center gap-2 text-sm"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={form.data.dietary_restrictions.includes(
-                                                    option.value,
-                                                )}
-                                                onChange={(e) =>
-                                                    form.setData(
-                                                        'dietary_restrictions',
-                                                        toggle(
-                                                            form.data
-                                                                .dietary_restrictions,
-                                                            option.value,
-                                                            e.target.checked,
-                                                        ),
-                                                    )
-                                                }
-                                            />
-                                            {option.label}
-                                        </label>
-                                    ))}
-                                </div>
-                                <FieldError
-                                    message={error('dietary_restrictions')}
-                                />
-                            </fieldset>
-                        )}
-
-                        {config.dietary_notes && (
-                            <Field
-                                id="reg-dietary-notes"
-                                label="Dietary notes"
-                                error={error('dietary_notes')}
-                            >
-                                <Textarea
-                                    id="reg-dietary-notes"
-                                    rows={2}
-                                    value={form.data.dietary_notes}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'dietary_notes',
-                                            e.target.value,
-                                        )
-                                    }
-                                />
-                            </Field>
-                        )}
-
-                        {config.questions.map((question) => (
-                            <QuestionField
-                                key={question.id}
-                                question={question}
-                                value={form.data.answers[question.id] ?? null}
-                                error={error(`answers.${question.id}`)}
-                                onChange={(value) =>
-                                    setAnswer(question.id, value)
-                                }
-                                toggle={toggle}
+                        {step === 'confirm' && attendance && (
+                            <Summary
+                                attendance={attendance}
+                                partySize={partySize}
+                                data={form.data}
+                                config={config}
                             />
-                        ))}
+                        )}
                     </div>
 
-                    <div className="flex items-center justify-end gap-2 border-t p-4">
-                        {mode === 'preview' && (
-                            <p className="mr-auto text-xs text-muted-foreground">
+                    <div className="flex flex-col gap-2 border-t border-border px-4 pt-3 pb-6 sm:pb-4">
+                        {preview && step === 'confirm' && (
+                            <p className="text-center text-xs text-muted-foreground">
                                 Preview: nothing is sent.
                             </p>
                         )}
                         <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => onOpenChange(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
                             type="submit"
-                            disabled={mode === 'preview' || form.processing}
+                            variant="strong"
+                            className="h-13 rounded-full text-base"
+                            disabled={
+                                (step === 'response' && !attendance) ||
+                                (step === 'confirm' &&
+                                    (preview || form.processing))
+                            }
                         >
-                            {form.processing
-                                ? 'Sending…'
-                                : mode === 'register'
-                                  ? 'Register'
-                                  : 'Send reply'}
+                            {continueLabel}
                         </Button>
                     </div>
                 </form>
             </DialogContent>
         </Dialog>
+    );
+}
+
+/** The party and the event's questions, for guests who are coming. */
+function AttendingDetails({
+    config,
+    data,
+    asksChildren,
+    error,
+    setData,
+    setAnswer,
+    toggle,
+}: {
+    config: RegistrationForm;
+    data: FormData;
+    asksChildren: boolean;
+    error: (key: string) => string | undefined;
+    setData: <K extends keyof FormData>(key: K, value: FormData[K]) => void;
+    setAnswer: (id: string, value: AnswerValue) => void;
+    toggle: (list: string[], value: string, on: boolean) => string[];
+}) {
+    return (
+        <>
+            {(config.plus_ones || config.children) && (
+                <section className="grid gap-2.5">
+                    <div className="flex items-baseline justify-between">
+                        <span className="text-sm font-bold">Who’s coming?</span>
+                        {config.plus_ones && (
+                            <span className="text-xs text-muted-foreground">
+                                Up to {config.max_additional_guests + 1}{' '}
+                                including you
+                            </span>
+                        )}
+                    </div>
+                    <div className="rounded-xl bg-card shadow-card">
+                        {config.plus_ones && (
+                            <CounterRow
+                                label="Guests with you"
+                                hint={
+                                    data.additional_guests === 0
+                                        ? 'Just me'
+                                        : undefined
+                                }
+                                value={data.additional_guests}
+                                max={config.max_additional_guests}
+                                onChange={(value) =>
+                                    setData('additional_guests', value)
+                                }
+                            />
+                        )}
+                        {asksChildren && (
+                            <CounterRow
+                                label="Children"
+                                value={data.children}
+                                max={config.max_children}
+                                onChange={(value) => setData('children', value)}
+                            />
+                        )}
+                    </div>
+                    <FieldError
+                        message={
+                            error('additional_guests') ?? error('children')
+                        }
+                    />
+                </section>
+            )}
+
+            {config.dietary_options.length > 0 && (
+                <fieldset className="grid gap-2">
+                    <legend className="mb-2.5 text-sm font-bold">
+                        Dietary restrictions
+                    </legend>
+                    <div className="flex flex-wrap gap-2">
+                        {config.dietary_options.map((option) => (
+                            <ChoiceChip
+                                key={option.value}
+                                type="checkbox"
+                                label={option.label}
+                                checked={data.dietary_restrictions.includes(
+                                    option.value,
+                                )}
+                                onChange={(checked) =>
+                                    setData(
+                                        'dietary_restrictions',
+                                        toggle(
+                                            data.dietary_restrictions,
+                                            option.value,
+                                            checked,
+                                        ),
+                                    )
+                                }
+                            />
+                        ))}
+                    </div>
+                    <FieldError message={error('dietary_restrictions')} />
+                </fieldset>
+            )}
+
+            {config.dietary_notes && (
+                <Field
+                    id="reg-dietary-notes"
+                    label="Dietary notes"
+                    error={error('dietary_notes')}
+                >
+                    <Textarea
+                        id="reg-dietary-notes"
+                        rows={2}
+                        value={data.dietary_notes}
+                        onChange={(e) =>
+                            setData('dietary_notes', e.target.value)
+                        }
+                    />
+                </Field>
+            )}
+
+            {config.questions.map((question) => (
+                <QuestionField
+                    key={question.id}
+                    question={question}
+                    value={data.answers[question.id] ?? null}
+                    error={error(`answers.${question.id}`)}
+                    onChange={(value) => setAnswer(question.id, value)}
+                    toggle={toggle}
+                />
+            ))}
+        </>
+    );
+}
+
+/** The last check before sending. */
+function Summary({
+    attendance,
+    partySize,
+    data,
+    config,
+}: {
+    attendance: Attendance;
+    partySize: number;
+    data: FormData;
+    config: RegistrationForm;
+}) {
+    const rows: [string, string][] = [];
+
+    if (attendance === 'declined') {
+        rows.push(['Reply', 'Can’t make it']);
+
+        if (data.note) {
+            rows.push(['Note', data.note]);
+        }
+    } else {
+        rows.push([
+            'Reply',
+            attendance === 'maybe' ? 'Not sure yet' : 'Attending',
+        ]);
+        rows.push([
+            'Party',
+            `${partySize} ${partySize === 1 ? 'guest' : 'guests'}`,
+        ]);
+
+        const dietary = config.dietary_options
+            .filter((option) =>
+                data.dietary_restrictions.includes(option.value),
+            )
+            .map((option) => option.label);
+
+        if (dietary.length > 0) {
+            rows.push(['Dietary', dietary.join(', ')]);
+        }
+
+        for (const question of config.questions) {
+            const value = data.answers[question.id];
+
+            if (value !== null && value !== undefined && value !== '') {
+                rows.push([
+                    question.label,
+                    Array.isArray(value)
+                        ? value.join(', ')
+                        : typeof value === 'boolean'
+                          ? value
+                              ? 'Yes'
+                              : 'No'
+                          : String(value),
+                ]);
+            }
+        }
+    }
+
+    return (
+        <dl className="rounded-xl bg-card shadow-card">
+            {rows.map(([label, value]) => (
+                <div
+                    key={label}
+                    className="flex justify-between gap-4 border-b border-border px-3.5 py-3 text-sm last:border-b-0"
+                >
+                    <dt className="text-muted-foreground">{label}</dt>
+                    <dd className="text-right font-semibold">{value}</dd>
+                </div>
+            ))}
+        </dl>
+    );
+}
+
+/** "Joyfully accept" / "Regretfully decline" choice (2b). */
+function AttendCard({
+    icon: Icon,
+    label,
+    checked,
+    onSelect,
+}: {
+    icon: LucideIcon;
+    label: string;
+    checked: boolean;
+    onSelect: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            role="radio"
+            aria-checked={checked}
+            onClick={onSelect}
+            className={cn(
+                'relative flex flex-col gap-1.5 rounded-xl bg-card p-3.5 text-left text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+                checked
+                    ? 'border-2 border-strong font-bold'
+                    : 'border border-input font-semibold text-muted-foreground',
+            )}
+        >
+            <Icon
+                className={cn('size-6', checked ? 'text-link' : '')}
+                strokeWidth={1.75}
+            />
+            {label}
+            {checked && (
+                <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-strong text-strong-foreground">
+                    <Check className="size-3.5" />
+                </span>
+            )}
+        </button>
     );
 }
 
@@ -415,15 +714,20 @@ function QuestionField({
     if (question.type === 'checkbox') {
         return (
             <div className="grid gap-1.5">
-                <label className="flex items-center gap-2 text-sm font-medium">
+                <label className="flex items-center justify-between gap-3 rounded-xl bg-card px-3.5 py-3 text-sm font-semibold shadow-card">
+                    <span>
+                        {question.label}
+                        {question.required && <Required />}
+                    </span>
                     <input
                         id={id}
                         type="checkbox"
+                        role="switch"
                         checked={value === true}
                         onChange={(e) => onChange(e.target.checked)}
+                        className="peer sr-only"
                     />
-                    {question.label}
-                    {question.required && <Required />}
+                    <span className="relative h-7 w-11.5 shrink-0 rounded-full bg-foreground/14 transition-colors peer-checked:bg-strong peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 after:absolute after:top-0.75 after:left-0.75 after:size-5.5 after:rounded-full after:bg-card after:transition-transform peer-checked:after:translate-x-4.5" />
                 </label>
                 <FieldError message={error} />
             </div>
@@ -435,41 +739,33 @@ function QuestionField({
 
         return (
             <fieldset className="grid gap-2">
-                <legend className="mb-2 text-sm font-medium">
+                <legend className="mb-2.5 text-sm font-bold">
                     {question.label}
                     {question.required && <Required />}
                 </legend>
-                <div className="flex flex-wrap gap-x-4 gap-y-2">
-                    {options.map((option) => (
-                        <label
-                            key={option}
-                            className="flex items-center gap-2 text-sm"
-                        >
-                            {question.type === 'radio' ? (
-                                <input
-                                    type="radio"
-                                    name={id}
-                                    checked={value === option}
-                                    onChange={() => onChange(option)}
-                                />
-                            ) : (
-                                <input
-                                    type="checkbox"
-                                    checked={selected.includes(option)}
-                                    onChange={(e) =>
-                                        onChange(
-                                            toggle(
-                                                selected,
-                                                option,
-                                                e.target.checked,
-                                            ),
-                                        )
-                                    }
-                                />
-                            )}
-                            {option}
-                        </label>
-                    ))}
+                <div className="flex flex-wrap gap-2">
+                    {options.map((option) =>
+                        question.type === 'radio' ? (
+                            <ChoiceChip
+                                key={option}
+                                type="radio"
+                                name={id}
+                                label={option}
+                                checked={value === option}
+                                onChange={() => onChange(option)}
+                            />
+                        ) : (
+                            <ChoiceChip
+                                key={option}
+                                type="checkbox"
+                                label={option}
+                                checked={selected.includes(option)}
+                                onChange={(checked) =>
+                                    onChange(toggle(selected, option, checked))
+                                }
+                            />
+                        ),
+                    )}
                 </div>
                 <FieldError message={error} />
             </fieldset>
@@ -519,7 +815,8 @@ function QuestionField({
     );
 }
 
-function Field({
+/** A labelled popup field (bold label, error or hint under it). */
+export function Field({
     id,
     label,
     required,
@@ -538,7 +835,7 @@ function Field({
 }) {
     return (
         <div className={['grid gap-1.5', className].filter(Boolean).join(' ')}>
-            <Label htmlFor={id}>
+            <Label htmlFor={id} className="text-sm font-bold">
                 {label}
                 {required && <Required />}
             </Label>
@@ -560,12 +857,104 @@ function Required() {
     );
 }
 
-function FieldError({ message }: { message?: string }) {
+export function FieldError({ message }: { message?: string }) {
     return message ? (
         <p className="text-xs text-destructive">{message}</p>
     ) : null;
 }
 
-function range(max: number): number[] {
-    return Array.from({ length: max + 1 }, (_, index) => index);
+/**
+ * The EMP popup's frame (2b): a tall sheet on phones, a centred panel from
+ * `sm` up. The dashboard uses it as is, in the current theme.
+ */
+export const POPUP =
+    'bg-background text-foreground max-sm:top-auto max-sm:bottom-0 max-sm:max-h-[92dvh] max-sm:w-full max-sm:translate-y-0 max-sm:rounded-t-[22px] max-sm:rounded-b-none sm:max-w-md';
+
+/** The popup on guest pages: pins the dark EMP palette whatever the invitation looks like. */
+export const NOCTURNE_POPUP = `nocturne font-[Inter,ui-sans-serif,system-ui,sans-serif] ${POPUP}`;
+
+/** A row of the "Who's coming?" card with − / + buttons. */
+export function CounterRow({
+    label,
+    hint,
+    value,
+    max,
+    onChange,
+}: {
+    label: string;
+    hint?: string;
+    value: number;
+    max: number;
+    onChange: (value: number) => void;
+}) {
+    return (
+        <div className="flex items-center border-b border-border px-3.5 py-3 last:border-b-0">
+            <div className="flex-1">
+                <div className="text-sm font-semibold">{label}</div>
+                {hint && <div className="text-xs text-subtle">{hint}</div>}
+            </div>
+            <div className="flex items-center gap-3.5">
+                <button
+                    type="button"
+                    aria-label={`Fewer ${label.toLowerCase()}`}
+                    disabled={value <= 0}
+                    onClick={() => onChange(value - 1)}
+                    className="flex size-9 items-center justify-center rounded-full border border-input disabled:opacity-40"
+                >
+                    <Minus className="size-4" />
+                </button>
+                <span
+                    className="w-4 text-center text-base font-bold tabular-nums"
+                    aria-live="polite"
+                >
+                    {value}
+                </span>
+                <button
+                    type="button"
+                    aria-label={`More ${label.toLowerCase()}`}
+                    disabled={value >= max}
+                    onClick={() => onChange(value + 1)}
+                    className="flex size-9 items-center justify-center rounded-full border border-input disabled:opacity-40"
+                >
+                    <Plus className="size-4" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/** A pill that works as a checkbox or radio (dietary options, choices). */
+function ChoiceChip({
+    type,
+    name,
+    label,
+    checked,
+    onChange,
+}: {
+    type: 'checkbox' | 'radio';
+    name?: string;
+    label: string;
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+}) {
+    return (
+        <label
+            className={cn(
+                'inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold has-focus-visible:ring-3 has-focus-visible:ring-ring/50',
+                checked
+                    ? 'bg-strong text-strong-foreground'
+                    : 'border border-input bg-card',
+            )}
+        >
+            <input
+                type={type}
+                name={name}
+                checked={checked}
+                onChange={(e) => onChange(e.target.checked)}
+                className="sr-only"
+            />
+            {checked && <Check className="size-3.5" />}
+            {label}
+        </label>
+    );
 }

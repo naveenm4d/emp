@@ -1,5 +1,4 @@
 import { Head } from '@inertiajs/react';
-import { Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { FlashMessages } from '@/components/shared/flash-messages';
@@ -22,11 +21,8 @@ export default function AuthLayout({
             <Head title={title} />
             <div className="w-full max-w-sm">
                 <div className="mb-8 flex flex-col items-center text-center">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/15">
-                        <Zap
-                            className="h-5 w-5 text-indigo-500"
-                            strokeWidth={2.5}
-                        />
+                    <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-primary text-base font-extrabold text-primary-foreground">
+                        E
                     </div>
                     {badge && (
                         <span className="mb-2 rounded-full border border-border px-2 py-0.5 text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
@@ -42,7 +38,7 @@ export default function AuthLayout({
                         </p>
                     )}
                 </div>
-                <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <div className="rounded-2xl bg-card p-6 shadow-card">
                     {children}
                 </div>
             </div>

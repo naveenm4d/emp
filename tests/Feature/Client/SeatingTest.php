@@ -7,6 +7,7 @@ use App\Domains\Guest\Models\Guest;
 use App\Domains\Rsvp\Models\Rsvp;
 use App\Domains\Seating\Models\EventTable;
 use App\Domains\Seating\Models\SeatAssignment;
+use App\Domains\Seating\Models\VenueElement;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -338,4 +339,81 @@ it('frees one person of a party', function () {
         ->assertSessionHas('success', "John's child 2's seat is free.");
 
     expect(SeatAssignment::where('guest_id', $john->id)->orderBy('party_member')->pluck('party_member')->all())->toBe([0, 1]);
+});
+
+it('saves where tables and venue elements stand on the floor plan', function () {
+    $table = EventTable::factory()->for($this->event)->create();
+    $stage = VenueElement::factory()->for($this->event)->create();
+    $otherTable = EventTable::factory()->create(['pos_x' => 10, 'pos_y' => 10]);
+
+    $this->patch("/app/events/{$this->event->id}/seating/layout", [
+        'tables' => [
+            ['id' => $table->id, 'x' => 200, 'y' => 340],
+            ['id' => $otherTable->id, 'x' => 900, 'y' => 900],
+        ],
+        'elements' => [['id' => $stage->id, 'x' => 500, 'y' => 20, 'width' => 400, 'height' => 120]],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($table->fresh())->pos_x->toBe(200)->pos_y->toBe(340)
+        ->and($stage->fresh())->pos_x->toBe(500)->width->toBe(400)->height->toBe(120)
+        ->and($otherTable->fresh())->pos_x->toBe(10);
+});
+
+it('keeps floor plan positions on the canvas', function () {
+    $table = EventTable::factory()->for($this->event)->create();
+
+    $this->patch("/app/events/{$this->event->id}/seating/layout", [
+        'tables' => [['id' => $table->id, 'x' => 5000, 'y' => -1]],
+        'elements' => [],
+    ])->assertSessionHasErrors(['tables.0.x', 'tables.0.y']);
+});
+
+it('adds, renames and removes venue elements', function () {
+    $this->post("/app/events/{$this->event->id}/venue-elements", ['kind' => 'poruwa', 'x' => 700, 'y' => 60, 'width' => 180, 'height' => 180])
+        ->assertSessionHas('success', 'Poruwa added.');
+
+    $element = VenueElement::sole();
+    expect($element->label)->toBeNull();
+
+    $this->patch("/app/venue-elements/{$element->id}", ['kind' => 'custom', 'label' => 'Gift table', 'x' => 700, 'y' => 60, 'width' => 180, 'height' => 120])
+        ->assertSessionHas('success', 'Gift table saved.');
+
+    $this->delete("/app/venue-elements/{$element->id}")->assertSessionHas('success', 'Gift table removed.');
+    expect(VenueElement::count())->toBe(0);
+});
+
+it('needs a name for a custom venue element', function () {
+    $this->post("/app/events/{$this->event->id}/venue-elements", ['kind' => 'custom', 'x' => 0, 'y' => 0, 'width' => 180, 'height' => 120])
+        ->assertSessionHasErrors(['label' => 'Give the custom element a name.']);
+});
+
+it('keeps other clients off an event\'s venue elements', function () {
+    $element = VenueElement::factory()->create();
+
+    $this->delete("/app/venue-elements/{$element->id}")->assertForbidden();
+    $this->post("/app/events/{$element->event_id}/venue-elements", ['kind' => 'bar', 'x' => 0, 'y' => 0, 'width' => 220, 'height' => 90])->assertForbidden();
+});
+
+it('shows the floor plan on the seating page', function () {
+    EventTable::factory()->for($this->event)->create(['pos_x' => 120, 'pos_y' => 80]);
+    VenueElement::factory()->for($this->event)->create();
+
+    $this->get("/app/events/{$this->event->id}/seating")->assertInertia(fn (Assert $page) => $page
+        ->where('tables.0.x', 120)
+        ->where('tables.0.y', 80)
+        ->where('venueElements.0.kind', 'stage')
+        ->where('venueElements.0.display_label', 'Stage')
+        ->has('venueElementKinds', 12));
+});
+
+it('refuses floor plan changes on a cancelled event', function () {
+    $event = Event::factory()->for($this->client)->cancelled()->create();
+    $table = EventTable::factory()->for($event)->create();
+
+    $this->from('/app')->patch("/app/events/{$event->id}/seating/layout", [
+        'tables' => [['id' => $table->id, 'x' => 100, 'y' => 100]],
+        'elements' => [],
+    ])->assertSessionHas('error');
+
+    expect($table->fresh()->pos_x)->toBeNull();
 });
