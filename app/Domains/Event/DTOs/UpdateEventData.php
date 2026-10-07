@@ -12,7 +12,7 @@ final class UpdateEventData extends PartialData
             'title', 'slug', 'template_id', 'description', 'max_capacity', 'registration_type',
             'event_type', 'location_name', 'location_address', 'map_url',
             'event_date', 'start_time', 'end_time', 'invitation_message',
-            'reminder_message', 'auto_reminders', 'remind_after_days', 'remind_before_days',
+            'reminder_message', 'invitation_subject', 'reminder_subject', 'auto_reminders', 'remind_after_days', 'remind_before_days',
         ];
     }
 

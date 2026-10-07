@@ -30,6 +30,10 @@ export type ClientPlanUsage = {
     /** Why no event can be created now. */
     reason: string | null;
     max_guests_per_event: number | null;
+    /** People who can sign in, pending invitations included. */
+    users_used: number;
+    /** null = unlimited */
+    users_allowed: number | null;
     allows_extra_guests: boolean;
     features: PlanFeature[];
     message_limits: { invitations: number; reminders: number };
@@ -47,7 +51,39 @@ export type Client = {
     /** Staff only. */
     plan_expires_at?: string | null;
     event_credits?: number;
+    /** Staff only: override of the plan's user limit. */
+    user_limit?: number | null;
     created_at?: string;
+};
+
+/** What a member of a client account may do (ClientPermission). */
+export type ClientPermission =
+    | 'events.create'
+    | 'events.update'
+    | 'events.delete'
+    | 'guests.manage'
+    | 'messages.send'
+    | 'seating.manage'
+    | 'team.manage';
+
+/** Someone who signs in to a client account (ClientUserResource). */
+export type ClientUser = {
+    id: string;
+    name: string;
+    email: string;
+    email_verified_at: string | null;
+    role: 'owner' | 'member';
+    is_owner: boolean;
+    /** Invited and hasn't set a password yet. */
+    pending: boolean;
+    /** Effective: the owner has them all. */
+    permissions: ClientPermission[];
+    all_events: boolean;
+    /** The events a member was given (team page only). */
+    event_ids?: string[];
+    invited_at: string | null;
+    joined_at: string | null;
+    last_login_at: string | null;
 };
 
 /** One entry of the admin activity log. */
@@ -120,6 +156,9 @@ export type Event = {
     end_time: string | null;
     invitation_message: string | null;
     reminder_message: string | null;
+    /** Email subjects (email only; not sent on WhatsApp or SMS). */
+    invitation_subject: string | null;
+    reminder_subject: string | null;
     auto_reminders: boolean;
     remind_after_days: number;
     remind_before_days: number;

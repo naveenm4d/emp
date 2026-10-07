@@ -6,6 +6,7 @@ use App\Core\Http\Controllers\InertiaController;
 use App\Domains\Client\Contracts\ClientServiceInterface;
 use App\Domains\Client\Http\Requests\Dashboard\LoginRequest;
 use App\Domains\Client\Http\Requests\Dashboard\RegisterRequest;
+use App\Domains\Client\Models\ClientUser;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,6 +31,10 @@ class AuthController extends InertiaController
         $request->authenticate();
         $request->session()->regenerate();
 
+        /** @var ClientUser $user */
+        $user = $request->user('client');
+        $this->clients->recordLogin($user);
+
         return redirect()->intended(route('client.dashboard', absolute: false));
     }
 
@@ -40,9 +45,9 @@ class AuthController extends InertiaController
 
     public function register(RegisterRequest $request): RedirectResponse
     {
-        $client = $this->clients->register($request->toData());
+        $owner = $this->clients->register($request->toData());
 
-        Auth::guard('client')->login($client);
+        Auth::guard('client')->login($owner);
         $request->session()->regenerate();
 
         return to_route('client.dashboard');

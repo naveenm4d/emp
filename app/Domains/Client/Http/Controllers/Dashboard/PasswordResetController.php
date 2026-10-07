@@ -4,7 +4,7 @@ namespace App\Domains\Client\Http\Controllers\Dashboard;
 
 use App\Core\Http\Controllers\InertiaController;
 use App\Domains\Client\Contracts\ClientServiceInterface;
-use App\Domains\Client\Models\Client;
+use App\Domains\Client\Models\ClientUser;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,11 +56,11 @@ class PasswordResetController extends InertiaController
 
         $status = Password::broker('clients')->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (Client $client, string $password) {
-                $this->clients->updatePassword($client, $password);
-                $client->forceFill(['remember_token' => Str::random(60)])->save();
+            function (ClientUser $user, string $password) {
+                $this->clients->updatePassword($user, $password);
+                $user->forceFill(['remember_token' => Str::random(60)])->save();
 
-                event(new PasswordReset($client));
+                event(new PasswordReset($user));
             },
         );
 

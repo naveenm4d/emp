@@ -74,6 +74,8 @@ class ClientPlanService extends BaseService implements ClientPlanServiceInterfac
             'can_create_event' => $reason === null,
             'reason' => $reason,
             'max_guests_per_event' => $plan->maxGuestsPerEvent(),
+            'users_used' => $this->clients->usersCount($client->id),
+            'users_allowed' => $client->userLimit(),
             'allows_extra_guests' => $plan->allowsExtraGuests(),
             'features' => array_map(fn (PlanFeature $feature) => $feature->value, $plan->features()),
             'message_limits' => $plan->messageLimits() ?? [
@@ -93,6 +95,7 @@ class ClientPlanService extends BaseService implements ClientPlanServiceInterfac
                 'plan' => $data->plan,
                 'plan_expires_at' => $data->expiresAt,
                 'event_credits' => $data->eventCredits,
+                'user_limit' => $data->userLimit,
             ]);
 
             $after = $this->snapshot($client);
@@ -122,19 +125,20 @@ class ClientPlanService extends BaseService implements ClientPlanServiceInterfac
         };
     }
 
-    /** @return array{plan: string, plan_expires_at: string|null, event_credits: int} */
+    /** @return array{plan: string, plan_expires_at: string|null, event_credits: int, user_limit: int|null} */
     private function snapshot(Client $client): array
     {
         return [
             'plan' => $client->plan->value,
             'plan_expires_at' => $client->plan_expires_at?->toDateString(),
             'event_credits' => $client->event_credits,
+            'user_limit' => $client->user_limit,
         ];
     }
 
     /**
-     * @param  array{plan: string, plan_expires_at: string|null, event_credits: int}  $before
-     * @param  array{plan: string, plan_expires_at: string|null, event_credits: int}  $after
+     * @param  array{plan: string, plan_expires_at: string|null, event_credits: int, user_limit: int|null}  $before
+     * @param  array{plan: string, plan_expires_at: string|null, event_credits: int, user_limit: int|null}  $after
      */
     private function describeChange(array $before, array $after): string
     {
@@ -151,6 +155,10 @@ class ClientPlanService extends BaseService implements ClientPlanServiceInterfac
 
         if ($before['event_credits'] !== $after['event_credits']) {
             $parts[] = "event credits {$before['event_credits']} → {$after['event_credits']}";
+        }
+
+        if ($before['user_limit'] !== $after['user_limit']) {
+            $parts[] = 'users '.($after['user_limit'] ?? 'plan default');
         }
 
         return implode(', ', $parts);

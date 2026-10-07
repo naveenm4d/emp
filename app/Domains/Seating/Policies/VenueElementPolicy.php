@@ -2,21 +2,22 @@
 
 namespace App\Domains\Seating\Policies;
 
-use App\Domains\Client\Models\Client;
+use App\Domains\Client\Enums\ClientPermission;
+use App\Domains\Client\Models\ClientUser;
 use App\Domains\Seating\Models\VenueElement;
 
 /**
- * A client arranges the floor plan of events it owns.
+ * Client users with seating.manage arrange the floor plan of events they can see.
  */
 class VenueElementPolicy
 {
-    public function update(Client $client, VenueElement $element): bool
+    public function update(ClientUser $user, VenueElement $element): bool
     {
-        return $element->event->isOwnedBy($client);
+        return $user->hasPermission(ClientPermission::SeatingManage) && $user->canAccessEvent($element->event);
     }
 
-    public function delete(Client $client, VenueElement $element): bool
+    public function delete(ClientUser $user, VenueElement $element): bool
     {
-        return $element->event->isOwnedBy($client);
+        return $this->update($user, $element);
     }
 }

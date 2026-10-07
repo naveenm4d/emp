@@ -6,6 +6,7 @@ use App\Core\Repositories\BaseRepository;
 use App\Domains\Client\Contracts\ClientRepositoryInterface;
 use App\Domains\Client\DTOs\ClientFilters;
 use App\Domains\Client\Models\Client;
+use App\Domains\Client\Models\ClientUser;
 use App\Domains\Event\Models\Event;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
@@ -30,6 +31,11 @@ class ClientRepository extends BaseRepository implements ClientRepositoryInterfa
         return Event::withTrashed()->where('client_id', $clientId)->count();
     }
 
+    public function usersCount(string $clientId): int
+    {
+        return ClientUser::query()->where('client_id', $clientId)->count();
+    }
+
     public function findByEmail(string $email): ?Client
     {
         return $this->query()->where('email', mb_strtolower($email))->first();
@@ -39,6 +45,7 @@ class ClientRepository extends BaseRepository implements ClientRepositoryInterfa
     {
         return $this->query()
             ->withCount('events')
+            ->with('owner:id,client_id,email_verified_at')
             ->when($filters->search, fn ($query, string $search) => $query->where(
                 fn ($query) => $query
                     ->whereLike('name', "%{$search}%", caseSensitive: false)

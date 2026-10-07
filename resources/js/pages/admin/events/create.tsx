@@ -24,6 +24,8 @@ export default function AdminCreateEvent({
     registrationTypes,
     defaultInvitationMessage,
     defaultReminderMessage,
+    defaultInvitationSubject,
+    defaultReminderSubject,
 }: {
     client: Resource<Client>;
     templates: { data: Template[] };
@@ -31,6 +33,8 @@ export default function AdminCreateEvent({
     registrationTypes: RegistrationTypeOption[];
     defaultInvitationMessage: string;
     defaultReminderMessage: string;
+    defaultInvitationSubject: string;
+    defaultReminderSubject: string;
 }) {
     return (
         <AdminLayout>
@@ -53,6 +57,8 @@ export default function AdminCreateEvent({
                 registrationTypes={registrationTypes}
                 defaultInvitationMessage={defaultInvitationMessage}
                 defaultReminderMessage={defaultReminderMessage}
+                defaultInvitationSubject={defaultInvitationSubject}
+                defaultReminderSubject={defaultReminderSubject}
                 mapPreviewUrl={(url) => mapPreview.url({ query: { url } })}
                 templatePreviewUrl={(template) =>
                     preview.url({ client: client.id, template: template.id })

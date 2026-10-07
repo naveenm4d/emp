@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     Http::preventStrayRequests();
-    $this->actingAs(Client::factory()->create(), 'client');
+    $this->actingAs(Client::factory()->create()->owner, 'client');
 });
 
 function mapPreview(string $url)

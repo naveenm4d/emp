@@ -24,7 +24,7 @@ const EDITOR_SCHEMA = [
 
 beforeEach(function () {
     $this->client = Client::factory()->create();
-    $this->actingAs($this->client, 'client');
+    $this->actingAs($this->client->owner, 'client');
 
     $template = Template::factory()->published(EDITOR_MARKUP, '.intro { color: var(--emp-color-accent) }')->create();
     $this->version = TemplateVersion::find($template->latest_version_id);

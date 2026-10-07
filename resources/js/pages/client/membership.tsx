@@ -8,6 +8,7 @@ import {
     Lock,
     MessageCircle,
     Sparkles,
+    UserCog,
     Users,
 } from 'lucide-react';
 
@@ -156,7 +157,7 @@ function Usage({ plan }: { plan: ClientPlanUsage }) {
                     {plan.reason}
                 </div>
             )}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <UsageTile icon={CalendarDays} label="Events" {...events} />
                 <UsageTile
                     icon={Users}
@@ -176,6 +177,25 @@ function Usage({ plan }: { plan: ClientPlanUsage }) {
                     label="WhatsApp messages"
                     value={`${plan.message_limits.invitations} + ${plan.message_limits.reminders}`}
                     caption="invitations + reminders per guest"
+                />
+                <UsageTile
+                    icon={UserCog}
+                    label="Team"
+                    value={
+                        plan.users_allowed === null
+                            ? `${plan.users_used}`
+                            : `${plan.users_used} of ${plan.users_allowed}`
+                    }
+                    caption={
+                        plan.users_allowed === null
+                            ? 'people sign in · no limit'
+                            : 'people can sign in to this account'
+                    }
+                    progress={
+                        plan.users_allowed === null
+                            ? undefined
+                            : plan.users_used / plan.users_allowed
+                    }
                 />
             </div>
         </section>

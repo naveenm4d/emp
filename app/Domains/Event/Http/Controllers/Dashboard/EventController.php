@@ -2,7 +2,9 @@
 
 namespace App\Domains\Event\Http\Controllers\Dashboard;
 
+use App\Core\Http\Controllers\Concerns\ResolvesClient;
 use App\Core\Http\Controllers\InertiaController;
+use App\Domains\Client\Contracts\ClientTeamServiceInterface;
 use App\Domains\Client\Models\Client;
 use App\Domains\Event\Contracts\EventQueryServiceInterface;
 use App\Domains\Event\Contracts\EventServiceInterface;
@@ -32,6 +34,8 @@ use Inertia\Response;
 
 class EventController extends InertiaController
 {
+    use ResolvesClient;
+
     /** Guests shown in the overview's "Waiting on reply" list. */
     private const WAITING_PREVIEW = 5;
 
@@ -43,19 +47,20 @@ class EventController extends InertiaController
 
     public function index(Request $request): Response
     {
-        $client = $this->client($request);
+        $user = $this->clientUser($request);
         $filters = EventFilters::fromArray($request->query(), defaultPeriod: EventPeriod::Upcoming);
 
         return Inertia::render('client/events/index', [
-            'events' => EventResource::collection($this->eventQueries->forClient($client, $filters)),
+            'events' => EventResource::collection($this->eventQueries->forClient($user->client, $filters, $user)),
             'filters' => $filters->toArray(),
             'states' => EventState::options(),
-            'totals' => $this->eventQueries->totalsForClient($client),
+            'totals' => $this->eventQueries->totalsForClient($user->client, $user),
         ]);
     }
 
     public function create(Request $request): Response
     {
+        $this->authorize('create', Event::class);
         $client = $this->client($request);
 
         return Inertia::render('client/events/create', [
@@ -64,14 +69,19 @@ class EventController extends InertiaController
             'registrationTypes' => RegistrationType::detailedOptions(),
             'defaultInvitationMessage' => RsvpMessage::DEFAULT,
             'defaultReminderMessage' => RsvpMessage::DEFAULT_REMINDER,
+            'defaultInvitationSubject' => RsvpMessage::DEFAULT_SUBJECT,
+            'defaultReminderSubject' => RsvpMessage::DEFAULT_REMINDER_SUBJECT,
             // Arriving from the Templates page with a design already chosen.
             'selectedTemplateId' => $this->selectableTemplateId($request->query('template'), $client),
         ]);
     }
 
-    public function store(StoreEventRequest $request): RedirectResponse
+    public function store(StoreEventRequest $request, ClientTeamServiceInterface $team): RedirectResponse
     {
-        $event = $this->events->create($this->client($request), $request->toData());
+        $user = $this->clientUser($request);
+        $event = $this->events->create($user->client, $request->toData());
+        // A member who only sees some events sees the ones they create.
+        $team->grantEvent($user, $event);
 
         return $this->toRouteWithSuccess('client.events.show', 'Event created as draft.', $event);
     }
@@ -109,6 +119,8 @@ class EventController extends InertiaController
             'registrationTypes' => RegistrationType::detailedOptions(),
             'defaultInvitationMessage' => RsvpMessage::DEFAULT,
             'defaultReminderMessage' => RsvpMessage::DEFAULT_REMINDER,
+            'defaultInvitationSubject' => RsvpMessage::DEFAULT_SUBJECT,
+            'defaultReminderSubject' => RsvpMessage::DEFAULT_REMINDER_SUBJECT,
         ]);
     }
 
@@ -139,11 +151,5 @@ class EventController extends InertiaController
         } catch (TemplateNotAvailableException) {
             return null;
         }
-    }
-
-    private function client(Request $request): Client
-    {
-        /** @var Client */
-        return $request->user('client');
     }
 }

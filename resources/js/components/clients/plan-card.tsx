@@ -43,6 +43,7 @@ export function PlanCard({
         plan: usage.plan as ClientPlanKey,
         plan_expires_at: usage.expires_at ? usage.expires_at.slice(0, 10) : '',
         event_credits: usage.event_credits,
+        user_limit: (client.user_limit ?? '') as number | '',
         note: '',
     });
     const isSubscription = subscriptions.includes(form.data.plan);
@@ -146,6 +147,32 @@ export function PlanCard({
                                 />
                             </FormField>
                         )}
+                        <FormField
+                            label="Users"
+                            htmlFor="user_limit"
+                            error={form.errors.user_limit}
+                            hint={
+                                form.data.plan === 'enterprise'
+                                    ? 'How many people can sign in to this account (required for Enterprise).'
+                                    : `Leave empty for the plan’s limit (${usage.users_used} signed up now).`
+                            }
+                        >
+                            <Input
+                                id="user_limit"
+                                type="number"
+                                min={1}
+                                max={1000}
+                                value={form.data.user_limit}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'user_limit',
+                                        e.target.value === ''
+                                            ? ''
+                                            : Number(e.target.value),
+                                    )
+                                }
+                            />
+                        </FormField>
                         <FormField
                             label="Note"
                             htmlFor="plan_note"

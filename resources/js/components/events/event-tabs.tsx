@@ -11,6 +11,7 @@ import {
     Users,
 } from 'lucide-react';
 
+import { useClientCan } from '@/lib/permissions';
 import { useHasPlanFeature } from '@/lib/plans';
 import { design, edit, seating, settings, show } from '@/routes/client/events';
 import { index as guestsIndex } from '@/routes/client/events/guests';
@@ -36,6 +37,7 @@ export type EventTab = {
 export function useEventTabs(event: Pick<Event, 'id'>): EventTab[] {
     const path = usePage().url.split('?')[0];
     const hasFeature = useHasPlanFeature();
+    const can = useClientCan();
 
     const all: (Omit<EventTab, 'active' | 'locked'> & {
         feature?: PlanFeature;
@@ -78,7 +80,10 @@ export function useEventTabs(event: Pick<Event, 'id'>): EventTab[] {
             feature: 'seating',
             primary: true,
         },
-        { label: 'Settings', href: edit.url(event.id), icon: Settings },
+        // Event details need events.update; team members without it don't get the tab.
+        ...(can('events.update')
+            ? [{ label: 'Settings', href: edit.url(event.id), icon: Settings }]
+            : []),
     ];
 
     return all.map(({ feature, ...tab }) => ({

@@ -3,12 +3,13 @@
 namespace App\Domains\Event\Http\Requests\Dashboard;
 
 use App\Domains\Event\DTOs\CreateEventData;
+use App\Domains\Event\Models\Event;
 
 class StoreEventRequest extends EventRequest
 {
     public function authorize(): bool
     {
-        return $this->user('client') !== null;
+        return $this->user('client')?->can('create', Event::class) ?? false;
     }
 
     /** @return array<string, mixed> */

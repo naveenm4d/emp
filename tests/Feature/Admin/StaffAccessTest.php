@@ -37,7 +37,7 @@ it('logs out staff who are deactivated mid-session', function () {
 });
 
 it('keeps clients out of the admin console', function () {
-    $this->actingAs(Client::factory()->create(), 'client');
+    $this->actingAs(Client::factory()->create()->owner, 'client');
 
     $this->get('/admin')->assertRedirect('/admin/login');
 });

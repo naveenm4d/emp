@@ -19,6 +19,11 @@ final class RsvpMessage
 
     public const string DEFAULT_REMINDER = 'Hi {{ guest.name }}, a friendly reminder to RSVP for {{ event.title }}: {{ rsvp.link }}';
 
+    /** Email subjects (email only: WhatsApp and SMS have none); used when the event sets none. */
+    public const string DEFAULT_SUBJECT = "You're invited to {{ event.title }}";
+
+    public const string DEFAULT_REMINDER_SUBJECT = 'Reminder: please RSVP for {{ event.title }}';
+
     /** @var list<string> */
     public const array PLACEHOLDERS = ['guest.name', 'event.title', 'event.date', 'event.time', 'event.venue', 'rsvp.link'];
 

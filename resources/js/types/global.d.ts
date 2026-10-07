@@ -1,6 +1,7 @@
 import type {
     Client,
     ClientPlanUsage,
+    ClientUser,
     Event,
     StaffMember,
 } from '@/types/models';
@@ -14,6 +15,8 @@ declare module '@inertiajs/core' {
                 client?:
                     | (Omit<Client, 'plan'> & { plan: ClientPlanUsage })
                     | null;
+                /** Who is signed in to the client dashboard. */
+                user?: ClientUser | null;
                 staff?: StaffMember | null;
             };
             flash: { success: string | null; error: string | null };

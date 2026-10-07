@@ -18,7 +18,7 @@ beforeEach(function () {
 /** Signs in a client on the given plan. */
 function signIn(Client $client): Client
 {
-    test()->actingAs($client, 'client');
+    test()->actingAs($client->owner, 'client');
 
     return $client;
 }

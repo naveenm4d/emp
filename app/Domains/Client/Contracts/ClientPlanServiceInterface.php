@@ -30,12 +30,12 @@ interface ClientPlanServiceInterface
      * @return array{
      *     plan: string, label: string, active: bool, expires_at: string|null, event_credits: int,
      *     events_used: int, events_allowed: int|null, can_create_event: bool, reason: string|null,
-     *     max_guests_per_event: int|null, allows_extra_guests: bool, features: list<string>,
+     *     max_guests_per_event: int|null, users_used: int, users_allowed: int|null, allows_extra_guests: bool, features: list<string>,
      *     message_limits: array{invitations: int, reminders: int},
      * }
      */
     public function usage(Client $client): array;
 
-    /** Staff set the plan, its end date and event credits; logged with who and why. */
+    /** Staff set the plan, its end date, event credits and user limit; logged with who and why. */
     public function changePlan(Client $client, ClientPlanData $data, StaffMember $by, string $note): Client;
 }

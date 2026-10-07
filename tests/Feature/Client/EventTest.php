@@ -14,7 +14,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     $this->client = Client::factory()->create();
-    $this->actingAs($this->client, 'client');
+    $this->actingAs($this->client->owner, 'client');
     $this->template = Template::factory()->published()->create();
 });
 
@@ -218,6 +218,26 @@ it('rejects an invitation message over 1000 characters', function () {
 
     $this->patch("/app/events/{$event->id}", ['invitation_message' => str_repeat('a', 1001)])
         ->assertSessionHasErrors('invitation_message');
+});
+
+it('saves the email subjects of the invitation and the reminder', function () {
+    $event = Event::factory()->for($this->client)->create();
+
+    $this->patch("/app/events/{$event->id}", [
+        'invitation_subject' => 'You are invited to {{ event.title }}',
+        'reminder_subject' => 'Please reply',
+    ])->assertSessionHasNoErrors();
+
+    expect($event->fresh())
+        ->invitation_subject->toBe('You are invited to {{ event.title }}')
+        ->reminder_subject->toBe('Please reply');
+});
+
+it('rejects an email subject over 150 characters', function () {
+    $event = Event::factory()->for($this->client)->create();
+
+    $this->patch("/app/events/{$event->id}", ['invitation_subject' => str_repeat('a', 151)])
+        ->assertSessionHasErrors('invitation_subject');
 });
 
 it('creates guest-list-only events unless another registration type is chosen', function () {

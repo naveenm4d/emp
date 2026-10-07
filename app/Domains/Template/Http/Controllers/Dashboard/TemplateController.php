@@ -2,8 +2,8 @@
 
 namespace App\Domains\Template\Http\Controllers\Dashboard;
 
+use App\Core\Http\Controllers\Concerns\ResolvesClient;
 use App\Core\Http\Controllers\InertiaController;
-use App\Domains\Client\Models\Client;
 use App\Domains\Template\Contracts\TemplatePreviewServiceInterface;
 use App\Domains\Template\Contracts\TemplateQueryServiceInterface;
 use App\Domains\Template\Exceptions\TemplateNotAvailableException;
@@ -18,6 +18,8 @@ use Inertia\Response;
 /** The invitation designs a client can choose from, and their live previews. */
 class TemplateController extends InertiaController
 {
+    use ResolvesClient;
+
     public function __construct(
         private readonly TemplateQueryServiceInterface $templates,
     ) {}
@@ -38,11 +40,5 @@ class TemplateController extends InertiaController
         }
 
         return response()->json($previews->forTemplate($template, $request->details()));
-    }
-
-    private function client(Request $request): Client
-    {
-        /** @var Client */
-        return $request->user('client');
     }
 }

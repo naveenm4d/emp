@@ -2,21 +2,22 @@
 
 namespace App\Domains\Seating\Policies;
 
-use App\Domains\Client\Models\Client;
+use App\Domains\Client\Enums\ClientPermission;
+use App\Domains\Client\Models\ClientUser;
 use App\Domains\Seating\Models\EventTable;
 
 /**
- * A client arranges the tables of events it owns.
+ * Client users with seating.manage arrange the tables of events they can see.
  */
 class EventTablePolicy
 {
-    public function update(Client $client, EventTable $table): bool
+    public function update(ClientUser $user, EventTable $table): bool
     {
-        return $table->event->isOwnedBy($client);
+        return $user->hasPermission(ClientPermission::SeatingManage) && $user->canAccessEvent($table->event);
     }
 
-    public function delete(Client $client, EventTable $table): bool
+    public function delete(ClientUser $user, EventTable $table): bool
     {
-        return $table->event->isOwnedBy($client);
+        return $this->update($user, $table);
     }
 }

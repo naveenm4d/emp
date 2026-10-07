@@ -16,8 +16,19 @@ interface NotificationRepositoryInterface extends RepositoryInterface
 {
     public function findByProviderMessageId(string $messageId): ?Notification;
 
-    /** @return LengthAwarePaginator<int, Notification> */
-    public function paginateForEvent(string $eventId, int $perPage): LengthAwarePaginator;
+    /**
+     * The event's messages, newest first; only those with `$status` when given.
+     *
+     * @return LengthAwarePaginator<int, Notification>
+     */
+    public function paginateForEvent(string $eventId, int $perPage, ?NotificationStatus $status = null): LengthAwarePaginator;
+
+    /**
+     * How many of the event's messages are in each status.
+     *
+     * @return array<string, int> keyed by NotificationStatus value
+     */
+    public function statusCountsForEvent(string $eventId): array;
 
     /**
      * All messages sent to a guest, newest first, with their delivery log.

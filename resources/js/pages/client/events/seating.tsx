@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import EventLayout from '@/layouts/event-layout';
+import { useClientCan } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { auto, replace, swap } from '@/routes/client/events/seating';
 import { destroy as freeSeats } from '@/routes/client/guests/seats';
@@ -90,7 +91,9 @@ function SeatingPage({
     venueElements,
     venueElementKinds,
 }: Props) {
-    const editable = event.state !== 'cancelled';
+    // Team members without seating.manage see the plan but can't change it.
+    const canManageSeating = useClientCan()('seating.manage');
+    const editable = event.state !== 'cancelled' && canManageSeating;
     const byId = useMemo(
         () => new Map(guests.map((guest) => [guest.id, guest])),
         [guests],

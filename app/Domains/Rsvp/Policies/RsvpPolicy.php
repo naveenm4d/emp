@@ -2,18 +2,22 @@
 
 namespace App\Domains\Rsvp\Policies;
 
-use App\Domains\Client\Models\Client;
+use App\Domains\Client\Enums\ClientPermission;
+use App\Domains\Client\Models\ClientUser;
 use App\Domains\Rsvp\Models\Rsvp;
 
+/**
+ * Client users see the RSVP links of events they can see, and send them with messages.send.
+ */
 class RsvpPolicy
 {
-    public function view(Client $client, Rsvp $rsvp): bool
+    public function view(ClientUser $user, Rsvp $rsvp): bool
     {
-        return $rsvp->event->isOwnedBy($client);
+        return $user->canAccessEvent($rsvp->event);
     }
 
-    public function update(Client $client, Rsvp $rsvp): bool
+    public function update(ClientUser $user, Rsvp $rsvp): bool
     {
-        return $rsvp->event->isOwnedBy($client);
+        return $user->hasPermission(ClientPermission::MessagesSend) && $user->canAccessEvent($rsvp->event);
     }
 }

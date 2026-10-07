@@ -40,6 +40,7 @@ import { buttonVariants } from '@/components/ui/button';
 import EventLayout from '@/layouts/event-layout';
 import { formatShortDate, formatTime, initials } from '@/lib/format';
 import { invitationState, remindersUsed, showsApproval } from '@/lib/guests';
+import { useClientCan } from '@/lib/permissions';
 import { useClientPlan, useHasPlanFeature } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 import { membership } from '@/routes/client';
@@ -92,6 +93,7 @@ export default function ShowEvent({
 }: Props) {
     const hasFeature = useHasPlanFeature();
     const plan = useClientPlan();
+    const canUpdate = useClientCan()('events.update');
     const approval = showsApproval(event, summary);
     const sent =
         rsvpSummary.sent +
@@ -381,7 +383,7 @@ export default function ShowEvent({
                                             ? 'Guests can’t open its page until you publish it.'
                                             : 'Guests can no longer register or reply.'}
                                     </p>
-                                    {event.state === 'draft' && (
+                                    {event.state === 'draft' && canUpdate && (
                                         <Link
                                             href={edit.url(event.id)}
                                             className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-link"

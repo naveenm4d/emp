@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Client\Models\Client;
+use App\Domains\Client\Models\ClientUser;
 use App\Domains\Staff\Models\StaffMember;
 
 return [
@@ -11,7 +11,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | EMP has two independent authenticated audiences:
-    |  - client: subscribed customers who create and manage events (/app)
+    |  - client: users of client accounts who create and manage events (/app);
+    |    an account (Client) has several users (ClientUser), see the Client domain
     |  - staff:  EMP platform internal staff (/admin)
     |
     | Guests (event attendees) never authenticate; they use public slugs and
@@ -39,7 +40,7 @@ return [
     'providers' => [
         'clients' => [
             'driver' => 'eloquent',
-            'model' => Client::class,
+            'model' => ClientUser::class,
         ],
 
         'staff_members' => [
@@ -53,6 +54,14 @@ return [
             'provider' => 'clients',
             'table' => 'client_password_reset_tokens',
             'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        // Invitations to join a client account: the link sets the user's password.
+        'client_invitations' => [
+            'provider' => 'clients',
+            'table' => 'client_invitation_tokens',
+            'expire' => 10080,
             'throttle' => 60,
         ],
 

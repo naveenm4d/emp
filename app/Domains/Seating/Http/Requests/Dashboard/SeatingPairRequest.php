@@ -14,7 +14,7 @@ class SeatingPairRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user('client')?->can('update', $this->event()) ?? false;
+        return $this->user('client')?->can('manageSeating', $this->event()) ?? false;
     }
 
     /** @return array<string, mixed> */

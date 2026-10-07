@@ -22,6 +22,7 @@ class UpdateClientPlanRequest extends FormRequest
             'plan' => ['required', Rule::enum(ClientPlan::class)],
             'plan_expires_at' => ['nullable', 'date'],
             'event_credits' => ['required', 'integer', 'min:0', 'max:1000'],
+            'user_limit' => ['nullable', 'integer', 'min:1', 'max:1000', Rule::requiredIf($this->input('plan') === ClientPlan::Enterprise->value)],
             'note' => ['required', 'string', 'max:500'],
         ];
     }
@@ -29,7 +30,10 @@ class UpdateClientPlanRequest extends FormRequest
     /** @return array<string, string> */
     public function messages(): array
     {
-        return ['note.required' => 'Add a note: why the plan changed (e.g. the payment reference).'];
+        return [
+            'note.required' => 'Add a note: why the plan changed (e.g. the payment reference).',
+            'user_limit.required' => 'Enterprise accounts need a user limit.',
+        ];
     }
 
     public function toData(): ClientPlanData

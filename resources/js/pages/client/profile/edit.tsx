@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ChevronRight, Gem, LogOut } from 'lucide-react';
+import { ChevronRight, Gem, LogOut, Users } from 'lucide-react';
 
 import { AppearancePicker } from '@/components/shared/appearance-picker';
 import { FormField } from '@/components/shared/form-field';
@@ -10,18 +10,21 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import ClientLayout from '@/layouts/client-layout';
 import { initials } from '@/lib/format';
+import { useClientCan } from '@/lib/permissions';
 import { useClientPlan } from '@/lib/plans';
 import { logout, membership } from '@/routes/client';
+import { index as teamIndex } from '@/routes/client/team';
 import { password, update } from '@/routes/client/profile';
-import type { Client, Resource } from '@/types';
+import type { ClientUser, Resource } from '@/types';
 
 export default function EditProfile({
-    client: { data: client },
+    user: { data: user },
 }: {
-    client: Resource<Client>;
+    user: Resource<ClientUser>;
 }) {
     const plan = useClientPlan();
-    const profile = useForm({ name: client.name, email: client.email });
+    const can = useClientCan();
+    const profile = useForm({ name: user.name, email: user.email });
     const pwd = useForm({
         current_password: '',
         password: '',
@@ -34,11 +37,11 @@ export default function EditProfile({
             <PageHeader title="Account" className="max-w-2xl gap-4 pb-4">
                 <div className="flex items-center gap-3">
                     <div className="flex size-12 items-center justify-center rounded-full bg-strong text-[15px] font-bold text-strong-foreground">
-                        {initials(client.name)}
+                        {initials(user.name)}
                     </div>
                     <div className="flex min-w-0 flex-col">
                         <span className="truncate text-base font-bold">
-                            {client.name}
+                            {user.name}
                         </span>
                         {plan && (
                             <span className="text-xs text-muted-foreground">
@@ -79,6 +82,28 @@ export default function EditProfile({
                                 <span className="text-xs text-muted-foreground">
                                     {plan.label}
                                 </span>
+                                <ChevronRight className="size-4 text-subtle" />
+                            </Link>
+                        )}
+                        {can('team.manage') && (
+                            <Link
+                                href={teamIndex.url()}
+                                className="flex items-center gap-3 border-b border-border p-3.5"
+                            >
+                                <Users
+                                    className="size-5 text-muted-foreground"
+                                    strokeWidth={1.75}
+                                />
+                                <span className="flex-1 text-sm font-semibold">
+                                    Team
+                                </span>
+                                {plan && (
+                                    <span className="text-xs text-muted-foreground">
+                                        {plan.users_allowed === null
+                                            ? plan.users_used
+                                            : `${plan.users_used} / ${plan.users_allowed}`}
+                                    </span>
+                                )}
                                 <ChevronRight className="size-4 text-subtle" />
                             </Link>
                         )}

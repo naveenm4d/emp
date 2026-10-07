@@ -17,7 +17,7 @@ beforeEach(function () {
 
     $this->client = Client::factory()->create();
     $this->event = Event::factory()->for($this->client)->published()->create(['title' => 'Gala']);
-    $this->actingAs($this->client, 'client');
+    $this->actingAs($this->client->owner, 'client');
 });
 
 it('creates and sends an RSVP link over WhatsApp', function () {
@@ -243,4 +243,13 @@ it('shows each guest\'s messages sent against the event\'s limits', function () 
     $this->get("/app/events/{$this->event->id}/guests")->assertInertia(fn (Assert $page) => $page
         ->where('event.data.message_limits', ['invitations' => 3, 'reminders' => 2])
         ->where('guests.data.0.messages_sent', ['invitations' => 2, 'reminders' => 1]));
+});
+
+it('never puts the email subject into the WhatsApp message', function () {
+    $this->event->update(['invitation_subject' => 'Subject line for email']);
+    $guest = Guest::factory()->for($this->event)->create();
+
+    $this->post("/app/guests/{$guest->id}/rsvps", ['send' => true])->assertSessionHas('success');
+
+    expect(Notification::sole()->message)->not->toContain('Subject line for email');
 });

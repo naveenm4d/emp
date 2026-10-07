@@ -3,7 +3,8 @@ import { ArrowLeft, ChevronRight } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 
-import { MessagePlaceholders } from '@/components/shared/message-placeholders';
+import { MessageEditor } from '@/components/messages/message-editor';
+import { MessagePreview } from '@/components/messages/message-preview';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -396,31 +397,46 @@ export function GuestFormDialog({
                                                     form.errors
                                                         .invitation_message
                                                 }
-                                                hint="Leave empty to send the event’s invitation."
+                                                hint="Leave empty to send the event’s invitation. WhatsApp and SMS only, so there’s no subject."
                                             >
-                                                <Textarea
+                                                <MessageEditor
                                                     id={`invitation_message-${id}`}
-                                                    rows={3}
-                                                    placeholder={forGuest(
-                                                        defaultMessage,
-                                                    )}
                                                     value={
                                                         form.data
                                                             .invitation_message
                                                     }
-                                                    onChange={(e) =>
+                                                    placeholder={forGuest(
+                                                        defaultMessage,
+                                                    )}
+                                                    invalid={
+                                                        !!form.errors
+                                                            .invitation_message
+                                                    }
+                                                    resetLabel="Use the event’s"
+                                                    onChange={(value) =>
                                                         form.setData(
                                                             'invitation_message',
-                                                            e.target.value,
+                                                            value,
                                                         )
                                                     }
                                                 />
-                                                <MessagePlaceholders
-                                                    message={
-                                                        form.data
-                                                            .invitation_message
-                                                    }
-                                                />
+                                                {form.data
+                                                    .invitation_message && (
+                                                    <MessagePreview
+                                                        className="mt-3"
+                                                        message={
+                                                            forGuest(
+                                                                form.data
+                                                                    .invitation_message,
+                                                            ) ?? ''
+                                                        }
+                                                        guestName={
+                                                            form.data.name ||
+                                                            'this guest'
+                                                        }
+                                                        from=""
+                                                    />
+                                                )}
                                             </Field>
                                             <Field
                                                 id={`reminder_message-${id}`}
@@ -430,29 +446,43 @@ export function GuestFormDialog({
                                                 }
                                                 hint="Leave empty to send the event’s reminder."
                                             >
-                                                <Textarea
+                                                <MessageEditor
                                                     id={`reminder_message-${id}`}
-                                                    rows={3}
-                                                    placeholder={forGuest(
-                                                        defaultReminderMessage,
-                                                    )}
                                                     value={
                                                         form.data
                                                             .reminder_message
                                                     }
-                                                    onChange={(e) =>
+                                                    placeholder={forGuest(
+                                                        defaultReminderMessage,
+                                                    )}
+                                                    invalid={
+                                                        !!form.errors
+                                                            .reminder_message
+                                                    }
+                                                    resetLabel="Use the event’s"
+                                                    onChange={(value) =>
                                                         form.setData(
                                                             'reminder_message',
-                                                            e.target.value,
+                                                            value,
                                                         )
                                                     }
                                                 />
-                                                <MessagePlaceholders
-                                                    message={
-                                                        form.data
-                                                            .reminder_message
-                                                    }
-                                                />
+                                                {form.data.reminder_message && (
+                                                    <MessagePreview
+                                                        className="mt-3"
+                                                        message={
+                                                            forGuest(
+                                                                form.data
+                                                                    .reminder_message,
+                                                            ) ?? ''
+                                                        }
+                                                        guestName={
+                                                            form.data.name ||
+                                                            'this guest'
+                                                        }
+                                                        from=""
+                                                    />
+                                                )}
                                             </Field>
                                         </div>
                                     )}

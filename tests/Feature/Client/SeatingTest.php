@@ -13,7 +13,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 beforeEach(function () {
     $this->client = Client::factory()->create();
     $this->event = Event::factory()->for($this->client)->create();
-    $this->actingAs($this->client, 'client');
+    $this->actingAs($this->client->owner, 'client');
 });
 
 /**

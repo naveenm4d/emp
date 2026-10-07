@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Domains\Client\Enums\ClientPermission;
 use App\Domains\Client\Models\Client;
+use App\Domains\Client\Models\ClientUser;
 use App\Domains\Event\Contracts\EventDesignServiceInterface;
 use App\Domains\Event\Enums\DietaryOption;
 use App\Domains\Event\Enums\EventType;
@@ -32,7 +34,7 @@ class DatabaseSeeder extends Seeder
      * Demo data. Every account's password is "password".
      *
      *  Staff:   admin@emp.test (super_admin), viewer@emp.test (viewer)  -> /admin
-     *  Client:  client@emp.test                                         -> /app
+     *  Client:  client@emp.test (owner), coordinator@emp.test (member) -> /app
      */
     public function run(EventDesignServiceInterface $designs): void
     {
@@ -73,6 +75,12 @@ class DatabaseSeeder extends Seeder
             'template_version_id' => $classic,
         ]);
         $this->attachDemoPhoto($dinner, [214, 190, 150], [120, 90, 60]);
+
+        // A coordinator who looks after the dinner's guests and seating, and nothing else.
+        ClientUser::factory()->for($client)
+            ->withPermissions([ClientPermission::GuestsManage, ClientPermission::MessagesSend, ClientPermission::SeatingManage])
+            ->forEvents($dinner)
+            ->create(['name' => 'Demo Coordinator', 'email' => 'coordinator@emp.test']);
 
         Event::factory()->for($client)->cancelled()->create([
             'title' => 'Spring Picnic',

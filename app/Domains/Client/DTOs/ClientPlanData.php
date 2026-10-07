@@ -13,6 +13,7 @@ final readonly class ClientPlanData extends DataTransferObject
         public ClientPlan $plan,
         public ?CarbonImmutable $expiresAt,
         public int $eventCredits,
+        public ?int $userLimit = null,
     ) {}
 
     /** @param array<string, mixed> $data validated input */
@@ -27,6 +28,8 @@ final readonly class ClientPlanData extends DataTransferObject
                 ? CarbonImmutable::parse($data['plan_expires_at'])->endOfDay()
                 : null,
             eventCredits: (int) ($data['event_credits'] ?? 0),
+            // Overrides the plan's user limit; Enterprise has none of its own.
+            userLimit: isset($data['user_limit']) ? (int) $data['user_limit'] : null,
         );
     }
 }

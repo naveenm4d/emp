@@ -13,7 +13,7 @@ const PREVIEW_MARKUP = '<h1>{{ event.title }}</h1>{{#if event.type}}<p class="ty
 
 beforeEach(function () {
     $this->client = Client::factory()->create();
-    $this->actingAs($this->client, 'client');
+    $this->actingAs($this->client->owner, 'client');
 
     $this->template = Template::factory()->published(PREVIEW_MARKUP)->create(['name' => 'Aurora']);
 });

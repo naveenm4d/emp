@@ -10,9 +10,11 @@
 */
 
 use App\Domains\Client\Http\Controllers\Dashboard\AuthController;
+use App\Domains\Client\Http\Controllers\Dashboard\InvitationController;
 use App\Domains\Client\Http\Controllers\Dashboard\MembershipController;
 use App\Domains\Client\Http\Controllers\Dashboard\PasswordResetController;
 use App\Domains\Client\Http\Controllers\Dashboard\ProfileController;
+use App\Domains\Client\Http\Controllers\Dashboard\TeamController;
 use App\Domains\Event\Http\Controllers\Dashboard\EventController;
 use App\Domains\Event\Http\Controllers\Dashboard\EventDesignController;
 use App\Domains\Event\Http\Controllers\Dashboard\EventMediaController;
@@ -41,6 +43,10 @@ Route::middleware('guest:client')->group(function () {
     Route::post('forgot-password', [PasswordResetController::class, 'sendLink'])->middleware('throttle:5,1')->name('password.email');
     Route::get('reset-password/{token}', [PasswordResetController::class, 'showReset'])->name('password.reset');
     Route::post('reset-password', [PasswordResetController::class, 'reset'])->name('password.store');
+
+    // Joining an account from an invitation email
+    Route::get('invitation/{token}', [InvitationController::class, 'show'])->name('invitation.show');
+    Route::post('invitation', [InvitationController::class, 'accept'])->middleware('throttle:10,1')->name('invitation.accept');
 });
 
 Route::middleware('auth:client')->group(function () {
@@ -121,4 +127,12 @@ Route::middleware('auth:client')->group(function () {
 
     // Membership: the client's plan and what it includes
     Route::get('membership', MembershipController::class)->name('membership');
+
+    // Team: who else signs in to the account, what they can do and which events they see
+    Route::get('team', [TeamController::class, 'index'])->name('team.index');
+    Route::post('team', [TeamController::class, 'store'])->name('team.store');
+    Route::patch('team/{member}', [TeamController::class, 'update'])->name('team.update');
+    Route::delete('team/{member}', [TeamController::class, 'destroy'])->name('team.destroy');
+    Route::post('team/{member}/resend', [TeamController::class, 'resend'])->middleware('throttle:6,1')->name('team.resend');
+    Route::post('team/{member}/owner', [TeamController::class, 'transferOwnership'])->name('team.owner');
 });

@@ -44,6 +44,8 @@ type Item = {
 export function CommandPalette() {
     const page = usePage();
     const events = page.props.eventSwitcher;
+    const canCreateEvents =
+        !!page.props.auth.user?.permissions.includes('events.create');
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [active, setActive] = useState(0);
@@ -140,7 +142,16 @@ export function CommandPalette() {
                 icon: CalendarDays,
                 href: eventsIndex.url(),
             },
-            { key: 'new', label: 'New event', icon: Plus, href: create.url() },
+            ...(canCreateEvents
+                ? [
+                      {
+                          key: 'new',
+                          label: 'New event',
+                          icon: Plus,
+                          href: create.url(),
+                      },
+                  ]
+                : []),
             {
                 key: 'templates',
                 label: 'Templates',
@@ -158,7 +169,7 @@ export function CommandPalette() {
             .map((item) => ({ ...item, group: 'Go to' as const }));
 
         return [...actions, ...matching, ...pages];
-    }, [query, events, currentEvent]);
+    }, [query, events, currentEvent, canCreateEvents]);
 
     const go = (item: Item | undefined) => {
         if (item) {

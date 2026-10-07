@@ -19,7 +19,8 @@ import { daysUntil } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Event } from '@/types';
 
-const typeIcons: Record<string, LucideIcon> = {
+/** An icon for each event type (`EventType` values). */
+export const eventTypeIcons: Record<string, LucideIcon> = {
     wedding: Heart,
     engagement: Gem,
     birthday: Cake,
@@ -80,7 +81,7 @@ export function EventPills({
     >;
     className?: string;
 }) {
-    const TypeIcon = typeIcons[event.event_type ?? ''] ?? CalendarClock;
+    const TypeIcon = eventTypeIcons[event.event_type ?? ''] ?? CalendarClock;
     const when = countdown(event.event_date);
 
     return (

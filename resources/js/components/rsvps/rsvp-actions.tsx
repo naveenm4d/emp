@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { expire, remind, resend, send } from '@/routes/client/rsvps';
 import { messageAllowance } from '@/lib/guests';
+import { useClientCan } from '@/lib/permissions';
 import type { MessageLimits, Rsvp } from '@/types';
 
 /** Row actions on the RSVPs tab: Send or Remind as the button; resend, copy and expire in a ⋯ menu. */
@@ -35,8 +36,9 @@ export function RsvpActions({
     const status = rsvpDisplayStatus(rsvp);
     const noPhone = !rsvp.guest?.phone;
     const allowance = messageAllowance(rsvp.guest, messageLimits);
+    const canSend = useClientCan()('messages.send');
 
-    if (status !== 'pending' && status !== 'sent') {
+    if (!canSend || (status !== 'pending' && status !== 'sent')) {
         return null;
     }
 

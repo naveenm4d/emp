@@ -46,6 +46,8 @@ use Illuminate\Support\Facades\URL;
  * @property string|null $end_time HH:MM:SS
  * @property string|null $invitation_message default WhatsApp text sent with RSVP links (placeholders: see RsvpMessage)
  * @property string|null $reminder_message default WhatsApp text for RSVP reminders
+ * @property string|null $invitation_subject email subject of the invitation (email only, never sent on WhatsApp or SMS; stored for now)
+ * @property string|null $reminder_subject email subject of the reminder (email only)
  * @property bool $auto_reminders send reminders automatically (RsvpReminderCommand)
  * @property int $remind_after_days automatic reminder this many days after sending, if no reply
  * @property int $remind_before_days automatic reminder this many days before the event date
@@ -71,7 +73,7 @@ use Illuminate\Support\Facades\URL;
     'client_id', 'template_version_id', 'title', 'slug', 'description', 'state', 'max_capacity',
     'registration_type', 'registration_open', 'event_type', 'location_name',
     'location_address', 'map_url', 'event_date', 'start_time', 'end_time', 'customizations',
-    'invitation_message', 'reminder_message', 'auto_reminders', 'remind_after_days', 'remind_before_days',
+    'invitation_message', 'reminder_message', 'invitation_subject', 'reminder_subject', 'auto_reminders', 'remind_after_days', 'remind_before_days',
     'event_registration_settings', 'responses_lock_at', 'max_invitations_per_guest', 'max_reminders_per_guest', 'extra_guests',
 ])]
 class Event extends Model

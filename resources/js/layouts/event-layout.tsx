@@ -110,7 +110,7 @@ function EventHeader({ event }: { event: EventLayoutProps['event'] }) {
                         title="Account"
                         className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card text-xs font-bold text-card-foreground"
                     >
-                        {initials(auth.client?.name ?? '')}
+                        {initials(auth.user?.name ?? '')}
                     </Link>
                 </div>
             </div>

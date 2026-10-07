@@ -22,6 +22,7 @@ import { approve, destroy, reject, waitlist } from '@/routes/client/guests';
 import { store as createRsvp } from '@/routes/client/guests/rsvps';
 import { remind, resend, send } from '@/routes/client/rsvps';
 import { messageAllowance } from '@/lib/guests';
+import { useClientCan } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import type { Guest, MessageLimits, RegistrationType } from '@/types';
 
@@ -47,6 +48,7 @@ export function GuestActions({
     /** Opens the guest details panel. */
     onView: () => void;
 }) {
+    const canSend = useClientCan()('messages.send');
     const rsvp = guest.latest_rsvp;
     const status = rsvp ? rsvpDisplayStatus(rsvp) : null;
     const canInvite =
@@ -59,40 +61,42 @@ export function GuestActions({
     const post = (url: string, data: Record<string, boolean> = {}) =>
         router.post(url, data, { preserveScroll: true });
 
-    const action = canInvite
-        ? {
-              label: status ? 'Re-invite' : 'Invite',
-              icon: Send,
-              disabled: noPhone || !allowance.invitations,
-              hint: noPhone
-                  ? noPhoneHint
-                  : (allowance.invitationsHint ??
-                    'Send an RSVP link on WhatsApp'),
-              run: () => post(createRsvp.url(guest), { send: true }),
-          }
-        : rsvp && status === 'pending'
+    const action = !canSend
+        ? null
+        : canInvite
           ? {
-                label: 'Invite',
+                label: status ? 'Re-invite' : 'Invite',
                 icon: Send,
                 disabled: noPhone || !allowance.invitations,
                 hint: noPhone
                     ? noPhoneHint
                     : (allowance.invitationsHint ??
-                      'Send the RSVP link on WhatsApp'),
-                run: () => post(send.url(rsvp)),
+                      'Send an RSVP link on WhatsApp'),
+                run: () => post(createRsvp.url(guest), { send: true }),
             }
-          : rsvp && status === 'sent'
+          : rsvp && status === 'pending'
             ? {
-                  label: 'Remind',
-                  icon: BellRing,
-                  disabled: noPhone || !allowance.reminders,
+                  label: 'Invite',
+                  icon: Send,
+                  disabled: noPhone || !allowance.invitations,
                   hint: noPhone
                       ? noPhoneHint
-                      : (allowance.remindersHint ??
-                        'Remind the guest to reply'),
-                  run: () => post(remind.url(rsvp)),
+                      : (allowance.invitationsHint ??
+                        'Send the RSVP link on WhatsApp'),
+                  run: () => post(send.url(rsvp)),
               }
-            : null;
+            : rsvp && status === 'sent'
+              ? {
+                    label: 'Remind',
+                    icon: BellRing,
+                    disabled: noPhone || !allowance.reminders,
+                    hint: noPhone
+                        ? noPhoneHint
+                        : (allowance.remindersHint ??
+                          'Remind the guest to reply'),
+                    run: () => post(remind.url(rsvp)),
+                }
+              : null;
 
     return (
         <div className="flex items-center justify-end gap-1">
@@ -152,6 +156,9 @@ export function GuestQuickActions({
 }: GuestActionsProps) {
     const [copied, setCopied] = useState(false);
     const confirmation = useConfirm();
+    const can = useClientCan();
+    const canManage = can('guests.manage');
+    const canSend = can('messages.send');
 
     useEffect(() => {
         if (!copied) {
@@ -181,7 +188,8 @@ export function GuestQuickActions({
     const link = guest.link_url ?? rsvp?.rsvp_url ?? null;
 
     const actions: (QuickAction | false)[] = [
-        allowsApproval &&
+        canManage &&
+            allowsApproval &&
             !isApproved && {
                 key: 'approve',
                 label: 'Approve',
@@ -189,19 +197,21 @@ export function GuestQuickActions({
                 primary: true,
                 onClick: () => post(approve.url(guest)),
             },
-        canInvite && {
-            key: 'invite',
-            label: status ? 'Re-invite' : 'Invite',
-            icon: Send,
-            primary: true,
-            disabled: noPhone || !allowance.invitations,
-            title: noPhone
-                ? noPhoneHint
-                : (allowance.invitationsHint ??
-                  'Create and send an RSVP link on WhatsApp'),
-            onClick: () => post(createRsvp.url(guest), { send: true }),
-        },
-        !!rsvp &&
+        canSend &&
+            canInvite && {
+                key: 'invite',
+                label: status ? 'Re-invite' : 'Invite',
+                icon: Send,
+                primary: true,
+                disabled: noPhone || !allowance.invitations,
+                title: noPhone
+                    ? noPhoneHint
+                    : (allowance.invitationsHint ??
+                      'Create and send an RSVP link on WhatsApp'),
+                onClick: () => post(createRsvp.url(guest), { send: true }),
+            },
+        canSend &&
+            !!rsvp &&
             status === 'pending' && {
                 key: 'send',
                 label: 'Send',
@@ -214,7 +224,8 @@ export function GuestQuickActions({
                       'Send the RSVP link on WhatsApp'),
                 onClick: () => post(send.url(rsvp)),
             },
-        !!rsvp &&
+        canSend &&
+            !!rsvp &&
             status === 'sent' && {
                 key: 'remind',
                 label: 'Remind',
@@ -226,7 +237,8 @@ export function GuestQuickActions({
                     : (allowance.remindersHint ?? 'Remind the guest to reply'),
                 onClick: () => post(remind.url(rsvp)),
             },
-        !!rsvp &&
+        canSend &&
+            !!rsvp &&
             status === 'sent' && {
                 key: 'resend',
                 label: 'Resend',
@@ -242,14 +254,16 @@ export function GuestQuickActions({
             title: 'Share their personal RSVP link',
             onClick: () => shareLink(guest.name, link, () => setCopied(true)),
         },
-        requiresApproval &&
+        canManage &&
+            requiresApproval &&
             guest.approval_status !== 'waitlisted' && {
                 key: 'waitlist',
                 label: 'Waitlist',
                 icon: Clock,
                 onClick: () => post(waitlist.url(guest)),
             },
-        requiresApproval &&
+        canManage &&
+            requiresApproval &&
             guest.approval_status !== 'rejected' && {
                 key: 'reject',
                 label: 'Reject',
@@ -262,8 +276,13 @@ export function GuestQuickActions({
                         onConfirm: () => post(reject.url(guest)),
                     }),
             },
-        { key: 'edit', label: 'Edit', icon: Pencil, onClick: onEdit },
-        {
+        canManage && {
+            key: 'edit',
+            label: 'Edit',
+            icon: Pencil,
+            onClick: onEdit,
+        },
+        canManage && {
             key: 'remove',
             label: 'Remove',
             icon: Trash2,

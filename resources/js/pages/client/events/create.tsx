@@ -15,6 +15,8 @@ export default function CreateEvent({
     registrationTypes,
     defaultInvitationMessage,
     defaultReminderMessage,
+    defaultInvitationSubject,
+    defaultReminderSubject,
     selectedTemplateId,
 }: {
     templates: { data: Template[] };
@@ -22,6 +24,8 @@ export default function CreateEvent({
     registrationTypes: RegistrationTypeOption[];
     defaultInvitationMessage: string;
     defaultReminderMessage: string;
+    defaultInvitationSubject: string;
+    defaultReminderSubject: string;
     selectedTemplateId: string | null;
 }) {
     return (
@@ -38,6 +42,8 @@ export default function CreateEvent({
                 registrationTypes={registrationTypes}
                 defaultInvitationMessage={defaultInvitationMessage}
                 defaultReminderMessage={defaultReminderMessage}
+                defaultInvitationSubject={defaultInvitationSubject}
+                defaultReminderSubject={defaultReminderSubject}
                 mapPreviewUrl={(url) => mapPreview.url({ query: { url } })}
                 templatePreviewUrl={(template) => preview.url(template)}
                 defaultTemplateId={selectedTemplateId}

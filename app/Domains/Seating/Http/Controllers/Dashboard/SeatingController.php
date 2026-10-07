@@ -119,7 +119,7 @@ class SeatingController extends InertiaController
     /** Frees the party's seats, or one person's (?party_member=). */
     public function unassign(Request $request, Guest $guest): RedirectResponse
     {
-        $this->authorize('update', $guest);
+        $this->authorize('manageSeating', $guest->event);
 
         if ($request->filled('party_member')) {
             $member = (int) $request->query('party_member');
@@ -150,7 +150,7 @@ class SeatingController extends InertiaController
 
     public function autoSeat(Event $event): RedirectResponse
     {
-        $this->authorize('update', $event);
+        $this->authorize('manageSeating', $event);
 
         ['seated' => $seated, 'unplaced' => $unplaced] = $this->seating->autoSeat($event);
 

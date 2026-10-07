@@ -5,12 +5,20 @@ namespace App\Domains\Client\Contracts;
 use App\Domains\Client\DTOs\RegisterClientData;
 use App\Domains\Client\DTOs\UpdateProfileData;
 use App\Domains\Client\Models\Client;
+use App\Domains\Client\Models\ClientUser;
 
 interface ClientServiceInterface
 {
-    public function register(RegisterClientData $data): Client;
+    /** Creates the account and its owner, who is returned to sign in. */
+    public function register(RegisterClientData $data): ClientUser;
 
-    public function updateProfile(Client $client, UpdateProfileData $data): Client;
+    /** The account's name and contact email (staff). */
+    public function updateAccount(Client $client, UpdateProfileData $data): Client;
 
-    public function updatePassword(Client $client, string $password): void;
+    /** A user's own name and email; a new email has to be verified again. */
+    public function updateProfile(ClientUser $user, UpdateProfileData $data): ClientUser;
+
+    public function updatePassword(ClientUser $user, string $password): void;
+
+    public function recordLogin(ClientUser $user): void;
 }

@@ -38,6 +38,8 @@ class EventResource extends JsonResource
             'end_time' => $this->end_time ? substr($this->end_time, 0, 5) : null,
             'invitation_message' => $this->invitation_message,
             'reminder_message' => $this->reminder_message,
+            'invitation_subject' => $this->invitation_subject,
+            'reminder_subject' => $this->reminder_subject,
             'auto_reminders' => $this->auto_reminders,
             'remind_after_days' => $this->remind_after_days,
             'remind_before_days' => $this->remind_before_days,

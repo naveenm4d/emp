@@ -20,15 +20,17 @@ it('registers a client and signs them in', function () {
 
     $client = Client::sole();
     expect($client->email)->toBe('grace@example.com')
-        ->and($client->fresh()->plan)->toBe(ClientPlan::Starter);
-    $this->assertAuthenticatedAs($client, 'client');
+        ->and($client->fresh()->plan)->toBe(ClientPlan::Starter)
+        ->and($client->owner->email)->toBe('grace@example.com');
+    $this->assertAuthenticatedAs($client->owner, 'client');
 });
 
 it('logs a client in and out', function () {
     $client = Client::factory()->create();
 
     $this->post('/app/login', ['email' => $client->email, 'password' => 'password'])->assertRedirect('/app');
-    $this->assertAuthenticatedAs($client, 'client');
+    $this->assertAuthenticatedAs($client->owner, 'client');
+    expect($client->owner->fresh()->last_login_at)->not->toBeNull();
 
     $this->post('/app/logout')->assertRedirect('/app/login');
     $this->assertGuest('client');

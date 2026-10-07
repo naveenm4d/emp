@@ -38,6 +38,7 @@ import {
     openGuestId,
     showsApproval,
 } from '@/lib/guests';
+import { useClientCan } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { index, store } from '@/routes/client/events/guests';
 import { approve, reject, update } from '@/routes/client/guests';
@@ -98,6 +99,7 @@ export default function GuestsIndex({
 
     // Looked up in the (polled) list, so the details panel and edit form stay current.
     const { url } = usePage();
+    const can = useClientCan();
     const [selected, setSelected] = useState<string | null>(() =>
         openGuestId(url),
     );
@@ -148,7 +150,8 @@ export default function GuestsIndex({
                     </span>
                 }
                 actions={
-                    event.state !== 'cancelled' && (
+                    event.state !== 'cancelled' &&
+                    can('guests.manage') && (
                         <Button
                             size="lg"
                             onClick={() => {

@@ -57,6 +57,8 @@ class EventController extends InertiaController
             'registrationTypes' => RegistrationType::detailedOptions(),
             'defaultInvitationMessage' => RsvpMessage::DEFAULT,
             'defaultReminderMessage' => RsvpMessage::DEFAULT_REMINDER,
+            'defaultInvitationSubject' => RsvpMessage::DEFAULT_SUBJECT,
+            'defaultReminderSubject' => RsvpMessage::DEFAULT_REMINDER_SUBJECT,
         ]);
     }
 
@@ -79,6 +81,8 @@ class EventController extends InertiaController
             'registrationTypes' => RegistrationType::detailedOptions(),
             'defaultInvitationMessage' => RsvpMessage::DEFAULT,
             'defaultReminderMessage' => RsvpMessage::DEFAULT_REMINDER,
+            'defaultInvitationSubject' => RsvpMessage::DEFAULT_SUBJECT,
+            'defaultReminderSubject' => RsvpMessage::DEFAULT_REMINDER_SUBJECT,
         ]);
     }
 

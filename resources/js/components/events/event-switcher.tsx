@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { DateTile } from '@/components/shared/date-tile';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { useClientCan } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { create, show } from '@/routes/client/events';
 import type { Event } from '@/types';
@@ -75,6 +76,7 @@ export function EventSwitcher({
     className?: string;
 }) {
     const events = usePage().props.eventSwitcher;
+    const can = useClientCan();
     const [open, setOpen] = useState(false);
     const [chip, setChip] = useState<Chip>('upcoming');
     const [search, setSearch] = useState('');
@@ -204,14 +206,16 @@ export function EventSwitcher({
                         )}
                     </div>
 
-                    <div className="border-t border-border px-4 pt-3 pb-7">
-                        <Link
-                            href={create.url()}
-                            className="flex h-12 items-center justify-center gap-2 rounded-lg border border-dashed border-foreground/25 text-sm font-semibold"
-                        >
-                            <Plus className="size-4.5" /> Create event
-                        </Link>
-                    </div>
+                    {can('events.create') && (
+                        <div className="border-t border-border px-4 pt-3 pb-7">
+                            <Link
+                                href={create.url()}
+                                className="flex h-12 items-center justify-center gap-2 rounded-lg border border-dashed border-foreground/25 text-sm font-semibold"
+                            >
+                                <Plus className="size-4.5" /> Create event
+                            </Link>
+                        </div>
+                    )}
                 </SheetContent>
             </Sheet>
         </>

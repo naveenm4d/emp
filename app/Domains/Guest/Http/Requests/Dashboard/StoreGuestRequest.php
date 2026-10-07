@@ -10,7 +10,7 @@ class StoreGuestRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user('client')?->can('update', $this->route('event')) ?? false;
+        return $this->user('client')?->can('manageGuests', $this->route('event')) ?? false;
     }
 
     /** @return array<string, mixed> */

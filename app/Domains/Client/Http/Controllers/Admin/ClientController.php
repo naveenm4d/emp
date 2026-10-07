@@ -6,10 +6,12 @@ use App\Core\Http\Controllers\InertiaController;
 use App\Domains\Client\Contracts\ClientPlanServiceInterface;
 use App\Domains\Client\Contracts\ClientQueryServiceInterface;
 use App\Domains\Client\Contracts\ClientServiceInterface;
+use App\Domains\Client\Contracts\ClientTeamServiceInterface;
 use App\Domains\Client\DTOs\ClientFilters;
 use App\Domains\Client\Enums\ClientPlan;
 use App\Domains\Client\Http\Requests\Admin\UpdateClientRequest;
 use App\Domains\Client\Http\Resources\ClientResource;
+use App\Domains\Client\Http\Resources\ClientUserResource;
 use App\Domains\Client\Models\Client;
 use App\Domains\Event\Contracts\EventQueryServiceInterface;
 use App\Domains\Event\DTOs\EventFilters;
@@ -46,13 +48,16 @@ class ClientController extends InertiaController
         EventQueryServiceInterface $events,
         ClientPlanServiceInterface $plans,
         StaffActivityQueryServiceInterface $activities,
+        ClientTeamServiceInterface $team,
     ): Response {
         $filters = EventFilters::fromArray($request->query());
 
         return Inertia::render('admin/clients/show', [
-            'client' => ClientResource::make($client),
+            'client' => ClientResource::make($client->load('owner')),
             'plan' => $plans->usage($client),
             'plans' => ClientPlan::options(),
+            // Who signs in to the account.
+            'team' => ClientUserResource::collection($team->members($client)),
             // Who changed the plan, when and why (only for staff who can read the activity log).
             'planHistory' => $request->user('staff')?->can('activity.read')
                 ? StaffActivityResource::collection($activities->forClient($client->id, 'admin.clients.plan'))->resolve()
@@ -65,10 +70,11 @@ class ClientController extends InertiaController
 
     public function update(UpdateClientRequest $request, Client $client): RedirectResponse
     {
-        $this->clientService->updateProfile($client, $request->toData());
+        $this->clientService->updateAccount($client, $request->toData());
 
-        if (($password = $request->password()) !== null) {
-            $this->clientService->updatePassword($client, $password);
+        // The new password is the owner's: they sign in for the account.
+        if (($password = $request->password()) !== null && $client->owner !== null) {
+            $this->clientService->updatePassword($client->owner, $password);
         }
 
         return $this->backWithSuccess('Client updated.');

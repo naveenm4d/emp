@@ -53,7 +53,7 @@ class RsvpController extends InertiaController
 
     public function store(Request $request, Guest $guest): RedirectResponse
     {
-        $this->authorize('update', $guest);
+        $this->authorize('sendMessages', $guest->event);
 
         $rsvp = $this->rsvps->create($guest);
 

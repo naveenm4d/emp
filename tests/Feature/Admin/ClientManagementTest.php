@@ -24,7 +24,7 @@ it('shows a client with only their events', function () {
             ->has('events.data', 2));
 });
 
-it('updates the client and resets email verification when the email changes', function () {
+it('updates the account and sets the owner\'s password', function () {
     $this->patch("/admin/clients/{$this->client->id}", [
         'name' => 'New Name',
         'email' => 'new@example.com',
@@ -35,17 +35,16 @@ it('updates the client and resets email verification when the email changes', fu
     $client = $this->client->fresh();
     expect($client->name)->toBe('New Name')
         ->and($client->email)->toBe('new@example.com')
-        ->and($client->email_verified_at)->toBeNull()
-        ->and(Hash::check('N3w-password!', $client->password))->toBeTrue();
+        ->and(Hash::check('N3w-password!', $client->owner->password))->toBeTrue();
 });
 
 it('keeps the password when none is given', function () {
-    $password = $this->client->password;
+    $password = $this->client->owner->password;
 
     $this->patch("/admin/clients/{$this->client->id}", ['name' => 'Renamed', 'email' => 'old@example.com'])
         ->assertSessionHasNoErrors();
 
-    expect($this->client->fresh()->password)->toBe($password);
+    expect($this->client->owner->fresh()->password)->toBe($password);
 });
 
 it('rejects an email another client uses', function () {

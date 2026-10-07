@@ -14,6 +14,7 @@ use App\Domains\Guest\Enums\ApprovalStatus;
 use App\Domains\Guest\Enums\GuestRsvpStatus;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Expression;
 
 /**
@@ -37,10 +38,11 @@ class EventRepository extends BaseRepository implements EventRepositoryInterface
             ?? throw new NotFoundException('Event not found.');
     }
 
-    public function paginateForClient(string $clientId, EventFilters $filters, int $perPage): LengthAwarePaginator
+    public function paginateForClient(string $clientId, EventFilters $filters, int $perPage, ?string $memberId = null): LengthAwarePaginator
     {
         return $this->ordered($this->withResponseCounts($this->filtered($filters)), $filters)
             ->where('client_id', $clientId)
+            ->when($memberId, fn (Builder $query, string $id) => $this->onlyMemberEvents($query, $id))
             ->paginate($perPage)
             ->withQueryString();
     }
@@ -53,12 +55,16 @@ class EventRepository extends BaseRepository implements EventRepositoryInterface
             ->withQueryString();
     }
 
-    public function totalsForClient(string $clientId): array
+    public function totalsForClient(string $clientId, ?string $memberId = null): array
     {
-        $upcoming = $this->upcoming($this->query()->where('client_id', $clientId));
+        $events = fn () => $this->query()
+            ->where('client_id', $clientId)
+            ->when($memberId, fn (Builder $query, string $id) => $this->onlyMemberEvents($query, $id));
+
+        $upcoming = $this->upcoming($events());
 
         // Approved guests of upcoming events who were sent their link and haven't answered.
-        $waiting = $this->upcoming($this->query()->where('client_id', $clientId))
+        $waiting = $this->upcoming($events())
             ->toBase()
             ->join('guests', 'guests.event_id', '=', 'events.id')
             ->where('guests.approval_status', ApprovalStatus::Approved->value)
@@ -67,9 +73,18 @@ class EventRepository extends BaseRepository implements EventRepositoryInterface
 
         return [
             'upcoming' => $upcoming->count(),
-            'drafts' => $this->query()->where('client_id', $clientId)->where('state', EventState::Draft)->count(),
+            'drafts' => $events()->where('state', EventState::Draft)->count(),
             'waiting' => $waiting,
         ];
+    }
+
+    public function listForClient(string $clientId): Collection
+    {
+        return $this->query()
+            ->where('client_id', $clientId)
+            ->orderByDesc('event_date')
+            ->orderBy('title')
+            ->get(['id', 'client_id', 'title', 'event_date', 'state']);
     }
 
     public function countByState(?string $clientId = null): array
@@ -93,6 +108,20 @@ class EventRepository extends BaseRepository implements EventRepositoryInterface
         $this->query()->whereKey($event->id)->toBase()->update($attributes);
 
         $event->forceFill($attributes)->syncOriginalAttributes(array_keys($attributes));
+    }
+
+    /**
+     * Only the events a member of the client account was given.
+     *
+     * @param  Builder<Event>  $query
+     * @return Builder<Event>
+     */
+    private function onlyMemberEvents(Builder $query, string $memberId): Builder
+    {
+        return $query->whereIn('events.id', fn ($events) => $events
+            ->select('event_id')
+            ->from('client_user_event')
+            ->where('client_user_id', $memberId));
     }
 
     /**

@@ -6,6 +6,7 @@ import {
     LayoutTemplate,
     Plus,
     UserCircle,
+    Users,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -13,10 +14,12 @@ import { BottomTabBar } from '@/components/shared/bottom-tab-bar';
 import { CommandPalette } from '@/components/shared/command-palette';
 import type { NavItem } from '@/layouts/dashboard-shell';
 import { DashboardShell, isNavActive } from '@/layouts/dashboard-shell';
+import { useClientCan } from '@/lib/permissions';
 import { useClientPlan } from '@/lib/plans';
 import { dashboard, logout, membership } from '@/routes/client';
 import { create, index as eventsIndex } from '@/routes/client/events';
 import { edit as profileEdit } from '@/routes/client/profile';
+import { index as teamIndex } from '@/routes/client/team';
 import { index as templatesIndex } from '@/routes/client/templates';
 
 type ClientLayoutProps = {
@@ -37,6 +40,7 @@ export default function ClientLayout({
     const { auth } = page.props;
     const path = page.url.split('?')[0];
     const plan = useClientPlan();
+    const can = useClientCan();
 
     const nav: NavItem[] = [
         { label: 'Home', href: dashboard.url(), icon: House, exact: true },
@@ -48,7 +52,7 @@ export default function ClientLayout({
         },
         { label: 'Account', href: profileEdit.url(), icon: UserCircle },
     ];
-    // On phones Membership is reached from Account, so the tab bar keeps four tabs.
+    // On phones Membership and Team are reached from Account, so the tab bar keeps four tabs.
     const sidebarNav: NavItem[] = [
         ...nav.slice(0, 3),
         {
@@ -57,6 +61,9 @@ export default function ClientLayout({
             href: membership.url(),
             icon: Gem,
         },
+        ...(can('team.manage')
+            ? [{ label: 'Team', href: teamIndex.url(), icon: Users }]
+            : []),
         ...nav.slice(3),
     ];
 
@@ -64,8 +71,9 @@ export default function ClientLayout({
         <DashboardShell
             nav={sidebarNav}
             user={{
-                name: auth.client?.name ?? '',
-                subtitle: auth.client?.email ?? '',
+                name: auth.user?.name ?? '',
+                // The account they act for (e.g. a couple's wedding account).
+                subtitle: auth.client?.name ?? '',
             }}
             logoutHref={logout.url()}
             accountHref={profileEdit.url()}
@@ -84,8 +92,12 @@ export default function ClientLayout({
                             label: 'New event',
                             icon: Plus,
                             href: create.url(),
-                            disabled: !!plan && !plan.can_create_event,
-                            title: plan?.reason ?? undefined,
+                            disabled:
+                                !can('events.create') ||
+                                (!!plan && !plan.can_create_event),
+                            title: !can('events.create')
+                                ? 'Ask the account owner to let you create events.'
+                                : (plan?.reason ?? undefined),
                         }}
                     />
                 )

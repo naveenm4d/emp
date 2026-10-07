@@ -3,6 +3,7 @@
 namespace App\Domains\Event\Http\Requests\Dashboard;
 
 use App\Domains\Client\Models\Client;
+use App\Domains\Client\Models\ClientUser;
 use App\Domains\Event\Enums\EventType;
 use App\Domains\Event\Enums\RegistrationType;
 use App\Domains\Event\Models\Event;
@@ -29,9 +30,9 @@ abstract class EventRequest extends FormRequest
     /** The client the event belongs to; decides which templates are selectable. */
     protected function client(): ?Client
     {
-        $client = $this->user('client');
+        $user = $this->user('client');
 
-        return $client instanceof Client ? $client : null;
+        return $user instanceof ClientUser ? $user->client : null;
     }
 
     /** @return array<string, mixed> */
@@ -57,6 +58,9 @@ abstract class EventRequest extends FormRequest
             'end_time' => ['nullable', 'date_format:H:i', 'after:start_time'],
             'invitation_message' => ['nullable', 'string', 'max:1000'],
             'reminder_message' => ['nullable', 'string', 'max:1000'],
+            // Email only; WhatsApp and SMS have no subject.
+            'invitation_subject' => ['nullable', 'string', 'max:150'],
+            'reminder_subject' => ['nullable', 'string', 'max:150'],
             'auto_reminders' => ['boolean'],
             'remind_after_days' => ['integer', 'min:1', 'max:60'],
             'remind_before_days' => ['integer', 'min:0', 'max:60'],

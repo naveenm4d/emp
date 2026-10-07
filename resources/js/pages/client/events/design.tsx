@@ -40,6 +40,7 @@ import { InvitationFrame } from '@/components/web/invitation/invitation-frame';
 import { RsvpActions } from '@/components/web/invitation/rsvp-actions';
 import { useFonts } from '@/components/web/invitation/use-fonts';
 import EventLayout from '@/layouts/event-layout';
+import { useClientCan } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import {
     preview as previewDesign,
@@ -121,7 +122,9 @@ function DesignEditor({
     schema,
     values,
 }: Props) {
-    const editable = event.state !== 'cancelled';
+    // Team members without events.update can look but not change the design.
+    const canUpdate = useClientCan()('events.update');
+    const editable = event.state !== 'cancelled' && canUpdate;
     useFonts(editor.fonts);
 
     const [root, setRoot] = useState<ShadowRoot | null>(null);

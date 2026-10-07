@@ -17,9 +17,21 @@ class NotificationQueryService implements NotificationQueryServiceInterface
         private readonly NotificationRepositoryInterface $notifications,
     ) {}
 
-    public function forEvent(Event $event): LengthAwarePaginator
+    public function forEvent(Event $event, ?NotificationStatus $status = null): LengthAwarePaginator
     {
-        return $this->notifications->paginateForEvent($event->id, config('emp.per_page'));
+        return $this->notifications->paginateForEvent($event->id, config('emp.per_page'), $status);
+    }
+
+    public function statusCountsForEvent(Event $event): array
+    {
+        $counts = $this->notifications->statusCountsForEvent($event->id);
+        $all = ['all' => array_sum($counts)];
+
+        foreach (NotificationStatus::cases() as $status) {
+            $all[$status->value] = $counts[$status->value] ?? 0;
+        }
+
+        return $all;
     }
 
     public function countSentToGuest(string $guestId, NotificationKind $kind): int

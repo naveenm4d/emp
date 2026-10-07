@@ -3,6 +3,7 @@
 namespace App\Domains\Event\Services;
 
 use App\Domains\Client\Models\Client;
+use App\Domains\Client\Models\ClientUser;
 use App\Domains\Event\Contracts\EventQueryServiceInterface;
 use App\Domains\Event\Contracts\EventRepositoryInterface;
 use App\Domains\Event\DTOs\EventFilters;
@@ -10,6 +11,7 @@ use App\Domains\Event\Enums\EventPeriod;
 use App\Domains\Event\Models\Event;
 use App\Domains\Notification\Contracts\NotificationQueryServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 class EventQueryService implements EventQueryServiceInterface
 {
@@ -21,23 +23,28 @@ class EventQueryService implements EventQueryServiceInterface
         private readonly NotificationQueryServiceInterface $notifications,
     ) {}
 
-    public function forClient(Client $client, EventFilters $filters): LengthAwarePaginator
+    public function forClient(Client $client, EventFilters $filters, ?ClientUser $viewer = null): LengthAwarePaginator
     {
         return $this->withMessageIssues(
-            $this->events->paginateForClient($client->id, $filters, config('emp.per_page')),
+            $this->events->paginateForClient($client->id, $filters, config('emp.per_page'), $this->memberId($viewer)),
         );
     }
 
-    public function forSwitcher(Client $client): LengthAwarePaginator
+    public function forSwitcher(ClientUser $viewer): LengthAwarePaginator
     {
         return $this->withMessageIssues(
-            $this->events->paginateForClient($client->id, new EventFilters(period: EventPeriod::Upcoming), self::SWITCHER_LIMIT),
+            $this->events->paginateForClient($viewer->client_id, new EventFilters(period: EventPeriod::Upcoming), self::SWITCHER_LIMIT, $this->memberId($viewer)),
         );
     }
 
-    public function totalsForClient(Client $client): array
+    public function totalsForClient(Client $client, ?ClientUser $viewer = null): array
     {
-        return $this->events->totalsForClient($client->id);
+        return $this->events->totalsForClient($client->id, $this->memberId($viewer));
+    }
+
+    public function listForClient(Client $client): Collection
+    {
+        return $this->events->listForClient($client->id);
     }
 
     public function all(EventFilters $filters): LengthAwarePaginator
@@ -63,6 +70,12 @@ class EventQueryService implements EventQueryServiceInterface
     public function countByState(?Client $client = null): array
     {
         return $this->events->countByState($client?->id);
+    }
+
+    /** The member whose events to list, or null for every event of the account. */
+    private function memberId(?ClientUser $viewer): ?string
+    {
+        return $viewer === null || $viewer->seesAllEvents() ? null : $viewer->id;
     }
 
     /**

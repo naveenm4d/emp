@@ -42,6 +42,20 @@ enum ClientPlan: string
         };
     }
 
+    /**
+     * How many people can sign in to the account, the owner included; null =
+     * set per client by staff (clients.user_limit), unlimited when not set.
+     */
+    public function maxUsers(): ?int
+    {
+        return match ($this) {
+            self::Starter => 1,
+            self::Celebration => 2,
+            self::Business => 5,
+            self::Enterprise => null,
+        };
+    }
+
     /** Extra guests can be bought per event, in blocks (config emp.extra_guests_block). */
     public function allowsExtraGuests(): bool
     {

@@ -20,6 +20,9 @@ interface ClientRepositoryInterface extends RepositoryInterface
     /** Every event the client ever created, deleted ones included. */
     public function eventsCreatedCount(string $clientId): int;
 
+    /** People who can sign in to the account, pending invitations included. */
+    public function usersCount(string $clientId): int;
+
     /** @return LengthAwarePaginator<int, Client> */
     public function search(ClientFilters $filters, int $perPage): LengthAwarePaginator;
 }

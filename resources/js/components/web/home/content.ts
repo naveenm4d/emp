@@ -126,6 +126,7 @@ export const plans: Plan[] = [
             'Guest approval, capacity & public registration',
             'Seating plan',
             'RSVP tracking & delivery / read receipts',
+            '2 logins: one for each of you',
         ],
     },
     {
@@ -142,7 +143,7 @@ export const plans: Plan[] = [
             'Custom templates for your brand',
             'Seating plans',
             'Priority WhatsApp sending',
-            '3 team members',
+            '5 team members with their own permissions',
         ],
     },
     {
@@ -156,6 +157,7 @@ export const plans: Plan[] = [
         features: [
             'Everything in Business',
             'Unlimited guests',
+            'As many team members as you need',
             'Higher message limits',
             'Dedicated account manager',
             'Custom integrations & SLA',
@@ -178,6 +180,7 @@ export const comparison: {
         values: ['1', '1 per purchase', 'Unlimited', 'Unlimited'],
     },
     { label: 'Guests per event', values: ['50', '500', '2,000', 'Unlimited'] },
+    { label: 'People who sign in', values: ['1', '2', '5', 'Custom'] },
     {
         label: 'Extra guests',
         values: [false, 'Rs. 1,000 / 100', 'Rs. 1,000 / 100', 'Included'],

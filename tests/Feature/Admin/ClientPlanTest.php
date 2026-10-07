@@ -53,6 +53,17 @@ it('sets when a subscription ends', function () {
     expect($this->client->fresh()->plan_expires_at->toDateString())->toBe('2030-01-31');
 });
 
+it('needs a user limit for Enterprise and logs it', function () {
+    $this->patch("/admin/clients/{$this->client->id}/plan", ['plan' => 'enterprise', 'event_credits' => 0, 'note' => 'Contract'])
+        ->assertSessionHasErrors(['user_limit' => 'Enterprise accounts need a user limit.']);
+
+    $this->patch("/admin/clients/{$this->client->id}/plan", ['plan' => 'enterprise', 'event_credits' => 0, 'user_limit' => 12, 'note' => 'Contract'])
+        ->assertSessionHas('success');
+
+    expect($this->client->fresh()->userLimit())->toBe(12)
+        ->and(StaffActivity::sole()->description)->toBe('Plan Starter → Enterprise, users 12');
+});
+
 it('needs a note and a known plan', function () {
     $this->patch("/admin/clients/{$this->client->id}/plan", ['plan' => 'gold', 'event_credits' => 0])
         ->assertSessionHasErrors([
@@ -86,7 +97,7 @@ it('adds extra guests to an event and logs it', function () {
         ->note->toBe('Paid Rs. 2,000');
 
     Guest::factory()->for($event)->count(700)->create();
-    $this->actingAs($this->client, 'client')
+    $this->actingAs($this->client->owner, 'client')
         ->post("/app/events/{$event->id}/guests", ['name' => 'One more', 'phone' => '+15550109999'])
         ->assertSessionHas('error', 'This event allows up to 700 guests on the Celebration plan. Add more guests: Rs. 1,000 per 100.');
 });

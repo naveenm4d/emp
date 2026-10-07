@@ -5,14 +5,26 @@ namespace App\Domains\Notification\Contracts;
 use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Models\Guest;
 use App\Domains\Notification\Enums\NotificationKind;
+use App\Domains\Notification\Enums\NotificationStatus;
 use App\Domains\Notification\Models\Notification;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 interface NotificationQueryServiceInterface
 {
-    /** @return LengthAwarePaginator<int, Notification> */
-    public function forEvent(Event $event): LengthAwarePaginator;
+    /**
+     * The event's messages (the Messages tab), newest first; only those with `$status` when given.
+     *
+     * @return LengthAwarePaginator<int, Notification>
+     */
+    public function forEvent(Event $event, ?NotificationStatus $status = null): LengthAwarePaginator;
+
+    /**
+     * The Messages tab's filter counts: every status, plus `all`.
+     *
+     * @return array<string, int>
+     */
+    public function statusCountsForEvent(Event $event): array;
 
     /** @return LengthAwarePaginator<int, Notification> */
     public function failed(): LengthAwarePaginator;

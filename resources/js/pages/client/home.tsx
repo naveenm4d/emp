@@ -43,6 +43,7 @@ import {
     inDays,
     initials,
 } from '@/lib/format';
+import { useClientCan } from '@/lib/permissions';
 import { useClientPlan, useHasPlanFeature } from '@/lib/plans';
 import { cn } from '@/lib/utils';
 import { create, design, index, seating, show } from '@/routes/client/events';
@@ -85,10 +86,12 @@ function summaryLine(totals: EventTotals): string {
 export default function Home({ events, next: nextEvent, totals }: Props) {
     const { auth } = usePage().props;
     const plan = useClientPlan();
+    const can = useClientCan();
     const next = nextEvent?.data ?? null;
     const others = events.data.filter((event) => event.id !== next?.id);
-    const firstName = (auth.client?.name ?? '').split(' ')[0];
-    const canCreate = !plan || plan.can_create_event;
+    const firstName = (auth.user?.name ?? '').split(' ')[0];
+    const canCreateEvents = can('events.create');
+    const canCreate = canCreateEvents && (!plan || plan.can_create_event);
 
     return (
         <ClientLayout>
@@ -707,7 +710,8 @@ function PhoneHome({
 }) {
     const { auth } = usePage().props;
     const hasFeature = useHasPlanFeature();
-    const firstName = (auth.client?.name ?? '').split(' ')[0];
+    const canCreateEvents = useClientCan()('events.create');
+    const firstName = (auth.user?.name ?? '').split(' ')[0];
 
     return (
         <div className="md:hidden">
@@ -726,7 +730,7 @@ function PhoneHome({
                         aria-label="Account"
                         className="flex size-9 items-center justify-center rounded-full bg-card text-[13px] font-bold text-card-foreground"
                     >
-                        {initials(auth.client?.name ?? '')}
+                        {initials(auth.user?.name ?? '')}
                     </Link>
                 </div>
                 <div>
@@ -765,12 +769,16 @@ function PhoneHome({
                             title="No upcoming events"
                             description="Create an event to start inviting guests."
                             action={
-                                <Link
-                                    href={create.url()}
-                                    className={buttonVariants({ size: 'sm' })}
-                                >
-                                    New event
-                                </Link>
+                                canCreateEvents && (
+                                    <Link
+                                        href={create.url()}
+                                        className={buttonVariants({
+                                            size: 'sm',
+                                        })}
+                                    >
+                                        New event
+                                    </Link>
+                                )
                             }
                         />
                     </div>

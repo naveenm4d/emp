@@ -155,7 +155,7 @@ it('forbids viewers from changing message limits', function () {
 
 it('does not let clients change their message limits', function () {
     $event = Event::factory()->for($this->client)->create();
-    $this->actingAs($this->client, 'client');
+    $this->actingAs($this->client->owner, 'client');
 
     $this->patch("/app/events/{$event->id}", ['max_invitations_per_guest' => 50, 'max_reminders_per_guest' => 50]);
 

@@ -26,14 +26,27 @@ class NotificationRepository extends BaseRepository implements NotificationRepos
         return $this->query()->where('provider_message_id', $messageId)->first();
     }
 
-    public function paginateForEvent(string $eventId, int $perPage): LengthAwarePaginator
+    public function paginateForEvent(string $eventId, int $perPage, ?NotificationStatus $status = null): LengthAwarePaginator
     {
         return $this->query()
             ->where('event_id', $eventId)
+            ->when($status, fn ($query, NotificationStatus $status) => $query->where('status', $status))
             ->with('guest:id,name')
             ->latest()
             ->paginate($perPage)
             ->withQueryString();
+    }
+
+    public function statusCountsForEvent(string $eventId): array
+    {
+        /** @var array<string, int> */
+        return $this->query()
+            ->where('event_id', $eventId)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->map(fn (mixed $total) => (int) $total)
+            ->all();
     }
 
     public function countForGuest(string $guestId, NotificationKind $kind): int

@@ -17,7 +17,7 @@ const DESIGN_MARKUP = '<h1>{{ event.title }}</h1><img class="hero" src="{{ img_1
 
 beforeEach(function () {
     $this->client = Client::factory()->create();
-    $this->actingAs($this->client, 'client');
+    $this->actingAs($this->client->owner, 'client');
 
     $this->template = Template::factory()->published(DESIGN_MARKUP)->create();
     $this->event = Event::factory()->for($this->client)->create([

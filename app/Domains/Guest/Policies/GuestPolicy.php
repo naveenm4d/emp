@@ -2,26 +2,27 @@
 
 namespace App\Domains\Guest\Policies;
 
-use App\Domains\Client\Models\Client;
+use App\Domains\Client\Enums\ClientPermission;
+use App\Domains\Client\Models\ClientUser;
 use App\Domains\Guest\Models\Guest;
 
 /**
- * A client manages the guests of events it owns.
+ * Client users see the guests of events they can see, and manage them with guests.manage.
  */
 class GuestPolicy
 {
-    public function view(Client $client, Guest $guest): bool
+    public function view(ClientUser $user, Guest $guest): bool
     {
-        return $guest->event->isOwnedBy($client);
+        return $user->canAccessEvent($guest->event);
     }
 
-    public function update(Client $client, Guest $guest): bool
+    public function update(ClientUser $user, Guest $guest): bool
     {
-        return $guest->event->isOwnedBy($client);
+        return $user->hasPermission(ClientPermission::GuestsManage) && $user->canAccessEvent($guest->event);
     }
 
-    public function delete(Client $client, Guest $guest): bool
+    public function delete(ClientUser $user, Guest $guest): bool
     {
-        return $guest->event->isOwnedBy($client);
+        return $this->update($user, $guest);
     }
 }

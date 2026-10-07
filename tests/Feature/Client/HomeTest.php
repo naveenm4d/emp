@@ -14,7 +14,7 @@ it('shows the client\'s upcoming events soonest first with their totals', functi
     Event::factory()->for($client)->create(['title' => 'Held', 'event_date' => now()->subDay()->toDateString()]);
     Event::factory()->create(['event_date' => now()->addDay()->toDateString()]);
 
-    $response = $this->actingAs($client, 'client')->get('/app');
+    $response = $this->actingAs($client->owner, 'client')->get('/app');
 
     $response->assertInertia(fn (Assert $page) => $page
         ->component('client/home')
@@ -34,7 +34,7 @@ it('never picks a cancelled event as next up', function () {
     Event::factory()->for($client)->cancelled()->create(['title' => 'Called off', 'event_date' => now()->addDay()->toDateString()]);
     Event::factory()->for($client)->published()->create(['title' => 'On', 'event_date' => now()->addWeek()->toDateString()]);
 
-    $this->actingAs($client, 'client')->get('/app')->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($client->owner, 'client')->get('/app')->assertInertia(fn (Assert $page) => $page
         ->where('next.data.title', 'On')
         ->has('events.data', 2));
 });
@@ -44,7 +44,7 @@ it('never picks a draft as next up', function () {
     Event::factory()->for($client)->create(['title' => 'Draft', 'event_date' => now()->addDay()->toDateString()]);
     Event::factory()->for($client)->published()->create(['title' => 'Live', 'event_date' => now()->addWeek()->toDateString()]);
 
-    $this->actingAs($client, 'client')->get('/app')->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($client->owner, 'client')->get('/app')->assertInertia(fn (Assert $page) => $page
         ->where('next.data.title', 'Live')
         ->has('next.data.template.thumbnail_url'));
 });
@@ -54,7 +54,7 @@ it('has no next up without a published upcoming event', function () {
     Event::factory()->for($client)->cancelled()->create(['event_date' => now()->addDay()->toDateString()]);
     Event::factory()->for($client)->create(['event_date' => now()->addDays(2)->toDateString()]);
 
-    $this->actingAs($client, 'client')->get('/app')->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($client->owner, 'client')->get('/app')->assertInertia(fn (Assert $page) => $page
         ->where('next', null)
         ->has('events.data', 2));
 });

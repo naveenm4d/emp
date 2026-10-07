@@ -42,7 +42,7 @@ it('does not log reads, failed validation or refused actions', function () {
 });
 
 it('logs a plan change only once', function () {
-    $this->patch("/admin/clients/{$this->client->id}/plan", ['plan' => 'enterprise', 'event_credits' => 0, 'note' => 'Signed contract'])
+    $this->patch("/admin/clients/{$this->client->id}/plan", ['plan' => 'enterprise', 'event_credits' => 0, 'user_limit' => 20, 'note' => 'Signed contract'])
         ->assertSessionHas('success');
 
     expect(StaffActivity::count())->toBe(1);

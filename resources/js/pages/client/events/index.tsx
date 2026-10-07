@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import ClientLayout from '@/layouts/client-layout';
 import { formatShortDate, initials, todayInAppTimeZone } from '@/lib/format';
+import { useClientCan } from '@/lib/permissions';
 import { useClientPlan } from '@/lib/plans';
 import { create, design, index, show } from '@/routes/client/events';
 import { index as guestsIndex } from '@/routes/client/events/guests';
@@ -101,6 +102,7 @@ function groupByMonth(events: Event[]): [string, Event[]][] {
 
 export default function EventsIndex({ events, filters, totals }: Props) {
     const plan = useClientPlan();
+    const can = useClientCan();
     const { auth } = usePage().props;
     const segment = currentSegment(filters);
     const filter = (changes: Partial<Filters>) =>
@@ -110,19 +112,17 @@ export default function EventsIndex({ events, filters, totals }: Props) {
             { preserveState: true, replace: true },
         );
 
-    const newEvent =
-        plan && !plan.can_create_event ? (
-            <Button size="lg" disabled title={plan.reason ?? undefined}>
-                <Plus /> New event
-            </Button>
-        ) : (
-            <Link
-                href={create.url()}
-                className={buttonVariants({ size: 'lg' })}
-            >
-                <Plus /> New event
-            </Link>
-        );
+    const canCreateEvents = can('events.create');
+    const newEvent = !canCreateEvents ? null : plan &&
+      !plan.can_create_event ? (
+        <Button size="lg" disabled title={plan.reason ?? undefined}>
+            <Plus /> New event
+        </Button>
+    ) : (
+        <Link href={create.url()} className={buttonVariants({ size: 'lg' })}>
+            <Plus /> New event
+        </Link>
+    );
 
     return (
         <ClientLayout>
@@ -151,7 +151,7 @@ export default function EventsIndex({ events, filters, totals }: Props) {
                             aria-label="Account"
                             className="flex size-10 items-center justify-center rounded-full bg-strong text-[13px] font-bold text-strong-foreground md:hidden"
                         >
-                            {initials(auth.client?.name ?? '')}
+                            {initials(auth.user?.name ?? '')}
                         </Link>
                     </>
                 }
@@ -210,12 +210,14 @@ export default function EventsIndex({ events, filters, totals }: Props) {
                         }
                         description="Create an event to start inviting guests."
                         action={
-                            <Link
-                                href={create.url()}
-                                className={buttonVariants({ size: 'sm' })}
-                            >
-                                New event
-                            </Link>
+                            canCreateEvents && (
+                                <Link
+                                    href={create.url()}
+                                    className={buttonVariants({ size: 'sm' })}
+                                >
+                                    New event
+                                </Link>
+                            )
                         }
                     />
                 </div>

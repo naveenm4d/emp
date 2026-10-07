@@ -9,9 +9,10 @@ enum RegistrationType: string
 {
     use HasValues;
 
+    // Listed in this order wherever the types are offered: the guest list first.
+    case GuestListOnly = 'guest_list_only';
     case Open = 'open';
     case ApprovalRequired = 'approval_required';
-    case GuestListOnly = 'guest_list_only';
 
     /** The public event page accepts self-registration (while registration is open). */
     public function hasPublicRegistration(): bool

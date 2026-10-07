@@ -40,6 +40,8 @@ export default function AdminEditEvent({
     registrationTypes,
     defaultInvitationMessage,
     defaultReminderMessage,
+    defaultInvitationSubject,
+    defaultReminderSubject,
 }: {
     client: Resource<Client>;
     event: Resource<Event>;
@@ -48,6 +50,8 @@ export default function AdminEditEvent({
     registrationTypes: RegistrationTypeOption[];
     defaultInvitationMessage: string;
     defaultReminderMessage: string;
+    defaultInvitationSubject: string;
+    defaultReminderSubject: string;
 }) {
     const can = useStaffCan();
     const route = { client: client.id, event: event.id };
@@ -219,12 +223,16 @@ export default function AdminEditEvent({
                 </p>
             ) : (
                 <EventForm
+                    // Fresh after each save, so the save bar reads "All changes saved".
+                    key={event.updated_at}
                     event={event}
                     templates={templates.data}
                     eventTypes={eventTypes}
                     registrationTypes={registrationTypes}
                     defaultInvitationMessage={defaultInvitationMessage}
                     defaultReminderMessage={defaultReminderMessage}
+                    defaultInvitationSubject={defaultInvitationSubject}
+                    defaultReminderSubject={defaultReminderSubject}
                     mapPreviewUrl={(url) => mapPreview.url({ query: { url } })}
                     templatePreviewUrl={(template) =>
                         preview.url({

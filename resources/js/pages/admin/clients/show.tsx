@@ -27,6 +27,7 @@ import { create, edit } from '@/routes/admin/clients/events';
 import type {
     Client,
     ClientPlanUsage,
+    ClientUser,
     Event,
     Option,
     Paginated,
@@ -44,6 +45,7 @@ export default function ShowClient({
     plan,
     plans,
     planHistory,
+    team,
 }: {
     client: Resource<Client>;
     events: Paginated<Event>;
@@ -52,6 +54,7 @@ export default function ShowClient({
     plan: ClientPlanUsage;
     plans: Option[];
     planHistory: StaffActivity[] | null;
+    team: { data: ClientUser[] };
 }) {
     const can = useStaffCan();
 
@@ -190,6 +193,7 @@ export default function ShowClient({
                         history={planHistory}
                         canEdit={can('clients.plan')}
                     />
+                    <TeamCard members={team.data} usage={plan} />
                     {can('clients.update') ? (
                         <EditClientCard client={client} />
                     ) : (
@@ -303,6 +307,54 @@ function EditClientCard({ client }: { client: Client }) {
     );
 }
 
+/** Who signs in to the account (read only: the owner manages the team). */
+function TeamCard({
+    members,
+    usage,
+}: {
+    members: ClientUser[];
+    usage: ClientPlanUsage;
+}) {
+    return (
+        <Card className="h-fit">
+            <CardHeader>
+                <CardTitle>
+                    Team ·{' '}
+                    {usage.users_allowed === null
+                        ? usage.users_used
+                        : `${usage.users_used} / ${usage.users_allowed}`}
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ul className="space-y-3 text-sm">
+                    {members.map((member) => (
+                        <li
+                            key={member.id}
+                            className="flex items-start justify-between gap-3"
+                        >
+                            <div className="min-w-0">
+                                <div className="truncate font-medium">
+                                    {member.name}
+                                </div>
+                                <div className="truncate text-xs text-muted-foreground">
+                                    {member.email}
+                                </div>
+                            </div>
+                            {member.is_owner ? (
+                                <StatusBadge status="admin" label="Owner" />
+                            ) : member.pending ? (
+                                <StatusBadge status="pending" label="Invited" />
+                            ) : (
+                                <StatusBadge status="active" label="Member" />
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            </CardContent>
+        </Card>
+    );
+}
+
 function ClientDetailsCard({ client }: { client: Client }) {
     return (
         <Card className="h-fit">
@@ -317,7 +369,7 @@ function ClientDetailsCard({ client }: { client: Client }) {
                     </div>
                     <div>
                         <dt className="text-muted-foreground">
-                            Email verified
+                            Owner’s email verified
                         </dt>
                         <dd>{client.email_verified_at ? 'Yes' : 'No'}</dd>
                     </div>
