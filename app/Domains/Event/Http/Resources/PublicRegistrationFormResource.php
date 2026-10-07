@@ -2,7 +2,6 @@
 
 namespace App\Domains\Event\Http\Resources;
 
-use App\Domains\Event\DTOs\RegistrationSettings;
 use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Models\Guest;
 use Illuminate\Http\Request;
@@ -37,10 +36,7 @@ class PublicRegistrationFormResource extends JsonResource
     public function toArray(Request $request): array
     {
         $settings = $this->registrationSettings();
-        $allowance = $this->guest?->partyAllowance($settings) ?? [
-            'additional' => $settings->plusOnes ? $settings->maxAdditionalGuests : 0,
-            'children' => $settings->children ? RegistrationSettings::MAX_ADDITIONAL_GUESTS : 0,
-        ];
+        $allowance = $this->guest?->partyAllowance($settings) ?? $settings->partyAllowance();
 
         return [
             'contact' => $settings->toArray()['contact'],

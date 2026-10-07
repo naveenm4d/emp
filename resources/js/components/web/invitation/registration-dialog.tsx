@@ -93,6 +93,12 @@ type RegistrationDialogProps = {
     initialAttendance?: Attendance | null;
     /** Called after the server accepted the form (not for flash errors). */
     onSaved?: () => void;
+    /**
+     * Render the popup's content in place (the RSVP form tab's live preview)
+     * instead of as a dialog; `open` / `onOpenChange` are then ignored.
+     */
+    inline?: boolean;
+    className?: string;
 };
 
 const STEP_TITLES: Record<Step, string> = {
@@ -103,8 +109,8 @@ const STEP_TITLES: Record<Step, string> = {
 
 /**
  * The guest's reply as the EMP popup (2b), opened from the template's one
- * RSVP button: details (when asked), attending or not with the party and the
- * event's questions, then a last check. Portals to <body>, outside the
+ * RSVP button: attending or not with the party and the event's questions,
+ * then their details (when asked, not when declining), then a last check. Portals to <body>, outside the
  * invitation's shadow root, in the fixed Nocturne palette.
  */
 export function RegistrationDialog({
@@ -118,6 +124,8 @@ export function RegistrationDialog({
     initial,
     initialAttendance,
     onSaved,
+    inline = false,
+    className,
 }: RegistrationDialogProps) {
     const form = useForm<FormData>({
         name: '',
@@ -142,14 +150,19 @@ export function RegistrationDialog({
     const shownContact = contactFields.filter(
         (field) => config.contact[field.key] !== 'off',
     );
+    // The response comes first; details follow (not when declining: a
+    // decline only sends the answer and a note).
     const steps: Step[] = [
-        ...(mode === 'register' || shownContact.length > 0
+        'response',
+        ...((mode === 'register' || shownContact.length > 0) &&
+        attendance !== 'declined'
             ? (['details'] as const)
             : []),
-        'response',
         'confirm',
     ];
-    const [step, setStep] = useState<Step>(steps[0]);
+    const [chosenStep, setStep] = useState<Step>(steps[0]);
+    // The live preview's settings can drop a step (like the details) while it's shown.
+    const step = steps.includes(chosenStep) ? chosenStep : steps[0];
     const index = steps.indexOf(step);
 
     const error = (key: string) =>
@@ -169,7 +182,7 @@ export function RegistrationDialog({
     const preview = mode === 'preview' || !url;
 
     const back = () =>
-        index > 0 ? setStep(steps[index - 1]) : onOpenChange(false);
+        index > 0 ? setStep(steps[index - 1]) : !inline && onOpenChange(false);
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
@@ -229,230 +242,230 @@ export function RegistrationDialog({
                   : 'Send reply'
             : `Continue${step === 'response' && attending && partySize > 1 ? ` · ${partySize} guests` : ''}`;
 
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className={NOCTURNE_POPUP}>
-                <form
-                    onSubmit={submit}
-                    className="flex min-h-0 flex-1 flex-col"
-                    noValidate
-                >
-                    <div className="flex flex-col gap-3 px-4 pt-5 pr-12">
-                        <div className="flex items-center gap-3">
-                            <button
-                                type="button"
-                                onClick={back}
-                                aria-label={index > 0 ? 'Back' : 'Close'}
-                                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card shadow-card"
-                            >
-                                <ArrowLeft className="size-4.5" />
-                            </button>
-                            <div className="min-w-0 flex-1">
-                                <DialogDescription className="truncate text-xs">
-                                    {subtitle}
-                                </DialogDescription>
-                                <DialogTitle className="text-base font-bold">
-                                    {STEP_TITLES[step]}
-                                </DialogTitle>
-                            </div>
-                            <span className="text-xs font-semibold text-muted-foreground">
-                                {index + 1} of {steps.length}
-                            </span>
-                        </div>
-                        <div className="flex gap-1" aria-hidden>
-                            {steps.map((item, position) => (
-                                <span
-                                    key={item}
-                                    className={cn(
-                                        'h-1 flex-1 rounded-full',
-                                        position <= index
-                                            ? 'bg-primary'
-                                            : 'bg-foreground/14',
-                                    )}
-                                />
-                            ))}
-                        </div>
+    const Title = inline ? 'h2' : DialogTitle;
+    const Description = inline ? 'p' : DialogDescription;
+
+    const content = (
+        <form
+            onSubmit={submit}
+            className="flex min-h-0 flex-1 flex-col"
+            noValidate
+        >
+            <div className="flex flex-col gap-3 px-4 pt-5 pr-12">
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={back}
+                        aria-label={index > 0 ? 'Back' : 'Close'}
+                        disabled={inline && index === 0}
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card shadow-card disabled:opacity-40"
+                    >
+                        <ArrowLeft className="size-4.5" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                        <Description className="truncate text-xs text-muted-foreground">
+                            {subtitle}
+                        </Description>
+                        <Title className="text-base font-bold">
+                            {STEP_TITLES[step]}
+                        </Title>
                     </div>
+                    <span className="text-xs font-semibold text-muted-foreground">
+                        {index + 1} of {steps.length}
+                    </span>
+                </div>
+                <div className="flex gap-1" aria-hidden>
+                    {steps.map((item, position) => (
+                        <span
+                            key={item}
+                            className={cn(
+                                'h-1 flex-1 rounded-full',
+                                position <= index
+                                    ? 'bg-primary'
+                                    : 'bg-foreground/14',
+                            )}
+                        />
+                    ))}
+                </div>
+            </div>
 
-                    <div className="grid gap-5 overflow-y-auto px-4 pt-5 pb-5">
-                        {step === 'details' && (
-                            <>
-                                {note && (
-                                    <p className="text-xs text-muted-foreground">
-                                        {note}
-                                    </p>
-                                )}
-                                {mode === 'register' && (
-                                    <Field
-                                        id="reg-name"
-                                        label="Name"
-                                        required
-                                        error={form.errors.name}
-                                    >
-                                        <Input
-                                            id="reg-name"
-                                            autoComplete="name"
-                                            value={form.data.name}
-                                            onChange={(e) =>
-                                                form.setData(
-                                                    'name',
-                                                    e.target.value,
-                                                )
-                                            }
-                                        />
-                                    </Field>
-                                )}
-                                {shownContact.map((field) => (
-                                    <Field
-                                        key={field.key}
-                                        id={`reg-${field.key}`}
-                                        label={field.label}
-                                        required={
-                                            config.contact[field.key] ===
-                                            'required'
-                                        }
-                                        error={error(field.key)}
-                                    >
-                                        <Input
-                                            id={`reg-${field.key}`}
-                                            type={field.type ?? 'text'}
-                                            autoComplete={field.autoComplete}
-                                            value={form.data[field.key]}
-                                            onChange={(e) =>
-                                                form.setData(
-                                                    field.key,
-                                                    e.target.value,
-                                                )
-                                            }
-                                        />
-                                    </Field>
-                                ))}
-                            </>
-                        )}
-
-                        {step === 'response' && (
-                            <>
-                                {mode !== 'register' && (
-                                    <section className="grid gap-2.5">
-                                        <span className="text-sm font-bold">
-                                            Will you attend?
-                                        </span>
-                                        <div
-                                            role="radiogroup"
-                                            aria-label="Will you attend?"
-                                            className={cn(
-                                                'grid gap-2.5',
-                                                config.allow_maybe
-                                                    ? 'grid-cols-3'
-                                                    : 'grid-cols-2',
-                                            )}
-                                        >
-                                            <AttendCard
-                                                icon={PartyPopper}
-                                                label="Joyfully accept"
-                                                checked={
-                                                    attendance === 'accepted'
-                                                }
-                                                onSelect={() =>
-                                                    setAttendance('accepted')
-                                                }
-                                            />
-                                            {config.allow_maybe && (
-                                                <AttendCard
-                                                    icon={CircleHelp}
-                                                    label="Not sure yet"
-                                                    checked={
-                                                        attendance === 'maybe'
-                                                    }
-                                                    onSelect={() =>
-                                                        setAttendance('maybe')
-                                                    }
-                                                />
-                                            )}
-                                            <AttendCard
-                                                icon={HeartCrack}
-                                                label="Regretfully decline"
-                                                checked={
-                                                    attendance === 'declined'
-                                                }
-                                                onSelect={() =>
-                                                    setAttendance('declined')
-                                                }
-                                            />
-                                        </div>
-                                        <FieldError
-                                            message={error('attendance')}
-                                        />
-                                    </section>
-                                )}
-
-                                {attendance === 'declined' && (
-                                    <Field
-                                        id="decline-note"
-                                        label="Note to the host (optional)"
-                                        error={error('note')}
-                                    >
-                                        <Textarea
-                                            id="decline-note"
-                                            rows={3}
-                                            maxLength={500}
-                                            placeholder="e.g. Sorry, I'll be travelling that week."
-                                            value={form.data.note}
-                                            onChange={(e) =>
-                                                form.setData(
-                                                    'note',
-                                                    e.target.value,
-                                                )
-                                            }
-                                        />
-                                    </Field>
-                                )}
-
-                                {attending && (
-                                    <AttendingDetails
-                                        config={config}
-                                        data={form.data}
-                                        asksChildren={asksChildren}
-                                        error={error}
-                                        setData={form.setData}
-                                        setAnswer={setAnswer}
-                                        toggle={toggle}
-                                    />
-                                )}
-                            </>
-                        )}
-
-                        {step === 'confirm' && attendance && (
-                            <Summary
-                                attendance={attendance}
-                                partySize={partySize}
-                                data={form.data}
-                                config={config}
-                            />
-                        )}
-                    </div>
-
-                    <div className="flex flex-col gap-2 border-t border-border px-4 pt-3 pb-6 sm:pb-4">
-                        {preview && step === 'confirm' && (
-                            <p className="text-center text-xs text-muted-foreground">
-                                Preview: nothing is sent.
+            <div className="grid gap-5 overflow-y-auto px-4 pt-5 pb-5">
+                {step === 'details' && (
+                    <>
+                        {note && (
+                            <p className="text-xs text-muted-foreground">
+                                {note}
                             </p>
                         )}
-                        <Button
-                            type="submit"
-                            variant="strong"
-                            className="h-13 rounded-full text-base"
-                            disabled={
-                                (step === 'response' && !attendance) ||
-                                (step === 'confirm' &&
-                                    (preview || form.processing))
-                            }
-                        >
-                            {continueLabel}
-                        </Button>
-                    </div>
-                </form>
-            </DialogContent>
+                        {mode === 'register' && (
+                            <Field
+                                id="reg-name"
+                                label="Name"
+                                required
+                                error={form.errors.name}
+                            >
+                                <Input
+                                    id="reg-name"
+                                    autoComplete="name"
+                                    value={form.data.name}
+                                    onChange={(e) =>
+                                        form.setData('name', e.target.value)
+                                    }
+                                />
+                            </Field>
+                        )}
+                        {shownContact.map((field) => (
+                            <Field
+                                key={field.key}
+                                id={`reg-${field.key}`}
+                                label={field.label}
+                                required={
+                                    config.contact[field.key] === 'required'
+                                }
+                                error={error(field.key)}
+                            >
+                                <Input
+                                    id={`reg-${field.key}`}
+                                    type={field.type ?? 'text'}
+                                    autoComplete={field.autoComplete}
+                                    value={form.data[field.key]}
+                                    onChange={(e) =>
+                                        form.setData(field.key, e.target.value)
+                                    }
+                                />
+                            </Field>
+                        ))}
+                    </>
+                )}
+
+                {step === 'response' && (
+                    <>
+                        {mode !== 'register' && (
+                            <section className="grid gap-2.5">
+                                <span className="text-sm font-bold">
+                                    Will you attend?
+                                </span>
+                                <div
+                                    role="radiogroup"
+                                    aria-label="Will you attend?"
+                                    className={cn(
+                                        'grid gap-2.5',
+                                        config.allow_maybe
+                                            ? 'grid-cols-3'
+                                            : 'grid-cols-2',
+                                    )}
+                                >
+                                    <AttendCard
+                                        icon={PartyPopper}
+                                        label="Joyfully accept"
+                                        checked={attendance === 'accepted'}
+                                        onSelect={() =>
+                                            setAttendance('accepted')
+                                        }
+                                    />
+                                    {config.allow_maybe && (
+                                        <AttendCard
+                                            icon={CircleHelp}
+                                            label="Not sure yet"
+                                            checked={attendance === 'maybe'}
+                                            onSelect={() =>
+                                                setAttendance('maybe')
+                                            }
+                                        />
+                                    )}
+                                    <AttendCard
+                                        icon={HeartCrack}
+                                        label="Regretfully decline"
+                                        checked={attendance === 'declined'}
+                                        onSelect={() =>
+                                            setAttendance('declined')
+                                        }
+                                    />
+                                </div>
+                                <FieldError message={error('attendance')} />
+                            </section>
+                        )}
+
+                        {attendance === 'declined' && (
+                            <Field
+                                id="decline-note"
+                                label="Note to the host (optional)"
+                                error={error('note')}
+                            >
+                                <Textarea
+                                    id="decline-note"
+                                    rows={3}
+                                    maxLength={500}
+                                    placeholder="e.g. Sorry, I'll be travelling that week."
+                                    value={form.data.note}
+                                    onChange={(e) =>
+                                        form.setData('note', e.target.value)
+                                    }
+                                />
+                            </Field>
+                        )}
+
+                        {attending && (
+                            <AttendingDetails
+                                config={config}
+                                data={form.data}
+                                asksChildren={asksChildren}
+                                error={error}
+                                setData={form.setData}
+                                setAnswer={setAnswer}
+                                toggle={toggle}
+                            />
+                        )}
+                    </>
+                )}
+
+                {step === 'confirm' && attendance && (
+                    <Summary
+                        attendance={attendance}
+                        partySize={partySize}
+                        data={form.data}
+                        config={config}
+                    />
+                )}
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-border px-4 pt-3 pb-6 sm:pb-4">
+                {preview && step === 'confirm' && (
+                    <p className="text-center text-xs text-muted-foreground">
+                        Preview: nothing is sent.
+                    </p>
+                )}
+                <Button
+                    type="submit"
+                    variant="strong"
+                    className="h-13 rounded-full text-base"
+                    disabled={
+                        (step === 'response' && !attendance) ||
+                        (step === 'confirm' && (preview || form.processing))
+                    }
+                >
+                    {continueLabel}
+                </Button>
+            </div>
+        </form>
+    );
+
+    if (inline) {
+        return (
+            <div
+                className={cn(
+                    'nocturne flex flex-col overflow-hidden bg-background font-[Inter,ui-sans-serif,system-ui,sans-serif] text-sm text-foreground',
+                    className,
+                )}
+            >
+                {content}
+            </div>
+        );
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className={NOCTURNE_POPUP}>{content}</DialogContent>
         </Dialog>
     );
 }

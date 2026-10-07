@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 import { FormField } from '@/components/shared/form-field';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -112,15 +113,13 @@ export function PlanCard({
                                 error={form.errors.plan_expires_at}
                                 hint="Leave empty for no end date."
                             >
-                                <Input
+                                <DatePicker
                                     id="plan_expires_at"
-                                    type="date"
                                     value={form.data.plan_expires_at}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'plan_expires_at',
-                                            e.target.value,
-                                        )
+                                    placeholder="No end date"
+                                    clearable
+                                    onChange={(value) =>
+                                        form.setData('plan_expires_at', value)
                                     }
                                 />
                             </FormField>

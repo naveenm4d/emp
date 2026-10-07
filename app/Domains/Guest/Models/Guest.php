@@ -116,9 +116,11 @@ class Guest extends Model
      */
     public function partyAllowance(RegistrationSettings $settings): array
     {
+        $defaults = $settings->partyAllowance();
+
         return [
-            'additional' => $this->invited_additional_guests ?? ($settings->plusOnes ? $settings->maxAdditionalGuests : 0),
-            'children' => $this->invited_children ?? ($settings->children ? RegistrationSettings::MAX_ADDITIONAL_GUESTS : 0),
+            'additional' => $this->invited_additional_guests ?? $defaults['additional'],
+            'children' => $this->invited_children ?? $defaults['children'],
         ];
     }
 

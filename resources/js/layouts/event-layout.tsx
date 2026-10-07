@@ -8,8 +8,9 @@ import {
     UserCircle,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 
+import { EventPoster } from '@/components/events/event-poster';
 import { EventSwitcher } from '@/components/events/event-switcher';
 import { useEventTabs } from '@/components/events/event-tabs';
 import { BottomTabBar } from '@/components/shared/bottom-tab-bar';
@@ -24,45 +25,40 @@ import { edit as profileEdit } from '@/routes/client/profile';
 import type { Event } from '@/types';
 
 type EventLayoutProps = {
-    event: Pick<Event, 'id' | 'title'>;
+    event: Event;
+    /** A line above the event's title on the poster (the overview's status). */
+    headline?: string;
     children: ReactNode;
 };
 
 /**
- * Frame of every page that belongs to one event (4b): the event header with
- * the switcher and tabs from `md` up, the event's own tab bar on phones.
+ * Frame of every page that belongs to one event. From `md` up: the top bar
+ * (home, switcher, search, account) and the event poster with the event's
+ * tabs floating over its bottom edge, above every tab. On phones: the
+ * event's own bottom tab bar.
  */
-export default function EventLayout({ event, children }: EventLayoutProps) {
+export default function EventLayout({
+    event,
+    headline,
+    children,
+}: EventLayoutProps) {
     return (
         <ClientLayout
             header={<EventHeader event={event} />}
             bottomBar={<EventTabBar event={event} />}
         >
+            <EventPoster event={event} headline={headline} />
             {children}
         </ClientLayout>
     );
 }
 
-/** Tabs that belong together sit between dividers on the desktop tab strip. */
-const TAB_GROUPS: Record<string, number> = {
-    Overview: 0,
-    Guests: 1,
-    RSVPs: 1,
-    'RSVP form': 1,
-    Messages: 1,
-    Design: 2,
-    Seating: 2,
-    Settings: 3,
-};
-
 /**
- * The event's header from `md` up: a top bar (home, the event switcher,
- * search and account) over a floating strip of the event's pages.
+ * The event's top bar from `md` up: home, the event switcher, search and
+ * account (the tabs are on the poster).
  */
 function EventHeader({ event }: { event: EventLayoutProps['event'] }) {
     const { auth } = usePage().props;
-    const tabs = useEventTabs(event);
-
     return (
         <header className="sticky top-0 z-30 hidden md:block">
             <div className="flex h-14 items-center gap-3 bg-hero px-6 text-hero-foreground lg:px-7 dark:border-b dark:border-hero-edge">
@@ -117,64 +113,6 @@ function EventHeader({ event }: { event: EventLayoutProps['event'] }) {
                         {initials(auth.client?.name ?? '')}
                     </Link>
                 </div>
-            </div>
-
-            <div className="border-b border-border bg-background/85 px-6 py-2.5 backdrop-blur lg:px-7">
-                <nav
-                    aria-label="Event pages"
-                    className="flex w-fit max-w-full [scrollbar-width:none] items-center gap-1 overflow-x-auto rounded-full bg-card p-1 shadow-card"
-                >
-                    {tabs.map((tab, index) => {
-                        const Icon = tab.icon;
-                        const newGroup =
-                            index > 0 &&
-                            TAB_GROUPS[tab.label] !==
-                                TAB_GROUPS[tabs[index - 1].label];
-
-                        return (
-                            <Fragment key={tab.href}>
-                                {newGroup && (
-                                    <span
-                                        aria-hidden
-                                        className="mx-1 h-5 w-px shrink-0 bg-border"
-                                    />
-                                )}
-                                <Link
-                                    href={tab.href}
-                                    aria-current={
-                                        tab.active ? 'page' : undefined
-                                    }
-                                    title={
-                                        tab.locked
-                                            ? `${tab.label}: upgrade to unlock`
-                                            : undefined
-                                    }
-                                    className={cn(
-                                        'flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition-colors',
-                                        tab.active
-                                            ? 'bg-strong text-strong-foreground shadow-sm'
-                                            : 'text-muted-foreground hover:bg-raised hover:text-foreground',
-                                        tab.locked &&
-                                            !tab.active &&
-                                            'text-subtle',
-                                    )}
-                                >
-                                    <Icon
-                                        className="size-4"
-                                        strokeWidth={tab.active ? 2.25 : 1.9}
-                                    />
-                                    {tab.label}
-                                    {tab.locked && (
-                                        <Lock
-                                            aria-label="Upgrade to unlock"
-                                            className="size-3 opacity-70"
-                                        />
-                                    )}
-                                </Link>
-                            </Fragment>
-                        );
-                    })}
-                </nav>
             </div>
         </header>
     );

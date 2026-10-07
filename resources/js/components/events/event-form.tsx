@@ -7,6 +7,8 @@ import { FormField } from '@/components/shared/form-field';
 import { TemplatePicker } from '@/components/templates/template-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DatePicker } from '@/components/ui/date-picker';
+import { TimePicker } from '@/components/ui/time-picker';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -262,10 +264,18 @@ export function EventForm({
                             htmlFor="event_date"
                             error={form.errors.event_date}
                         >
-                            <Input
-                                type="date"
+                            <DatePicker
+                                id="event_date"
+                                value={form.data.event_date ?? ''}
                                 min={event ? undefined : todayInAppTimeZone()}
-                                {...field('event_date')}
+                                invalid={!!form.errors.event_date}
+                                clearable
+                                onChange={(value) =>
+                                    form.setData((data) => ({
+                                        ...data,
+                                        event_date: value,
+                                    }))
+                                }
                             />
                         </FormField>
                         <FormField
@@ -273,17 +283,37 @@ export function EventForm({
                             htmlFor="start_time"
                             error={form.errors.start_time}
                         >
-                            <Input type="time" {...field('start_time')} />
+                            <TimePicker
+                                id="start_time"
+                                value={form.data.start_time ?? ''}
+                                invalid={!!form.errors.start_time}
+                                clearable
+                                onChange={(value) =>
+                                    form.setData((data) => ({
+                                        ...data,
+                                        start_time: value,
+                                    }))
+                                }
+                            />
                         </FormField>
                         <FormField
                             label="Ends"
                             htmlFor="end_time"
                             error={form.errors.end_time}
                         >
-                            <Input
-                                type="time"
+                            <TimePicker
+                                id="end_time"
+                                value={form.data.end_time ?? ''}
                                 min={form.data.start_time || undefined}
-                                {...field('end_time')}
+                                placeholder="Optional"
+                                invalid={!!form.errors.end_time}
+                                clearable
+                                onChange={(value) =>
+                                    form.setData((data) => ({
+                                        ...data,
+                                        end_time: value,
+                                    }))
+                                }
                             />
                         </FormField>
                         <FormField

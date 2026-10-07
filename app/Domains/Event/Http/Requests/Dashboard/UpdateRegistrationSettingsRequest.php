@@ -41,6 +41,7 @@ class UpdateRegistrationSettingsRequest extends FormRequest
             'settings.party.plus_ones' => ['required', 'boolean'],
             'settings.party.max_additional_guests' => ['required', 'integer', 'min:1', 'max:'.RegistrationSettings::MAX_ADDITIONAL_GUESTS],
             'settings.party.children' => ['required', 'boolean'],
+            'settings.party.max_children' => ['required', 'integer', 'min:1', 'max:'.RegistrationSettings::MAX_CHILDREN],
             'settings.dietary.enabled' => ['required', 'boolean'],
             'settings.dietary.options' => ['present', 'array', Rule::requiredIf(fn () => $this->boolean('settings.dietary.enabled'))],
             'settings.dietary.options.*' => ['distinct', Rule::enum(DietaryOption::class)],

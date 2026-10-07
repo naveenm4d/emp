@@ -2,7 +2,6 @@
 
 namespace App\Domains\Guest\Http\Requests;
 
-use App\Domains\Event\DTOs\RegistrationSettings;
 use App\Domains\Event\Enums\DietaryOption;
 use App\Domains\Event\Enums\FieldRequirement;
 use App\Domains\Event\Enums\QuestionType;
@@ -32,10 +31,7 @@ final class RegistrationDetailsRules
     public static function for(Event $event, ?Guest $guest = null): array
     {
         $settings = $event->registrationSettings();
-        $allowance = $guest?->partyAllowance($settings) ?? [
-            'additional' => $settings->plusOnes ? $settings->maxAdditionalGuests : 0,
-            'children' => $settings->children ? RegistrationSettings::MAX_ADDITIONAL_GUESTS : 0,
-        ];
+        $allowance = $guest?->partyAllowance($settings) ?? $settings->partyAllowance();
 
         $rules = [
             'address' => self::text($settings->requirement('address'), 500),

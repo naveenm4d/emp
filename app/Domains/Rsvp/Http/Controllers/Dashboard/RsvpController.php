@@ -30,6 +30,8 @@ class RsvpController extends InertiaController
     public function index(Request $request, Event $event, GuestDetails $details): Response
     {
         $this->authorize('view', $event);
+        // The event header's poster shows the invitation's image.
+        $event->loadMissing('templateVersion.template.latestVersion');
 
         // Not in the plan: the tab shows an upgrade prompt, so nothing else is loaded.
         if (! $this->plans->hasFeature($event->client, PlanFeature::RsvpList)) {

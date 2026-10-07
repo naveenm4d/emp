@@ -101,7 +101,7 @@ class EventController extends InertiaController
     public function edit(Event $event): Response
     {
         $this->authorize('update', $event);
-        $event->load('publicLink');
+        $event->load(['publicLink', 'templateVersion.template.latestVersion']);
 
         return Inertia::render('client/events/edit', [
             'event' => EventResource::make($event),

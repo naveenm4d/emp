@@ -37,7 +37,7 @@ export function LockedEventPage({
     feature,
     preview,
 }: {
-    event: Pick<Event, 'id' | 'title'>;
+    event: Event;
     title: string;
     feature: keyof typeof pitches;
     /** Static sample markup hinting at the page; it's blurred and inert. */

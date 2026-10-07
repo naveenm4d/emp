@@ -399,3 +399,17 @@ it('limits the decline note length', function () {
     $this->post("{$this->link}/respond", ['attendance' => 'declined', 'note' => str_repeat('a', 501)])
         ->assertSessionHasErrors(['note' => 'The note field must not be greater than 500 characters.']);
 });
+
+it('limits children to what the event allows', function () {
+    $this->event->update(['event_registration_settings' => [
+        'party' => ['children' => true, 'max_children' => 2],
+    ]]);
+
+    $this->post("{$this->link}/respond", ['attendance' => 'accepted', 'children' => 3])
+        ->assertSessionHasErrors('children');
+
+    $this->post("{$this->link}/respond", ['attendance' => 'accepted', 'children' => 2])
+        ->assertSessionHas('success');
+
+    expect($this->rsvp->guest->fresh()->children)->toBe(2);
+});

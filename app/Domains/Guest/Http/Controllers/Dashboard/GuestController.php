@@ -32,6 +32,8 @@ class GuestController extends InertiaController
     public function index(Request $request, Event $event, GuestDetails $details): Response
     {
         $this->authorize('view', $event);
+        // The event header's poster shows the invitation's image.
+        $event->loadMissing('templateVersion.template.latestVersion');
 
         $filters = GuestFilters::fromArray($request->query());
 

@@ -26,7 +26,7 @@ function settingsPayload(array $overrides = []): array
         'settings' => [
             'contact' => ['email' => 'optional', 'phone' => 'optional', 'address' => 'off', 'company' => 'off', 'job_title' => 'off'],
             'attendance' => ['allow_maybe' => false],
-            'party' => ['plus_ones' => false, 'max_additional_guests' => 1, 'children' => false],
+            'party' => ['plus_ones' => false, 'max_additional_guests' => 1, 'children' => false, 'max_children' => 20],
             'dietary' => ['enabled' => false, 'options' => [], 'notes' => false],
             'responses' => ['editable' => false],
         ],
@@ -68,7 +68,7 @@ it('saves the settings and the custom questions in order', function () {
             'settings' => [
                 'contact' => ['company' => 'required'],
                 'attendance' => ['allow_maybe' => true],
-                'party' => ['plus_ones' => true, 'max_additional_guests' => 3],
+                'party' => ['plus_ones' => true, 'max_additional_guests' => 3, 'children' => true, 'max_children' => 2],
                 'dietary' => ['enabled' => true, 'options' => ['vegan', 'halal'], 'notes' => true],
                 'responses' => ['editable' => true],
             ],
@@ -87,6 +87,7 @@ it('saves the settings and the custom questions in order', function () {
     expect($settings->requirement('company')->value)->toBe('required')
         ->and($settings->allowMaybe)->toBeTrue()
         ->and($settings->maxAdditionalGuests)->toBe(3)
+        ->and($settings->maxChildren)->toBe(2)
         ->and(array_map(fn ($option) => $option->value, $settings->dietaryOptions))->toBe(['vegan', 'halal'])
         ->and($event->responses_lock_at->format('Y-m-d H:i'))->toBe('2027-01-10 18:30')
         ->and($event->registrationQuestions->map->only(['label', 'type', 'required', 'options', 'sort_order'])->all())->toEqual([

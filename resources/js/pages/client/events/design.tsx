@@ -390,12 +390,12 @@ function DesignEditor({
             <Notices event={event} design={design} editable={editable} />
 
             <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-                <Card className="overflow-hidden p-0 lg:sticky lg:top-[8.25rem]">
+                <Card className="overflow-hidden p-0 lg:sticky lg:top-[4.5rem]">
                     <div className="flex items-center gap-2 border-b px-4 py-2 text-xs text-muted-foreground">
                         <MousePointerClick className="size-3.5" />
                         Click text or a photo in the invitation to edit it.
                     </div>
-                    <div className="max-h-[52dvh] overflow-y-auto bg-white md:max-h-[calc(100dvh-17rem)]">
+                    <div className="max-h-[52dvh] overflow-y-auto bg-white md:max-h-[calc(100dvh-10rem)]">
                         <InvitationFrame
                             html={canvasHtml}
                             scripts={editor.scripts}
@@ -656,7 +656,7 @@ function SaveBar({
     return (
         <Card
             className={cn(
-                'sticky top-4 z-10 p-4 md:top-[8.25rem]',
+                'sticky top-4 z-10 p-4 md:top-[4.5rem]',
                 dirty && 'ring-2 ring-primary/40',
             )}
         >

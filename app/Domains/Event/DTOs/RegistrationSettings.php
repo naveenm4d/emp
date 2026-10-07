@@ -23,6 +23,8 @@ final readonly class RegistrationSettings
 
     public const int MAX_ADDITIONAL_GUESTS = 20;
 
+    public const int MAX_CHILDREN = 20;
+
     /**
      * @param  array<string, FieldRequirement>  $contact  keyed by CONTACT_FIELDS
      * @param  list<DietaryOption>  $dietaryOptions
@@ -33,6 +35,7 @@ final readonly class RegistrationSettings
         public bool $plusOnes = false,
         public int $maxAdditionalGuests = 1,
         public bool $children = false,
+        public int $maxChildren = self::MAX_CHILDREN,
         public bool $dietary = false,
         public array $dietaryOptions = [],
         public bool $dietaryNotes = false,
@@ -98,6 +101,7 @@ final readonly class RegistrationSettings
             plusOnes: (bool) ($data['party']['plus_ones'] ?? $defaults->plusOnes),
             maxAdditionalGuests: max(0, min(self::MAX_ADDITIONAL_GUESTS, (int) ($data['party']['max_additional_guests'] ?? $defaults->maxAdditionalGuests))),
             children: (bool) ($data['party']['children'] ?? $defaults->children),
+            maxChildren: max(1, min(self::MAX_CHILDREN, (int) ($data['party']['max_children'] ?? $defaults->maxChildren))),
             dietary: (bool) ($data['dietary']['enabled'] ?? $defaults->dietary),
             dietaryOptions: $dietaryOptions,
             dietaryNotes: (bool) ($data['dietary']['notes'] ?? $defaults->dietaryNotes),
@@ -109,7 +113,7 @@ final readonly class RegistrationSettings
      * @return array{
      *     contact: array<string, string>,
      *     attendance: array{allow_maybe: bool},
-     *     party: array{plus_ones: bool, max_additional_guests: int, children: bool},
+     *     party: array{plus_ones: bool, max_additional_guests: int, children: bool, max_children: int},
      *     dietary: array{enabled: bool, options: list<string>, notes: bool},
      *     responses: array{editable: bool},
      * }
@@ -123,6 +127,7 @@ final readonly class RegistrationSettings
                 'plus_ones' => $this->plusOnes,
                 'max_additional_guests' => $this->maxAdditionalGuests,
                 'children' => $this->children,
+                'max_children' => $this->maxChildren,
             ],
             'dietary' => [
                 'enabled' => $this->dietary,
@@ -136,6 +141,20 @@ final readonly class RegistrationSettings
     public function requirement(string $field): FieldRequirement
     {
         return $this->contact[$field] ?? FieldRequirement::Off;
+    }
+
+    /**
+     * How many plus-ones and children a guest may bring by default (a guest
+     * the client invited with their own party uses Guest::partyAllowance()).
+     *
+     * @return array{additional: int, children: int}
+     */
+    public function partyAllowance(): array
+    {
+        return [
+            'additional' => $this->plusOnes ? $this->maxAdditionalGuests : 0,
+            'children' => $this->children ? $this->maxChildren : 0,
+        ];
     }
 
     /** Dietary restrictions are asked and there is something to pick from. */
