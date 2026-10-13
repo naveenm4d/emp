@@ -3,6 +3,7 @@
 namespace App\Domains\Seating\DTOs;
 
 use App\Core\DTOs\DataTransferObject;
+use App\Domains\Seating\Enums\VenueSetting;
 
 /** Where the tables and venue elements stand on the seating floor plan. */
 final readonly class FloorPlanData extends DataTransferObject
@@ -14,11 +15,13 @@ final readonly class FloorPlanData extends DataTransferObject
 
     /**
      * @param  array<string, array{x: int, y: int}>  $tables  by table id
-     * @param  array<string, array{x: int, y: int, width: int, height: int}>  $elements  by element id
+     * @param  array<string, array{x: int, y: int, width: int, height: int, rotation?: int}>  $elements  by element id (no rotation = unchanged)
+     * @param  VenueSetting|null  $venue  indoor or outdoor (null = unchanged)
      */
     public function __construct(
         public array $tables = [],
         public array $elements = [],
+        public ?VenueSetting $venue = null,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -37,9 +40,10 @@ final readonly class FloorPlanData extends DataTransferObject
                 'y' => (int) $element['y'],
                 'width' => (int) $element['width'],
                 'height' => (int) $element['height'],
+                ...(isset($element['rotation']) ? ['rotation' => (int) $element['rotation']] : []),
             ];
         }
 
-        return new self($tables, $elements);
+        return new self($tables, $elements, isset($data['venue']) ? VenueSetting::from($data['venue']) : null);
     }
 }

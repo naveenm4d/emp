@@ -14,6 +14,8 @@ final readonly class VenueElementData extends DataTransferObject
         public int $y,
         public int $width,
         public int $height,
+        /** Degrees clockwise; null keeps the current turn (0 for a new element). */
+        public ?int $rotation = null,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -28,6 +30,7 @@ final readonly class VenueElementData extends DataTransferObject
             y: (int) $data['y'],
             width: (int) $data['width'],
             height: (int) $data['height'],
+            rotation: isset($data['rotation']) ? (int) $data['rotation'] : null,
         );
     }
 }

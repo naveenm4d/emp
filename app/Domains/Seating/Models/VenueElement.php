@@ -25,12 +25,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $pos_y
  * @property int $width
  * @property int $height
+ * @property int $rotation degrees clockwise (0–359)
  * @property-read Event $event
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  */
 #[UseFactory(VenueElementFactory::class)]
-#[Fillable(['event_id', 'kind', 'label', 'pos_x', 'pos_y', 'width', 'height'])]
+#[Fillable(['event_id', 'kind', 'label', 'pos_x', 'pos_y', 'width', 'height', 'rotation'])]
 class VenueElement extends Model
 {
     /** @use HasFactory<VenueElementFactory> */

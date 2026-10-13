@@ -1,4 +1,3 @@
-import { router } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
 import {
     Bath,
@@ -14,6 +13,8 @@ import {
     Music,
     Pencil,
     Plus,
+    RotateCcw,
+    RotateCw,
     Shapes,
     Sparkles,
     Trash2,
@@ -23,6 +24,24 @@ import {
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import type {
+    ElementBox,
+    Plan,
+    Point,
+} from '@/components/seating/floor-plan-layout';
+import {
+    addVenueElement,
+    CANVAS,
+    clamp,
+    contentBounds,
+    initialLayout,
+    removeVenueElement,
+    renameVenueElement,
+    saveFloorPlan,
+    ROTATE_STEP,
+    snap,
+    turnElement,
+} from '@/components/seating/floor-plan-layout';
 import { TableToken, tableTokenSize } from '@/components/seating/table-token';
 import { SlideToConfirm } from '@/components/shared/confirm-bar';
 import {
@@ -32,12 +51,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { layout as saveLayout } from '@/routes/client/events/seating';
-import { store as storeElement } from '@/routes/client/events/venue-elements';
-import {
-    destroy as destroyElement,
-    update as updateElement,
-} from '@/routes/client/venue-elements';
 import type {
     Event,
     EventTable,
@@ -46,9 +59,6 @@ import type {
     VenueElementKindOption,
 } from '@/types';
 
-/** Canvas size in canvas units (matches FloorPlanData::WIDTH / HEIGHT). */
-export const CANVAS = { width: 4000, height: 2400 };
-const GRID = 20;
 const MIN_SIZE = 40;
 const MAX_SIZE = 800;
 const MIN_ZOOM = 0.2;
@@ -69,80 +79,8 @@ export const venueElementIcons: Record<VenueElementKind, LucideIcon> = {
     custom: Shapes,
 };
 
-type Point = { x: number; y: number };
-type Box = Point & { width: number; height: number };
-type Plan = { tables: Record<string, Point>; elements: Record<string, Box> };
 /** The part of the canvas on screen: zoom, and where the canvas origin sits (screen px). */
 type View = { scale: number; x: number; y: number };
-
-const snap = (value: number) => Math.round(value / GRID) * GRID;
-const clamp = (value: number, min: number, max: number) =>
-    Math.min(Math.max(value, min), max);
-
-/** Tables not placed yet go in rows below the top of the room, in order. */
-function initialLayout(tables: EventTable[], elements: VenueElement[]): Plan {
-    const placed: Record<string, Point> = {};
-    let slot = 0;
-
-    for (const table of tables) {
-        if (table.x !== null && table.y !== null) {
-            placed[table.id] = { x: table.x, y: table.y };
-            continue;
-        }
-
-        const perRow = 7;
-        placed[table.id] = {
-            x: 80 + (slot % perRow) * 210,
-            y: Math.min(
-                260 + Math.floor(slot / perRow) * 210,
-                CANVAS.height - 160,
-            ),
-        };
-        slot += 1;
-    }
-
-    return {
-        tables: placed,
-        elements: Object.fromEntries(
-            elements.map((element) => [
-                element.id,
-                {
-                    x: element.x,
-                    y: element.y,
-                    width: element.width,
-                    height: element.height,
-                },
-            ]),
-        ),
-    };
-}
-
-/** Everything on the plan, as one box (null when it's empty). */
-function contentBounds(plan: Plan, tables: EventTable[]): Box | null {
-    const boxes: Box[] = [
-        ...tables
-            .filter((table) => plan.tables[table.id])
-            .map((table) => ({
-                ...plan.tables[table.id],
-                ...tableTokenSize(table.shape),
-            })),
-        ...Object.values(plan.elements),
-    ];
-
-    if (boxes.length === 0) {
-        return null;
-    }
-
-    const left = Math.min(...boxes.map((box) => box.x));
-    const top = Math.min(...boxes.map((box) => box.y));
-
-    return {
-        x: left,
-        y: top,
-        width: Math.max(...boxes.map((box) => box.x + box.width)) - left,
-        height: Math.max(...boxes.map((box) => box.y + box.height)) - top,
-    };
-}
 
 /** Keeps the canvas covering the viewport (or centred when it's smaller). */
 function clampView(view: View, viewport: { width: number; height: number }) {
@@ -163,7 +101,8 @@ type Drag = {
     kind: 'pan' | 'table' | 'element' | 'resize';
     id: string;
     pointer: Point;
-    start: Box;
+    /** Tables and the canvas have no rotation (0). */
+    start: ElementBox;
     moved: boolean;
 };
 
@@ -323,31 +262,11 @@ export function FloorPlan({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const save = (next: Plan) =>
-        router.patch(
-            saveLayout.url(event),
-            {
-                tables: Object.entries(next.tables).map(([id, point]) => ({
-                    id,
-                    ...point,
-                })),
-                elements: Object.entries(next.elements).map(([id, box]) => ({
-                    id,
-                    ...box,
-                })),
-            },
-            {
-                preserveScroll: true,
-                preserveState: true,
-                only: ['tables', 'venueElements', 'flash'],
-            },
-        );
-
     const begin = (
         e: ReactPointerEvent,
         kind: Drag['kind'],
         id: string,
-        start: Box,
+        start: ElementBox,
     ) => {
         e.stopPropagation();
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -397,6 +316,10 @@ export function FloorPlan({
         const previous = planRef.current;
 
         if (current.kind === 'resize') {
+            // The handle turns with the element: measure the drag along its sides.
+            const angle = (start.rotation * Math.PI) / 180;
+            const along = dx * Math.cos(angle) + dy * Math.sin(angle);
+            const across = -dx * Math.sin(angle) + dy * Math.cos(angle);
             setPlan({
                 ...previous,
                 elements: {
@@ -404,12 +327,12 @@ export function FloorPlan({
                     [current.id]: {
                         ...start,
                         width: clamp(
-                            snap(start.width + dx),
+                            snap(start.width + along),
                             MIN_SIZE,
                             Math.min(MAX_SIZE, CANVAS.width - start.x),
                         ),
                         height: clamp(
-                            snap(start.height + dy),
+                            snap(start.height + across),
                             MIN_SIZE,
                             Math.min(MAX_SIZE, CANVAS.height - start.y),
                         ),
@@ -450,66 +373,36 @@ export function FloorPlan({
         if (!current.moved) {
             onClick();
         } else if (current.kind !== 'pan') {
-            save(planRef.current);
+            saveFloorPlan(event, planRef.current);
         }
     };
 
     /** Places a new venue element in the middle of what's on screen. */
     const addElement = (kind: VenueElementKindOption) => {
-        const label =
-            kind.value === 'custom' ? prompt('Name this element') : null;
-
-        if (kind.value === 'custom' && !label?.trim()) {
-            return;
-        }
-
         const { scale, x, y } = viewRef.current;
-        const centre = {
+
+        addVenueElement(event, kind, {
             x: (size.current.width / 2 - x) / scale,
             y: (size.current.height / 2 - y) / scale,
-        };
-
-        router.post(
-            storeElement.url(event),
-            {
-                kind: kind.value,
-                label: label?.trim() ?? null,
-                x: clamp(
-                    snap(centre.x - kind.width / 2),
-                    0,
-                    CANVAS.width - kind.width,
-                ),
-                y: clamp(
-                    snap(centre.y - kind.height / 2),
-                    0,
-                    CANVAS.height - kind.height,
-                ),
-                width: kind.width,
-                height: kind.height,
-            },
-            { preserveScroll: true },
-        );
-    };
-
-    const renameElement = (element: VenueElement, box: Box) => {
-        const label = prompt('Name', element.label ?? element.display_label);
-
-        if (label === null) {
-            return;
-        }
-
-        router.patch(
-            updateElement.url(element.id),
-            { kind: element.kind, label: label.trim() || null, ...box },
-            { preserveScroll: true },
-        );
+        });
     };
 
     const removeElement = (element: VenueElement) => {
         setSelected(null);
-        router.delete(destroyElement.url(element.id), {
-            preserveScroll: true,
-        });
+        removeVenueElement(element);
+    };
+
+    const rotateElement = (id: string, step: number) => {
+        const previous = planRef.current;
+        const next = {
+            ...previous,
+            elements: {
+                ...previous.elements,
+                [id]: turnElement(previous.elements[id], step),
+            },
+        };
+        setPlan(next);
+        saveFloorPlan(event, next);
     };
 
     return (
@@ -524,6 +417,7 @@ export function FloorPlan({
                     ...viewRef.current,
                     width: 0,
                     height: 0,
+                    rotation: 0,
                 })
             }
             onPointerMove={move}
@@ -541,6 +435,16 @@ export function FloorPlan({
                     const box = plan.elements[element.id] ?? element;
                     const Icon = venueElementIcons[element.kind];
                     const isSelected = selected === element.id;
+                    const angle = (box.rotation * Math.PI) / 180;
+                    // The turned element's upright bounding box, where its toolbar sits.
+                    const upright = {
+                        width:
+                            Math.abs(box.width * Math.cos(angle)) +
+                            Math.abs(box.height * Math.sin(angle)),
+                        height:
+                            Math.abs(box.width * Math.sin(angle)) +
+                            Math.abs(box.height * Math.cos(angle)),
+                    };
 
                     return (
                         <div
@@ -558,6 +462,7 @@ export function FloorPlan({
                                 top: box.y,
                                 width: box.width,
                                 height: box.height,
+                                rotate: `${box.rotation}deg`,
                             }}
                             onPointerDown={(e) =>
                                 editable
@@ -567,87 +472,140 @@ export function FloorPlan({
                             onPointerMove={move}
                             onPointerUp={end(() => setSelected(element.id))}
                         >
-                            <Icon className="size-8" strokeWidth={1.75} />
-                            <span className="max-w-full truncate px-3 text-[20px] font-semibold">
-                                {element.display_label}
-                            </span>
+                            {/* Upside down past a quarter turn, so the name stays readable. */}
+                            <div
+                                className="flex max-w-full flex-col items-center gap-1.5"
+                                style={
+                                    box.rotation > 90 && box.rotation < 270
+                                        ? { rotate: '180deg' }
+                                        : undefined
+                                }
+                            >
+                                <Icon className="size-8" strokeWidth={1.75} />
+                                <span className="max-w-full truncate px-3 text-[20px] font-semibold">
+                                    {element.display_label}
+                                </span>
+                            </div>
 
                             {editable && isSelected && (
                                 <>
+                                    {/* Turned back upright over the element, so the toolbar reads level. */}
                                     <div
-                                        className={cn(
-                                            'absolute left-1/2 flex -translate-x-1/2 shadow-card',
-                                            confirmingRemove
-                                                ? '-top-3 w-72 origin-bottom -translate-y-full flex-col rounded-2xl bg-card p-3.5 text-foreground shadow-lg ring-1 ring-border'
-                                                : '-top-16 items-center gap-2 rounded-full bg-strong p-2 whitespace-nowrap text-strong-foreground',
-                                        )}
-                                        // The question stays screen-sized whatever the zoom.
-                                        style={
-                                            confirmingRemove
-                                                ? {
-                                                      scale: String(
-                                                          1 / view.scale,
-                                                      ),
-                                                  }
-                                                : undefined
-                                        }
-                                        onPointerDown={(e) =>
-                                            e.stopPropagation()
-                                        }
-                                        onPointerUp={(e) => e.stopPropagation()}
+                                        className="pointer-events-none absolute top-1/2 left-1/2"
+                                        style={{
+                                            ...upright,
+                                            translate: '-50% -50%',
+                                            rotate: `${-box.rotation}deg`,
+                                        }}
                                     >
-                                        {confirmingRemove ? (
-                                            <div
-                                                role="alertdialog"
-                                                aria-label={`Remove ${element.display_label}?`}
-                                                className="grid gap-3 motion-safe:animate-fade-in"
-                                            >
-                                                <p className="text-sm leading-snug font-semibold">
-                                                    Remove{' '}
-                                                    {element.display_label} from
-                                                    the floor plan?
-                                                </p>
-                                                <SlideToConfirm
-                                                    label="Remove"
-                                                    onCancel={() =>
-                                                        setConfirmingRemove(
-                                                            false,
-                                                        )
-                                                    }
-                                                    onConfirm={() =>
-                                                        removeElement(element)
-                                                    }
-                                                />
-                                            </div>
-                                        ) : (
-                                            <span className="flex gap-2 motion-safe:animate-fade-in">
-                                                <button
-                                                    type="button"
-                                                    aria-label={`Rename ${element.display_label}`}
-                                                    onClick={() =>
-                                                        renameElement(
-                                                            element,
-                                                            box,
-                                                        )
-                                                    }
-                                                    className="flex size-10 items-center justify-center rounded-full hover:bg-current/15"
+                                        <div
+                                            className={cn(
+                                                'pointer-events-auto',
+                                                'absolute left-1/2 flex -translate-x-1/2 shadow-card',
+                                                confirmingRemove
+                                                    ? '-top-3 w-72 origin-bottom -translate-y-full flex-col rounded-2xl bg-card p-3.5 text-foreground shadow-lg ring-1 ring-border'
+                                                    : '-top-16 items-center gap-2 rounded-full bg-strong p-2 whitespace-nowrap text-strong-foreground',
+                                            )}
+                                            // The question stays screen-sized whatever the zoom.
+                                            style={
+                                                confirmingRemove
+                                                    ? {
+                                                          scale: String(
+                                                              1 / view.scale,
+                                                          ),
+                                                      }
+                                                    : undefined
+                                            }
+                                            onPointerDown={(e) =>
+                                                e.stopPropagation()
+                                            }
+                                            onPointerUp={(e) =>
+                                                e.stopPropagation()
+                                            }
+                                        >
+                                            {confirmingRemove ? (
+                                                <div
+                                                    role="alertdialog"
+                                                    aria-label={`Remove ${element.display_label}?`}
+                                                    className="grid gap-3 motion-safe:animate-fade-in"
                                                 >
-                                                    <Pencil className="size-5" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    aria-label={`Remove ${element.display_label}`}
-                                                    onClick={() =>
-                                                        setConfirmingRemove(
-                                                            true,
-                                                        )
-                                                    }
-                                                    className="flex size-10 items-center justify-center rounded-full hover:bg-current/15"
-                                                >
-                                                    <Trash2 className="size-5" />
-                                                </button>
-                                            </span>
-                                        )}
+                                                    <p className="text-sm leading-snug font-semibold">
+                                                        Remove{' '}
+                                                        {element.display_label}{' '}
+                                                        from the floor plan?
+                                                    </p>
+                                                    <SlideToConfirm
+                                                        label="Remove"
+                                                        onCancel={() =>
+                                                            setConfirmingRemove(
+                                                                false,
+                                                            )
+                                                        }
+                                                        onConfirm={() =>
+                                                            removeElement(
+                                                                element,
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <span className="flex gap-2 motion-safe:animate-fade-in">
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Rename ${element.display_label}`}
+                                                        onClick={() =>
+                                                            renameVenueElement(
+                                                                element,
+                                                                box,
+                                                            )
+                                                        }
+                                                        className="flex size-10 items-center justify-center rounded-full hover:bg-current/15"
+                                                    >
+                                                        <Pencil className="size-5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Turn ${element.display_label} left`}
+                                                        title="Turn left"
+                                                        onClick={() =>
+                                                            rotateElement(
+                                                                element.id,
+                                                                -ROTATE_STEP,
+                                                            )
+                                                        }
+                                                        className="flex size-10 items-center justify-center rounded-full hover:bg-current/15"
+                                                    >
+                                                        <RotateCcw className="size-5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Turn ${element.display_label} right`}
+                                                        title="Turn right"
+                                                        onClick={() =>
+                                                            rotateElement(
+                                                                element.id,
+                                                                ROTATE_STEP,
+                                                            )
+                                                        }
+                                                        className="flex size-10 items-center justify-center rounded-full hover:bg-current/15"
+                                                    >
+                                                        <RotateCw className="size-5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Remove ${element.display_label}`}
+                                                        onClick={() =>
+                                                            setConfirmingRemove(
+                                                                true,
+                                                            )
+                                                        }
+                                                        className="flex size-10 items-center justify-center rounded-full hover:bg-current/15"
+                                                    >
+                                                        <Trash2 className="size-5" />
+                                                    </button>
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                     <span
                                         aria-label="Resize"
@@ -681,6 +639,7 @@ export function FloorPlan({
                                 begin(e, 'table', table.id, {
                                     ...point,
                                     ...tableTokenSize(table.shape),
+                                    rotation: 0,
                                 })
                             }
                             onPointerMove={move}

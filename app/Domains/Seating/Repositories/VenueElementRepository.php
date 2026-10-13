@@ -30,6 +30,7 @@ class VenueElementRepository extends BaseRepository implements VenueElementRepos
                 'pos_y' => $placement['y'],
                 'width' => $placement['width'],
                 'height' => $placement['height'],
+                ...(isset($placement['rotation']) ? ['rotation' => $placement['rotation']] : []),
             ]);
         }
     }

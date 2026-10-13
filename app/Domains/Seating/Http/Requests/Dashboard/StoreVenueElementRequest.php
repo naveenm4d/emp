@@ -36,6 +36,7 @@ class StoreVenueElementRequest extends FormRequest
             'y' => ['required', 'integer', 'min:0', 'max:'.FloorPlanData::HEIGHT],
             'width' => ['required', 'integer', 'min:'.self::MIN_SIZE, 'max:'.self::MAX_SIZE],
             'height' => ['required', 'integer', 'min:'.self::MIN_SIZE, 'max:'.self::MAX_SIZE],
+            'rotation' => ['sometimes', 'integer', 'min:0', 'max:359'],
         ];
     }
 

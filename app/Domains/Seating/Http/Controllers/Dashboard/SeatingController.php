@@ -13,6 +13,7 @@ use App\Domains\Seating\Contracts\SeatingServiceInterface;
 use App\Domains\Seating\Enums\SeatMode;
 use App\Domains\Seating\Enums\TableShape;
 use App\Domains\Seating\Enums\VenueElementKind;
+use App\Domains\Seating\Enums\VenueSetting;
 use App\Domains\Seating\Http\Requests\Dashboard\AssignSeatRequest;
 use App\Domains\Seating\Http\Requests\Dashboard\SaveFloorPlanRequest;
 use App\Domains\Seating\Http\Requests\Dashboard\SeatingPairRequest;
@@ -62,6 +63,8 @@ class SeatingController extends InertiaController
             'tableShapes' => TableShape::options(),
             'venueElements' => VenueElementResource::collection($this->queries->venueElements($event))->resolve(),
             'venueElementKinds' => VenueElementKind::options(),
+            'venueSetting' => $event->seating_venue,
+            'venueSettings' => VenueSetting::options(),
         ]);
     }
 

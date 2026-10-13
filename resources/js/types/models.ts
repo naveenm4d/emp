@@ -295,7 +295,12 @@ export type VenueElement = {
     y: number;
     width: number;
     height: number;
+    /** Degrees clockwise (0–359). */
+    rotation: number;
 };
+
+/** Whether the 3D floor plan is a hall or a garden. */
+export type VenueSetting = 'indoor' | 'outdoor';
 
 export type VenueElementKindOption = {
     value: VenueElementKind;

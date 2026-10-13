@@ -3,7 +3,9 @@
 namespace App\Domains\Seating\Http\Requests\Dashboard;
 
 use App\Domains\Seating\DTOs\FloorPlanData;
+use App\Domains\Seating\Enums\VenueSetting;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SaveFloorPlanRequest extends FormRequest
 {
@@ -28,6 +30,8 @@ class SaveFloorPlanRequest extends FormRequest
             'elements.*.y' => ['required', 'integer', 'min:0', 'max:'.FloorPlanData::HEIGHT],
             'elements.*.width' => $size,
             'elements.*.height' => $size,
+            'elements.*.rotation' => ['sometimes', 'integer', 'min:0', 'max:359'],
+            'venue' => ['sometimes', Rule::enum(VenueSetting::class)],
         ];
     }
 

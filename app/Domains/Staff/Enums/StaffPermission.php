@@ -15,6 +15,8 @@ enum StaffPermission: string
     case StaffCreate = 'staff.create';
     case StaffRead = 'staff.read';
     case ClientsRead = 'clients.read';
+    /** Create client accounts on a client's behalf. */
+    case ClientsCreate = 'clients.create';
     case ClientsUpdate = 'clients.update';
     /** Change a client's plan, expiry and event credits, and events' extra guests. */
     case ClientsPlan = 'clients.plan';

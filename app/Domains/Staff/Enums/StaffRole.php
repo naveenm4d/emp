@@ -26,6 +26,7 @@ enum StaffRole: string
             self::Admin => [
                 StaffPermission::StaffRead,
                 StaffPermission::ClientsRead,
+                StaffPermission::ClientsCreate,
                 StaffPermission::ClientsUpdate,
                 StaffPermission::ClientsPlan,
                 StaffPermission::EventsRead,

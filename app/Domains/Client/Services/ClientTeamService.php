@@ -62,7 +62,7 @@ class ClientTeamService extends BaseService implements ClientTeamServiceInterfac
             return $member;
         });
 
-        $this->sendInvitation($member, $client, $by);
+        $this->sendInvitation($member, $by->name);
 
         return $member;
     }
@@ -98,7 +98,16 @@ class ClientTeamService extends BaseService implements ClientTeamServiceInterfac
         }
 
         $this->users->update($member, ['invited_at' => now()]);
-        $this->sendInvitation($member, $member->client, $by);
+        $this->sendInvitation($member, $by->name);
+    }
+
+    public function sendInvitation(ClientUser $member, string $invitedBy): void
+    {
+        $member->notify(new ClientInvitation(
+            token: $this->invitations()->createToken($member),
+            accountName: $member->client->name,
+            invitedBy: $invitedBy,
+        ));
     }
 
     public function transferOwnership(ClientUser $owner, ClientUser $member): void
@@ -147,15 +156,6 @@ class ClientTeamService extends BaseService implements ClientTeamServiceInterfac
         if (! $user->seesAllEvents()) {
             $this->users->attachEvent($user, $event->id);
         }
-    }
-
-    private function sendInvitation(ClientUser $member, Client $client, ClientUser $by): void
-    {
-        $member->notify(new ClientInvitation(
-            token: $this->invitations()->createToken($member),
-            accountName: $client->name,
-            invitedBy: $by->name,
-        ));
     }
 
     private function invitations(): PasswordBroker

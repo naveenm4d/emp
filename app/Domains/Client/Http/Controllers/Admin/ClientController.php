@@ -15,6 +15,7 @@ use App\Domains\Client\Contracts\ClientServiceInterface;
 use App\Domains\Client\Contracts\ClientTeamServiceInterface;
 use App\Domains\Client\DTOs\ClientFilters;
 use App\Domains\Client\Enums\ClientPlan;
+use App\Domains\Client\Http\Requests\Admin\StoreClientRequest;
 use App\Domains\Client\Http\Requests\Admin\UpdateClientRequest;
 use App\Domains\Client\Http\Resources\ClientResource;
 use App\Domains\Client\Http\Resources\ClientUserResource;
@@ -46,6 +47,21 @@ class ClientController extends InertiaController
             'clients' => ClientResource::collection($this->clients->search($filters)),
             'filters' => $filters->toArray(),
         ]);
+    }
+
+    public function create(): Response
+    {
+        return Inertia::render('admin/clients/create');
+    }
+
+    public function store(StoreClientRequest $request): RedirectResponse
+    {
+        $data = $request->toData();
+        $client = $this->clientService->create($data);
+
+        return $this->toRouteWithSuccess('admin.clients.show', $data->password === null
+            ? "Client created. {$client->email} was emailed an invitation to choose a password."
+            : 'Client created.', $client);
     }
 
     /** The client's account details and their events, managed by staff. */

@@ -25,6 +25,7 @@ class VenueElementResource extends JsonResource
             'y' => $this->pos_y,
             'width' => $this->width,
             'height' => $this->height,
+            'rotation' => $this->rotation,
         ];
     }
 }

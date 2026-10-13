@@ -1,9 +1,10 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Building2 } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 
 import { EmptyState } from '@/components/shared/empty-state';
 import { PageHeader } from '@/components/shared/page-header';
 import { Pagination } from '@/components/shared/pagination';
+import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
     Table,
@@ -15,7 +16,8 @@ import {
 } from '@/components/ui/table';
 import AdminLayout from '@/layouts/admin-layout';
 import { formatDate } from '@/lib/format';
-import { index, show } from '@/routes/admin/clients';
+import { useStaffCan } from '@/lib/permissions';
+import { create, index, show } from '@/routes/admin/clients';
 import type { Client, Paginated } from '@/types';
 
 export default function ClientsIndex({
@@ -25,12 +27,21 @@ export default function ClientsIndex({
     clients: Paginated<Client>;
     filters: { search: string | null };
 }) {
+    const can = useStaffCan();
+
     return (
         <AdminLayout>
             <Head title="Clients" />
             <PageHeader
                 title="Clients"
                 description="Subscribed customers who create events on EMP."
+                actions={
+                    can('clients.create') && (
+                        <Link href={create.url()} className={buttonVariants()}>
+                            <Plus /> Add client
+                        </Link>
+                    )
+                }
             />
 
             <Input

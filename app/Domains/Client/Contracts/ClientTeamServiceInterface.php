@@ -28,6 +28,9 @@ interface ClientTeamServiceInterface
     /** Emails a new invitation link to a user who hasn't accepted yet. */
     public function resendInvitation(ClientUser $member, ClientUser $by): void;
 
+    /** Emails an invitation link to a user who hasn't accepted yet; `invitedBy` names who asked them. */
+    public function sendInvitation(ClientUser $member, string $invitedBy): void;
+
     /** The member becomes the owner; the old owner stays as a member with every permission and event. */
     public function transferOwnership(ClientUser $owner, ClientUser $member): void;
 

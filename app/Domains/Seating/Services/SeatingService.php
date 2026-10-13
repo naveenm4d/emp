@@ -91,9 +91,14 @@ class SeatingService extends BaseService implements SeatingServiceInterface
     {
         $this->ensureEditable($event);
 
-        $this->locked($event->id, function () use ($event, $data) {
+        $this->transaction(function () use ($event, $data) {
+            $locked = $this->events->findAndLock($event->id);
             $this->tables->move($event->id, $data->tables);
             $this->elements->place($event->id, $data->elements);
+
+            if ($data->venue !== null) {
+                $locked->update(['seating_venue' => $data->venue]);
+            }
         });
     }
 
@@ -367,6 +372,7 @@ class SeatingService extends BaseService implements SeatingServiceInterface
             'pos_y' => $data->y,
             'width' => $data->width,
             'height' => $data->height,
+            ...($data->rotation !== null ? ['rotation' => $data->rotation] : []),
         ];
     }
 

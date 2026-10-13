@@ -44,6 +44,8 @@ Route::middleware(['auth:staff', 'staff.active', 'staff.activity'])->group(funct
     Route::post('staff', [StaffMemberController::class, 'store'])->middleware('can:staff.create')->name('staff.store');
 
     Route::get('clients', [ClientController::class, 'index'])->middleware('can:clients.read')->name('clients.index');
+    Route::get('clients/create', [ClientController::class, 'create'])->middleware('can:clients.create')->name('clients.create');
+    Route::post('clients', [ClientController::class, 'store'])->middleware('can:clients.create')->name('clients.store');
 
     // A client's account and their events, managed on the client's behalf.
     // Scoped bindings: an {event} must belong to the {client} in the URL.

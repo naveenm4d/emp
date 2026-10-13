@@ -5,6 +5,7 @@ use App\Domains\Event\Models\Event;
 use App\Domains\Guest\Enums\ApprovalStatus;
 use App\Domains\Guest\Models\Guest;
 use App\Domains\Rsvp\Models\Rsvp;
+use App\Domains\Seating\Enums\VenueSetting;
 use App\Domains\Seating\Models\EventTable;
 use App\Domains\Seating\Models\SeatAssignment;
 use App\Domains\Seating\Models\VenueElement;
@@ -357,6 +358,48 @@ it('saves where tables and venue elements stand on the floor plan', function () 
     expect($table->fresh())->pos_x->toBe(200)->pos_y->toBe(340)
         ->and($stage->fresh())->pos_x->toBe(500)->width->toBe(400)->height->toBe(120)
         ->and($otherTable->fresh())->pos_x->toBe(10);
+});
+
+it('saves whether the floor plan is indoor or outdoor', function () {
+    $this->get("/app/events/{$this->event->id}/seating")->assertInertia(fn (Assert $page) => $page
+        ->where('venueSetting', 'indoor')
+        ->has('venueSettings', 2));
+
+    $this->patch("/app/events/{$this->event->id}/seating/layout", ['tables' => [], 'elements' => [], 'venue' => 'outdoor'])
+        ->assertRedirect()->assertSessionHasNoErrors();
+    expect($this->event->fresh()->seating_venue)->toBe(VenueSetting::Outdoor);
+
+    // A drag without the venue keeps the setting.
+    $this->patch("/app/events/{$this->event->id}/seating/layout", ['tables' => [], 'elements' => []]);
+    expect($this->event->fresh()->seating_venue)->toBe(VenueSetting::Outdoor);
+
+    $this->patch("/app/events/{$this->event->id}/seating/layout", ['tables' => [], 'elements' => [], 'venue' => 'beach'])
+        ->assertSessionHasErrors('venue');
+});
+
+it('turns venue elements on the floor plan', function () {
+    $stage = VenueElement::factory()->for($this->event)->create();
+    $layout = fn (array $element) => $this->patch("/app/events/{$this->event->id}/seating/layout", [
+        'tables' => [],
+        'elements' => [['id' => $stage->id, 'x' => 100, 'y' => 100, 'width' => 360, 'height' => 140, ...$element]],
+    ]);
+
+    $layout(['rotation' => 90])->assertSessionHasNoErrors();
+    expect($stage->fresh()->rotation)->toBe(90);
+
+    // A move without a rotation keeps the turn.
+    $layout([])->assertSessionHasNoErrors();
+    expect($stage->fresh()->rotation)->toBe(90);
+
+    $layout(['rotation' => 360])->assertSessionHasErrors('elements.0.rotation');
+
+    $this->get("/app/events/{$this->event->id}/seating")
+        ->assertInertia(fn (Assert $page) => $page->where('venueElements.0.rotation', 90));
+
+    // Renaming keeps the turn too.
+    $this->patch("/app/venue-elements/{$stage->id}", ['kind' => 'custom', 'label' => 'Main stage', 'x' => 100, 'y' => 100, 'width' => 360, 'height' => 140])
+        ->assertSessionHasNoErrors();
+    expect($stage->fresh()->rotation)->toBe(90);
 });
 
 it('keeps floor plan positions on the canvas', function () {

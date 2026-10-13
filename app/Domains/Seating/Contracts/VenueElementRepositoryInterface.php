@@ -17,7 +17,7 @@ interface VenueElementRepositoryInterface extends RepositoryInterface
     /**
      * Moves / resizes the event's elements; ids of other events are ignored.
      *
-     * @param  array<string, array{x: int, y: int, width: int, height: int}>  $placements  by element id
+     * @param  array<string, array{x: int, y: int, width: int, height: int, rotation?: int}>  $placements  by element id (no rotation = unchanged)
      */
     public function place(string $eventId, array $placements): void;
 }

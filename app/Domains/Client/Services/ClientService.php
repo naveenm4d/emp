@@ -5,7 +5,9 @@ namespace App\Domains\Client\Services;
 use App\Core\Services\BaseService;
 use App\Domains\Client\Contracts\ClientRepositoryInterface;
 use App\Domains\Client\Contracts\ClientServiceInterface;
+use App\Domains\Client\Contracts\ClientTeamServiceInterface;
 use App\Domains\Client\Contracts\ClientUserRepositoryInterface;
+use App\Domains\Client\DTOs\CreateClientData;
 use App\Domains\Client\DTOs\RegisterClientData;
 use App\Domains\Client\DTOs\UpdateProfileData;
 use App\Domains\Client\Enums\ClientUserRole;
@@ -18,6 +20,7 @@ class ClientService extends BaseService implements ClientServiceInterface
     public function __construct(
         private readonly ClientRepositoryInterface $clients,
         private readonly ClientUserRepositoryInterface $users,
+        private readonly ClientTeamServiceInterface $team,
     ) {}
 
     public function register(RegisterClientData $data): ClientUser
@@ -41,6 +44,35 @@ class ClientService extends BaseService implements ClientServiceInterface
         event(new Registered($owner));
 
         return $owner;
+    }
+
+    public function create(CreateClientData $data): Client
+    {
+        $owner = $this->transaction(function () use ($data) {
+            /** @var Client $client */
+            $client = $this->clients->create(['name' => $data->name, 'email' => $data->email]);
+
+            // Without a password the owner stays pending until they accept the invitation.
+            /** @var ClientUser */
+            return $this->users->create([
+                'client_id' => $client->id,
+                'name' => $data->name,
+                'email' => $data->email,
+                'password' => $data->password,
+                'role' => ClientUserRole::Owner,
+                'all_events' => true,
+                'invited_at' => $data->password === null ? now() : null,
+                'joined_at' => $data->password === null ? null : now(),
+            ]);
+        });
+
+        if ($data->password === null) {
+            $this->team->sendInvitation($owner, (string) config('app.name'));
+        } else {
+            event(new Registered($owner));
+        }
+
+        return $owner->client;
     }
 
     public function updateAccount(Client $client, UpdateProfileData $data): Client

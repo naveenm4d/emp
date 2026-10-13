@@ -9,6 +9,7 @@ use App\Domains\Event\Enums\EventType;
 use App\Domains\Event\Enums\RegistrationType;
 use App\Domains\Guest\Models\Guest;
 use App\Domains\Rsvp\Models\Rsvp;
+use App\Domains\Seating\Enums\VenueSetting;
 use App\Domains\Seating\Models\EventTable;
 use App\Domains\Seating\Models\VenueElement;
 use App\Domains\Template\Models\TemplateVersion;
@@ -57,6 +58,7 @@ use Illuminate\Support\Facades\URL;
  * @property int|null $max_invitations_per_guest staff override of the invitations each guest can get (null = platform default)
  * @property int|null $max_reminders_per_guest staff override of the reminders each guest can get (null = platform default)
  * @property CarbonImmutable|null $responses_lock_at when guests can no longer change their answer (if changes are allowed)
+ * @property VenueSetting $seating_venue the seating floor plan's setting in the 3D view (indoor hall or outdoor garden)
  * @property string|null $rendered_path generated invitation HTML on the render disk
  * @property string|null $rendered_hash
  * @property CarbonImmutable|null $rendered_at
@@ -75,6 +77,7 @@ use Illuminate\Support\Facades\URL;
     'location_address', 'map_url', 'event_date', 'start_time', 'end_time', 'customizations',
     'invitation_message', 'reminder_message', 'invitation_subject', 'reminder_subject', 'auto_reminders', 'remind_after_days', 'remind_before_days',
     'event_registration_settings', 'responses_lock_at', 'max_invitations_per_guest', 'max_reminders_per_guest', 'extra_guests',
+    'seating_venue',
 ])]
 class Event extends Model
 {
@@ -117,6 +120,7 @@ class Event extends Model
             'extra_guests' => 'integer',
             'max_invitations_per_guest' => 'integer',
             'max_reminders_per_guest' => 'integer',
+            'seating_venue' => VenueSetting::class,
         ];
     }
 

@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { SeatingPreview } from '@/components/plans/feature-previews';
 import { LockedEventPage } from '@/components/plans/locked-feature';
 import { FloorPlan } from '@/components/seating/floor-plan';
+import { FloorPlan3D } from '@/components/seating/floor-plan-3d';
 import { GuestPicker } from '@/components/seating/guest-picker';
 import { SeatLegend, TableCard } from '@/components/seating/table-card';
 import { TableFormDialog } from '@/components/seating/table-form-dialog';
@@ -30,6 +31,7 @@ import type {
     SeatingSummary,
     VenueElement,
     VenueElementKindOption,
+    VenueSetting,
 } from '@/types';
 
 type Props = {
@@ -41,6 +43,7 @@ type Props = {
     tableShapes: Option[];
     venueElements: VenueElement[];
     venueElementKinds: VenueElementKindOption[];
+    venueSetting: VenueSetting;
 };
 
 /** Not in the client's plan: the controller sends only the event. */
@@ -50,6 +53,19 @@ type LockedProps = { event: Resource<Event>; locked: true };
  * Who is being moved with the table picker: the whole party, the party
  * members still without a seat, or one person of the party.
  */
+type MapMode = '3d' | '2d';
+
+const MAP_MODE_KEY = 'emp.seating.map-mode';
+
+/** The Map's last 3D / 2D choice in this browser (3D by default). */
+function storedMapMode(): MapMode {
+    try {
+        return localStorage.getItem(MAP_MODE_KEY) === '2d' ? '2d' : '3d';
+    } catch {
+        return '3d';
+    }
+}
+
 type Moving =
     | { kind: 'party'; guest: SeatingGuest }
     | { kind: 'rest'; guest: SeatingGuest }
@@ -90,6 +106,7 @@ function SeatingPage({
     tableShapes,
     venueElements,
     venueElementKinds,
+    venueSetting,
 }: Props) {
     // Team members without seating.manage see the plan but can't change it.
     const canManageSeating = useClientCan()('seating.manage');
@@ -103,6 +120,16 @@ function SeatingPage({
     // The seat clicked on a table drawing, shown expanded in the table's panel.
     const [openSeat, setOpenSeat] = useState<number | null>(null);
     const [view, setView] = useState<'list' | 'map'>('list');
+    const [mapMode, setMapMode] = useState<MapMode>(storedMapMode);
+    const changeMapMode = (mode: MapMode) => {
+        setMapMode(mode);
+
+        try {
+            localStorage.setItem(MAP_MODE_KEY, mode);
+        } catch {
+            // Private windows: the choice lasts for this visit.
+        }
+    };
     const [tableForm, setTableForm] = useState<{
         open: boolean;
         table: EventTable | null;
@@ -365,24 +392,53 @@ function SeatingPage({
                     </div>
                 ) : view === 'map' ? (
                     <div className="min-w-0">
-                        <SeatLegend className="mb-3" />
-                        <FloorPlan
-                            className="-mx-3 md:mx-0 md:rounded-xl"
-                            event={event}
-                            tables={tables}
-                            elements={venueElements}
-                            kinds={venueElementKinds}
-                            editable={editable}
-                            onOpenTable={(table) => {
-                                setOpenSeat(null);
-                                setOpenTableId(table.id);
-                            }}
-                        />
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                            <SeatLegend />
+                            <SegmentedControl
+                                label="Map view"
+                                className="w-28"
+                                value={mapMode}
+                                onChange={changeMapMode}
+                                items={[
+                                    { value: '3d' as const, label: '3D' },
+                                    { value: '2d' as const, label: '2D' },
+                                ]}
+                            />
+                        </div>
+                        {mapMode === '3d' ? (
+                            <FloorPlan3D
+                                className="-mx-3 md:mx-0 md:rounded-xl"
+                                event={event}
+                                tables={tables}
+                                elements={venueElements}
+                                kinds={venueElementKinds}
+                                venue={venueSetting}
+                                editable={editable}
+                                onOpenTable={(table) => {
+                                    setOpenSeat(null);
+                                    setOpenTableId(table.id);
+                                }}
+                                onUnavailable={() => setMapMode('2d')}
+                            />
+                        ) : (
+                            <FloorPlan
+                                className="-mx-3 md:mx-0 md:rounded-xl"
+                                event={event}
+                                tables={tables}
+                                elements={venueElements}
+                                kinds={venueElementKinds}
+                                editable={editable}
+                                onOpenTable={(table) => {
+                                    setOpenSeat(null);
+                                    setOpenTableId(table.id);
+                                }}
+                            />
+                        )}
                         {editable && (
                             <p className="mt-2 text-xs text-muted-foreground">
-                                Drag tables and venue elements into place, drag
-                                the floor to move around, and tap a table to see
-                                its seats.
+                                {mapMode === '3d'
+                                    ? 'Drag tables and venue elements into place, drag the floor to look around (right-drag or two fingers to pan, pinch or ctrl + scroll to zoom), and tap a table to see its seats.'
+                                    : 'Drag tables and venue elements into place, drag the floor to move around, and tap a table to see its seats.'}
                             </p>
                         )}
                     </div>
