@@ -53,6 +53,10 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) use ($isAdmin): void {
+        // Behind a TLS-terminating load balancer (Render): trust its X-Forwarded-* headers
+        // so generated and signed URLs use https and the real host.
+        $middleware->trustProxies(at: '*');
+
         $middleware->encryptCookies(except: [HandleAppearance::COOKIE]);
 
         $middleware->web(append: [

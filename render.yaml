@@ -1,0 +1,83 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# One Docker web service (web + queue worker + scheduler share the persistent
+# disk that holds templates, uploads and rendered invitations) plus Postgres.
+services:
+  - type: web
+    name: emp
+    runtime: docker
+    plan: starter # persistent disks need a paid instance
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /up
+    autoDeploy: true
+    disk:
+      name: emp-storage
+      mountPath: /var/www/html/storage/app
+      sizeGB: 5
+    envVars:
+      # Generate with `php artisan key:generate --show` (keep the base64: prefix).
+      - key: APP_KEY
+        sync: false
+      # Optional: defaults to the onrender.com URL. Set it for a custom domain.
+      - key: APP_URL
+        sync: false
+      - key: APP_NAME
+        value: EMP
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: 'false'
+      - key: APP_TIMEZONE
+        value: Asia/Colombo
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: info
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        fromDatabase:
+          name: emp-db
+          property: connectionString
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_SECURE_COOKIE
+        value: 'true'
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: MAIL_MAILER
+        value: log
+      - key: MAIL_FROM_ADDRESS
+        sync: false
+      # WhatsApp (Meta Cloud API). Empty token = mock provider (logs only).
+      - key: WHATSAPP_API_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      # PayHere. Empty merchant ID = mock gateway.
+      - key: PAYHERE_MERCHANT_ID
+        sync: false
+      - key: PAYHERE_MERCHANT_SECRET
+        sync: false
+      - key: PAYHERE_APP_ID
+        sync: false
+      - key: PAYHERE_APP_SECRET
+        sync: false
+      - key: PAYHERE_SANDBOX
+        value: 'true'
+
+databases:
+  - name: emp-db
+    databaseName: emp
+    user: emp
+    plan: basic-256mb
+    region: singapore
+    postgresMajorVersion: '16'
