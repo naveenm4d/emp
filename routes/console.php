@@ -11,3 +11,9 @@ Schedule::command('rsvps:send-reminders')->hourly()->withoutOverlapping();
 // Business renewals (charged up to a day ahead, once per period), ended subscriptions,
 // yearly renewal reminders, and payments left unfinished.
 Schedule::command('billing:renew-subscriptions')->hourly()->withoutOverlapping();
+
+// Shared hosting (cPanel) has no long-running worker: cron runs the scheduler
+// every minute, which drains the queue.
+if (config('emp.queue_from_scheduler')) {
+    Schedule::command('queue:work --stop-when-empty --max-time=50')->everyMinute()->withoutOverlapping();
+}

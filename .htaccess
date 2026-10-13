@@ -1,0 +1,11 @@
+# Only used when the domain's document root is the app folder itself (some
+# cPanel plans can't point it at public/): every request goes to public/, so
+# .env, vendor/ and storage/ are never served.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    Require all denied
+</IfModule>

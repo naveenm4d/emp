@@ -55,6 +55,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) use ($isAdmin): void {
         $middleware->encryptCookies(except: [HandleAppearance::COOKIE]);
 
+        // The deploy workflow brings the site back up through these.
+        $middleware->preventRequestsDuringMaintenance(except: ['webhooks/deploy/*']);
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
