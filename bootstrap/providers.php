@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Billing\Providers\BillingServiceProvider;
 use App\Domains\Client\Providers\ClientServiceProvider;
 use App\Domains\Event\Providers\EventServiceProvider;
 use App\Domains\Guest\Providers\GuestServiceProvider;
@@ -22,4 +23,5 @@ return [
     RsvpServiceProvider::class,
     SeatingServiceProvider::class,
     NotificationServiceProvider::class,
+    BillingServiceProvider::class,
 ];

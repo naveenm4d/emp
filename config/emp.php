@@ -16,9 +16,9 @@ return [
     'max_reminders_per_guest' => (int) env('EMP_MAX_REMINDERS_PER_GUEST', 3),
 
     // Extra guests an event can buy on top of its plan's limit (Celebration,
-    // Business): sold in blocks of this many guests, at this price (minor units).
+    // Business): sold in blocks of this many guests. The block's price is in
+    // billing_prices (staff edit it in the admin console).
     'extra_guests_block' => 100,
-    'extra_guests_block_price' => 100000,
 
     /*
     |--------------------------------------------------------------------------

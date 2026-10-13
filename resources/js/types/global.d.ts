@@ -1,4 +1,5 @@
 import type {
+    BillingWallet,
     Client,
     ClientPlanUsage,
     ClientUser,
@@ -22,6 +23,8 @@ declare module '@inertiajs/core' {
             flash: { success: string | null; error: string | null };
             /** Client's upcoming events for the event switcher; only after a partial reload asks for it. */
             eventSwitcher?: Event[];
+            /** Saved cards, billing details and prices; only after a partial reload asks for it (null: can't pay). */
+            billingWallet?: BillingWallet | null;
             [key: string]: unknown;
         };
     }

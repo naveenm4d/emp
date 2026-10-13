@@ -36,6 +36,21 @@ return [
         'graph_url' => env('WHATSAPP_GRAPH_URL', 'https://graph.facebook.com/v19.0'),
     ],
 
+    // PayHere (https://support.payhere.lk). Without a merchant ID and secret a
+    // mock gateway is used: local runs never reach PayHere. The App ID / secret
+    // (an API key with Automated Charging, Payment Retrieval and Refund) charge
+    // saved cards, confirm payments and refund them.
+    'payhere' => [
+        'merchant_id' => env('PAYHERE_MERCHANT_ID'),
+        'merchant_secret' => env('PAYHERE_MERCHANT_SECRET'),
+        'app_id' => env('PAYHERE_APP_ID'),
+        'app_secret' => env('PAYHERE_APP_SECRET'),
+        'sandbox' => (bool) env('PAYHERE_SANDBOX', true),
+        // Where PayHere posts payment results; defaults to the webhook route.
+        // Set it to a tunnel (https://….trycloudflare.com/webhooks/payhere) to test the sandbox locally.
+        'notify_url' => env('PAYHERE_NOTIFY_URL'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

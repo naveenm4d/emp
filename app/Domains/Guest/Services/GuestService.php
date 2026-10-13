@@ -3,6 +3,9 @@
 namespace App\Domains\Guest\Services;
 
 use App\Core\Services\BaseService;
+use App\Domains\Billing\Contracts\PriceServiceInterface;
+use App\Domains\Billing\Enums\BillingProduct;
+use App\Domains\Billing\Support\Money;
 use App\Domains\Event\Contracts\EventLinkServiceInterface;
 use App\Domains\Event\Contracts\EventQueryServiceInterface;
 use App\Domains\Event\Enums\RegistrationType;
@@ -33,6 +36,7 @@ class GuestService extends BaseService implements GuestServiceInterface
         private readonly EventQueryServiceInterface $events,
         private readonly EventLinkServiceInterface $links,
         private readonly RegistrationAnswerRepositoryInterface $answers,
+        private readonly PriceServiceInterface $prices,
     ) {}
 
     public function add(Event $event, GuestData $data): Guest
@@ -245,11 +249,12 @@ class GuestService extends BaseService implements GuestServiceInterface
         if ($limit !== null && $active >= $limit) {
             $plan = $event->client->plan;
             $block = (int) config('emp.extra_guests_block');
-            $price = 'Rs. '.number_format((int) config('emp.extra_guests_block_price') / 100);
+            $price = $this->prices->priceOf(BillingProduct::ExtraGuestBlock, onSale: false);
+            $price = Money::format($price->amount, $price->currency);
 
             throw new GuestLimitReachedException(
                 "This event allows up to {$limit} guests on the {$plan->label()} plan."
-                .($plan->allowsExtraGuests() ? " Add more guests: {$price} per {$block}." : ' Upgrade your plan for more guests.'),
+                .($plan->allowsExtraGuests() ? " Buy more guests: {$price} per {$block}." : ' Upgrade your plan for more guests.'),
             );
         }
     }

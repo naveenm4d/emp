@@ -3,6 +3,12 @@
 namespace App\Domains\Client\Http\Controllers\Admin;
 
 use App\Core\Http\Controllers\InertiaController;
+use App\Domains\Billing\Contracts\BillingQueryServiceInterface;
+use App\Domains\Billing\Contracts\PaymentMethodServiceInterface;
+use App\Domains\Billing\Contracts\SubscriptionServiceInterface;
+use App\Domains\Billing\Http\Resources\PaymentMethodResource;
+use App\Domains\Billing\Http\Resources\PaymentResource;
+use App\Domains\Billing\Http\Resources\SubscriptionResource;
 use App\Domains\Client\Contracts\ClientPlanServiceInterface;
 use App\Domains\Client\Contracts\ClientQueryServiceInterface;
 use App\Domains\Client\Contracts\ClientServiceInterface;
@@ -13,6 +19,7 @@ use App\Domains\Client\Http\Requests\Admin\UpdateClientRequest;
 use App\Domains\Client\Http\Resources\ClientResource;
 use App\Domains\Client\Http\Resources\ClientUserResource;
 use App\Domains\Client\Models\Client;
+use App\Domains\Client\Services\ClientPlanService;
 use App\Domains\Event\Contracts\EventQueryServiceInterface;
 use App\Domains\Event\DTOs\EventFilters;
 use App\Domains\Event\Enums\EventState;
@@ -49,6 +56,9 @@ class ClientController extends InertiaController
         ClientPlanServiceInterface $plans,
         StaffActivityQueryServiceInterface $activities,
         ClientTeamServiceInterface $team,
+        SubscriptionServiceInterface $subscriptions,
+        PaymentMethodServiceInterface $cards,
+        BillingQueryServiceInterface $billing,
     ): Response {
         $filters = EventFilters::fromArray($request->query());
 
@@ -60,8 +70,16 @@ class ClientController extends InertiaController
             'team' => ClientUserResource::collection($team->members($client)),
             // Who changed the plan, when and why (only for staff who can read the activity log).
             'planHistory' => $request->user('staff')?->can('activity.read')
-                ? StaffActivityResource::collection($activities->forClient($client->id, 'admin.clients.plan'))->resolve()
+                ? StaffActivityResource::collection($activities->forClient($client->id, ['admin.clients.plan', ClientPlanService::PURCHASE_ACTION]))->resolve()
                 : null,
+            // PayHere: the subscription, saved cards (masked) and the latest payments.
+            'billing' => $request->user('staff')?->can('billing.read') ? [
+                'subscription' => ($subscription = $subscriptions->current($client)?->load('paymentMethod'))
+                    ? SubscriptionResource::make($subscription)->resolve($request)
+                    : null,
+                'cards' => PaymentMethodResource::collection($cards->forClient($client))->resolve($request),
+                'payments' => PaymentResource::collection($billing->recentPayments($client, 10))->resolve($request),
+            ] : null,
             'events' => EventResource::collection($events->forClient($client, $filters)),
             'filters' => $filters->toArray(),
             'states' => EventState::options(),

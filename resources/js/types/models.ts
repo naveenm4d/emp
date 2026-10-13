@@ -37,6 +37,14 @@ export type ClientPlanUsage = {
     allows_extra_guests: boolean;
     features: PlanFeature[];
     message_limits: { invitations: number; reminders: number };
+    /** A downgrade that starts when Business ends. */
+    scheduled_plan: ClientPlanKey | null;
+    scheduled_plan_label: string | null;
+    /** Enterprise: what an online renewal costs (minor units) and covers; null = renewed by staff. */
+    renewal_price: number | null;
+    renewal_months: number | null;
+    /** Enterprise ended and can be renewed online now. */
+    can_renew_online: boolean;
 };
 
 export type Client = {
@@ -64,7 +72,8 @@ export type ClientPermission =
     | 'guests.manage'
     | 'messages.send'
     | 'seating.manage'
-    | 'team.manage';
+    | 'team.manage'
+    | 'billing.manage';
 
 /** Someone who signs in to a client account (ClientUserResource). */
 export type ClientUser = {
@@ -529,4 +538,125 @@ export type EventDesign = {
     missing: string[];
     preview_url: string;
     fonts: string[];
+};
+
+/** What clients buy at a price staff set (BillingProduct). */
+export type BillingProduct =
+    | 'business_monthly'
+    | 'business_yearly'
+    | 'celebration_event'
+    | 'extra_guest_block';
+
+/** Prices by product, in minor units. */
+export type PriceCatalogue = Record<
+    BillingProduct,
+    { amount: number; currency: string; is_active: boolean }
+>;
+
+/** A price as staff edit it (BillingPriceResource). */
+export type BillingPrice = {
+    product: BillingProduct;
+    label: string;
+    amount: number;
+    currency: string;
+    is_active: boolean;
+    updated_at: string;
+};
+
+/** A card saved with PayHere, masked (PaymentMethodResource). */
+export type PaymentCard = {
+    id: string;
+    /** "Visa •••• 4242" */
+    label: string;
+    brand: string | null;
+    last4: string | null;
+    card_holder_name: string | null;
+    /** "12/29" */
+    expiry: string | null;
+    is_default: boolean;
+    is_expired: boolean;
+    removed: boolean;
+    created_at: string;
+};
+
+/** A payment PayHere processed (paid or declined), and what happened after. */
+export type PaymentStatus = 'succeeded' | 'failed' | 'refunded' | 'chargedback';
+
+/** A purchase sent to PayHere and not processed yet (CheckoutResource). */
+export type Checkout = {
+    id: string;
+    order_id: string;
+    purpose: Payment['purpose'];
+    purpose_label: string;
+    channel: Payment['channel'];
+    description: string;
+    amount: number;
+    currency: string;
+    created_at: string;
+};
+
+/** One payment PayHere processed (PaymentResource). */
+export type Payment = {
+    id: string;
+    order_id: string;
+    purpose:
+        | 'subscription'
+        | 'renewal'
+        | 'event_credits'
+        | 'extra_guests'
+        | 'template'
+        | 'enterprise_renewal'
+        | 'card_setup';
+    purpose_label: string;
+    channel: 'checkout' | 'preapproval' | 'saved_card';
+    status: PaymentStatus;
+    status_label: string;
+    status_message: string | null;
+    description: string;
+    amount: number;
+    currency: string;
+    card: string | null;
+    payhere_payment_id: string | null;
+    /** Charged by the renewal run, not by a person. */
+    automatic: boolean;
+    fulfilled: boolean;
+    client?: { id: string; name: string; email: string };
+    paid_at: string | null;
+    refunded_at: string | null;
+    created_at: string;
+};
+
+export type BillingInterval = 'monthly' | 'yearly';
+
+/** The Business subscription (SubscriptionResource). */
+export type Subscription = {
+    id: string;
+    plan: string;
+    interval: BillingInterval;
+    next_interval: BillingInterval | null;
+    status: 'active' | 'canceled' | 'expired';
+    status_label: string;
+    auto_renew: boolean;
+    running: boolean;
+    card: PaymentCard | null;
+    current_period_start: string;
+    current_period_end: string;
+    canceled_at: string | null;
+    ended_reason: string | null;
+};
+
+/** The account's billing contact; PayHere asks for it with every checkout. */
+export type BillingDetails = {
+    phone?: string;
+    address?: string;
+    city?: string;
+    country?: string;
+};
+
+/** What the purchase dialog needs (shared `billingWallet`, loaded on demand). */
+export type BillingWallet = {
+    cards: PaymentCard[];
+    details: BillingDetails | null;
+    prices: PriceCatalogue;
+    extra_guests_block: number;
 };

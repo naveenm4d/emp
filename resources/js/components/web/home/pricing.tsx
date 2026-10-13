@@ -3,12 +3,21 @@ import { useState } from 'react';
 
 import { cn } from '@/lib/utils';
 
+import type { PriceCatalogue } from '@/types';
+
 import type { Billing, Plan } from './content';
-import { comparison, formatLkr, plans } from './content';
+import { comparison, formatLkr, plans, plansWithPrices } from './content';
 import { Reveal, SplitText } from './reveal';
 
-export function Pricing({ dashboardUrl }: { dashboardUrl: string }) {
+export function Pricing({
+    dashboardUrl,
+    prices,
+}: {
+    dashboardUrl: string;
+    prices?: PriceCatalogue;
+}) {
     const [billing, setBilling] = useState<Billing>('monthly');
+    const priced = plansWithPrices(prices);
 
     return (
         <section
@@ -88,7 +97,7 @@ export function Pricing({ dashboardUrl }: { dashboardUrl: string }) {
                 </div>
 
                 <div className="mt-16 grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-4">
-                    {plans.map((plan, i) => (
+                    {priced.map((plan, i) => (
                         <Reveal
                             key={plan.id}
                             delay={i * 120}

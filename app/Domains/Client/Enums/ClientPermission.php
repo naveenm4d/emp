@@ -25,6 +25,8 @@ enum ClientPermission: string
     case SeatingManage = 'seating.manage';
     /** Invite users, change their access and remove them. */
     case TeamManage = 'team.manage';
+    /** Pay for the plan, extra guests and designs; saved cards and the subscription. */
+    case BillingManage = 'billing.manage';
 
     public function label(): string
     {
@@ -36,6 +38,7 @@ enum ClientPermission: string
             self::MessagesSend => 'Send messages',
             self::SeatingManage => 'Manage seating',
             self::TeamManage => 'Manage team',
+            self::BillingManage => 'Manage billing',
         };
     }
 
@@ -49,6 +52,7 @@ enum ClientPermission: string
             self::MessagesSend => 'Send RSVP links and reminders over WhatsApp.',
             self::SeatingManage => 'Arrange tables, seats and the floor plan.',
             self::TeamManage => 'Invite people, change their access and remove them.',
+            self::BillingManage => 'Pay for the plan, extra guests and designs, and manage saved cards.',
         };
     }
 

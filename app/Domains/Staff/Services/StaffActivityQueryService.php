@@ -19,7 +19,7 @@ class StaffActivityQueryService implements StaffActivityQueryServiceInterface
         return $this->activities->paginateFiltered($filters, 50);
     }
 
-    public function forClient(string $clientId, ?string $action = null): Collection
+    public function forClient(string $clientId, string|array|null $action = null): Collection
     {
         return $this->activities->forClient($clientId, $action);
     }

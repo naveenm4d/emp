@@ -29,4 +29,10 @@ enum StaffPermission: string
     case NotificationsRetry = 'notifications.retry';
     /** See the log of everything staff did in the admin console. */
     case ActivityRead = 'activity.read';
+    /** See payments, subscriptions and saved cards (masked). */
+    case BillingRead = 'billing.read';
+    /** Change the prices of plans, event credits and extra guests. */
+    case BillingPrices = 'billing.prices';
+    /** Refund payments through PayHere. */
+    case BillingRefund = 'billing.refund';
 }

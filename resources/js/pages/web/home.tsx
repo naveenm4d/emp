@@ -10,11 +10,18 @@ import { Hero } from '@/components/web/home/hero';
 import { Nav } from '@/components/web/home/nav';
 import { OccasionsMarquee } from '@/components/web/home/occasions-marquee';
 import { Pricing } from '@/components/web/home/pricing';
+import type { PriceCatalogue } from '@/types';
 import { Story } from '@/components/web/home/story';
 import { TemplatesShowcase } from '@/components/web/home/templates-showcase';
 
 /** Marketing homepage: static, all copy in components/home/content.ts. */
-export default function Home({ dashboardUrl }: { dashboardUrl: string }) {
+export default function Home({
+    dashboardUrl,
+    prices,
+}: {
+    dashboardUrl: string;
+    prices?: PriceCatalogue;
+}) {
     return (
         <div className="home font-sans antialiased">
             <Head title="Digital invitations on WhatsApp">
@@ -32,7 +39,7 @@ export default function Home({ dashboardUrl }: { dashboardUrl: string }) {
                 <DashboardDemo />
                 <TemplatesShowcase />
                 <FactsBand />
-                <Pricing dashboardUrl={dashboardUrl} />
+                <Pricing dashboardUrl={dashboardUrl} prices={prices} />
                 <Faq />
             </main>
             <FinalCta dashboardUrl={dashboardUrl} />

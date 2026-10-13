@@ -2,6 +2,10 @@
 
 namespace App\Core\Http\Middleware;
 
+use App\Domains\Billing\Contracts\PaymentMethodServiceInterface;
+use App\Domains\Billing\Contracts\PriceServiceInterface;
+use App\Domains\Billing\Http\Resources\PaymentMethodResource;
+use App\Domains\Billing\Models\Payment;
 use App\Domains\Client\Contracts\ClientPlanServiceInterface;
 use App\Domains\Client\Http\Resources\ClientResource;
 use App\Domains\Client\Http\Resources\ClientUserResource;
@@ -63,6 +67,14 @@ class HandleInertiaRequests extends Middleware
             'eventSwitcher' => Inertia::optional(fn () => ($user = self::clientUser($request))
                 ? EventResource::collection(app(EventQueryServiceInterface::class)->forSwitcher($user))->resolve($request)
                 : []),
+            // Saved cards, billing details and prices for the purchase dialog; loaded on demand
+            // (router.reload({ only: ['billingWallet'] })), and only for people who manage billing.
+            'billingWallet' => Inertia::optional(fn () => ($user = self::clientUser($request)) && $user->can('create', Payment::class) ? [
+                'cards' => PaymentMethodResource::collection(app(PaymentMethodServiceInterface::class)->forClient($user->client))->resolve($request),
+                'details' => $user->client->billing_details,
+                'prices' => app(PriceServiceInterface::class)->catalogue(),
+                'extra_guests_block' => (int) config('emp.extra_guests_block'),
+            ] : null),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

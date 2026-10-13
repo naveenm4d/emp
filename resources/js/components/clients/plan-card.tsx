@@ -44,6 +44,11 @@ export function PlanCard({
         plan_expires_at: usage.expires_at ? usage.expires_at.slice(0, 10) : '',
         event_credits: usage.event_credits,
         user_limit: (client.user_limit ?? '') as number | '',
+        // Enterprise: an online renewal's price (rupees) and length; empty = renewed by staff.
+        renewal_price: (usage.renewal_price === null
+            ? ''
+            : String(usage.renewal_price / 100)) as string,
+        renewal_months: (usage.renewal_months ?? '') as number | '',
         note: '',
     });
     const isSubscription = subscriptions.includes(form.data.plan);
@@ -173,6 +178,53 @@ export function PlanCard({
                                 }
                             />
                         </FormField>
+                        {form.data.plan === 'enterprise' && (
+                            <div className="grid grid-cols-2 gap-3">
+                                <FormField
+                                    label="Renewal price (Rs.)"
+                                    htmlFor="renewal_price"
+                                    error={form.errors.renewal_price}
+                                    hint="Paid online once the plan ends."
+                                >
+                                    <Input
+                                        id="renewal_price"
+                                        type="number"
+                                        min={10}
+                                        step="0.01"
+                                        placeholder="Staff renew"
+                                        value={form.data.renewal_price}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'renewal_price',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                </FormField>
+                                <FormField
+                                    label="Months"
+                                    htmlFor="renewal_months"
+                                    error={form.errors.renewal_months}
+                                    hint="Per renewal."
+                                >
+                                    <Input
+                                        id="renewal_months"
+                                        type="number"
+                                        min={1}
+                                        max={36}
+                                        value={form.data.renewal_months}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'renewal_months',
+                                                e.target.value === ''
+                                                    ? ''
+                                                    : Number(e.target.value),
+                                            )
+                                        }
+                                    />
+                                </FormField>
+                            </div>
+                        )}
                         <FormField
                             label="Note"
                             htmlFor="plan_note"

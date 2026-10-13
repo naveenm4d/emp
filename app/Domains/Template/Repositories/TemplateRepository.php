@@ -13,6 +13,7 @@ use App\Domains\Template\Models\TemplateVersion;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @extends BaseRepository<Template>
@@ -88,5 +89,38 @@ class TemplateRepository extends BaseRepository implements TemplateRepositoryInt
         return Event::query()
             ->whereIn('template_version_id', $template->versions()->select('id'))
             ->exists();
+    }
+
+    public function isOwnedBy(Template $template, string $clientId): bool
+    {
+        return DB::table('client_templates')->where('client_id', $clientId)->where('template_id', $template->id)->exists()
+            || Event::withTrashed()
+                ->where('client_id', $clientId)
+                ->whereIn('template_version_id', $template->versions()->select('id'))
+                ->exists();
+    }
+
+    public function ownedIds(string $clientId): array
+    {
+        $used = TemplateVersion::query()
+            ->whereIn('id', Event::withTrashed()->where('client_id', $clientId)->select('template_version_id'))
+            ->pluck('template_id');
+
+        /** @var list<string> */
+        return DB::table('client_templates')->where('client_id', $clientId)->pluck('template_id')
+            ->merge($used)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function grant(string $templateId, string $clientId, ?string $paymentId): void
+    {
+        DB::table('client_templates')->insertOrIgnore([
+            'client_id' => $clientId,
+            'template_id' => $templateId,
+            'payment_id' => $paymentId,
+            'created_at' => now(),
+        ]);
     }
 }

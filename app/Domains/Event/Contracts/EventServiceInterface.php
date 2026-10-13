@@ -27,6 +27,9 @@ interface EventServiceInterface
     /** Staff: extra guests on top of the plan's limit, in blocks (config emp.extra_guests_block), logged with who and why. */
     public function setExtraGuests(Event $event, int $blocks, StaffMember $by, string $note): Event;
 
+    /** A payment bought blocks of extra guests: adds them to what the event has; $reference names the payment. */
+    public function addExtraGuests(Event $event, int $blocks, string $reference): Event;
+
     /** Staff: how many invitations / reminders each guest can get; null = the platform default. */
     public function setMessageLimits(Event $event, ?int $invitations, ?int $reminders): Event;
 

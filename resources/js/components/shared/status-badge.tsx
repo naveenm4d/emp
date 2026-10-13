@@ -42,6 +42,10 @@ const statusTone: Record<string, keyof typeof tones> = {
     rejected: 'red',
     declined: 'red',
     failed: 'red',
+    succeeded: 'green',
+    refunded: 'gray',
+    canceled: 'gray',
+    chargedback: 'red',
 };
 
 /** Leading icons for the statuses the design draws with one. */
@@ -55,6 +59,7 @@ const statusIcon: Record<string, LucideIcon> = {
     rejected: X,
     cancelled: X,
     failed: AlertTriangle,
+    succeeded: Check,
     sent: CircleDashed,
     not_sent: CircleDashed,
 };

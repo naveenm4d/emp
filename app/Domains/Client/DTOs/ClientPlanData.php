@@ -14,6 +14,9 @@ final readonly class ClientPlanData extends DataTransferObject
         public ?CarbonImmutable $expiresAt,
         public int $eventCredits,
         public ?int $userLimit = null,
+        /** Enterprise: what an online renewal costs (minor units) and how many months it covers. */
+        public ?int $renewalPrice = null,
+        public ?int $renewalMonths = null,
     ) {}
 
     /** @param array<string, mixed> $data validated input */
@@ -30,6 +33,11 @@ final readonly class ClientPlanData extends DataTransferObject
             eventCredits: (int) ($data['event_credits'] ?? 0),
             // Overrides the plan's user limit; Enterprise has none of its own.
             userLimit: isset($data['user_limit']) ? (int) $data['user_limit'] : null,
+            // Entered in rupees; only Enterprise is renewed at a price staff set.
+            renewalPrice: $plan === ClientPlan::Enterprise && isset($data['renewal_price']) && $data['renewal_price'] !== ''
+                ? (int) round(((float) $data['renewal_price']) * 100)
+                : null,
+            renewalMonths: $plan === ClientPlan::Enterprise && ! empty($data['renewal_months']) ? (int) $data['renewal_months'] : null,
         );
     }
 }

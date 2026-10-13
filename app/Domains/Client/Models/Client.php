@@ -26,12 +26,16 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonImmutable|null $plan_expires_at when a subscription (Business, Enterprise) ends; null = no end date
  * @property int $event_credits Celebration events paid for and not used yet
  * @property int|null $user_limit staff override of the plan's user limit
+ * @property ClientPlan|null $scheduled_plan a downgrade that starts when the current plan ends
+ * @property int|null $renewal_price Enterprise: what a renewal costs (minor units); null = renewed by staff only
+ * @property int|null $renewal_months Enterprise: how long a renewal lasts
+ * @property array{phone?: string, address?: string, city?: string, country?: string}|null $billing_details who pays (PayHere asks with every checkout)
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  * @property-read ClientUser|null $owner
  */
 #[UseFactory(ClientFactory::class)]
-#[Fillable(['name', 'email', 'plan', 'plan_expires_at', 'event_credits', 'user_limit'])]
+#[Fillable(['name', 'email', 'plan', 'plan_expires_at', 'event_credits', 'user_limit', 'billing_details', 'scheduled_plan', 'renewal_price', 'renewal_months'])]
 class Client extends Model
 {
     /** @use HasFactory<ClientFactory> */
@@ -50,6 +54,10 @@ class Client extends Model
             'plan_expires_at' => 'datetime',
             'event_credits' => 'integer',
             'user_limit' => 'integer',
+            'billing_details' => 'array',
+            'scheduled_plan' => ClientPlan::class,
+            'renewal_price' => 'integer',
+            'renewal_months' => 'integer',
         ];
     }
 
@@ -59,6 +67,15 @@ class Client extends Model
         return ! $this->plan->isSubscription()
             || $this->plan_expires_at === null
             || $this->plan_expires_at->isFuture();
+    }
+
+    /** Enterprise can be renewed online: it ended and staff set what a renewal costs. */
+    public function canRenewOnline(): bool
+    {
+        return $this->plan === ClientPlan::Enterprise
+            && ! $this->planActive()
+            && $this->renewal_price !== null
+            && $this->renewal_months !== null;
     }
 
     /** How many users the account can have, the owner and pending invitations included; null = unlimited. */

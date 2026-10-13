@@ -8,6 +8,8 @@
 | the "web" middleware, the /admin prefix and the "admin." name prefix.
 */
 
+use App\Domains\Billing\Http\Controllers\Admin\PaymentController;
+use App\Domains\Billing\Http\Controllers\Admin\PriceController;
 use App\Domains\Client\Http\Controllers\Admin\ClientController;
 use App\Domains\Client\Http\Controllers\Admin\ClientPlanController;
 use App\Domains\Event\Http\Controllers\Admin\EventController;
@@ -83,6 +85,12 @@ Route::middleware(['auth:staff', 'staff.active', 'staff.activity'])->group(funct
         ->middleware('can:templates.read')
         ->scopeBindings()
         ->name('templates.versions.preview');
+
+    // Billing: PayHere payments, refunds and the prices of plans and add-ons.
+    Route::get('billing/payments', [PaymentController::class, 'index'])->middleware('can:billing.read')->name('billing.payments.index');
+    Route::post('billing/payments/{payment}/refund', [PaymentController::class, 'refund'])->middleware('can:billing.refund')->name('billing.payments.refund');
+    Route::get('billing/prices', [PriceController::class, 'index'])->middleware('can:billing.prices')->name('billing.prices.index');
+    Route::patch('billing/prices/{product}', [PriceController::class, 'update'])->middleware('can:billing.prices')->name('billing.prices.update');
 
     Route::get('activity', [ActivityController::class, 'index'])->middleware('can:activity.read')->name('activity.index');
 

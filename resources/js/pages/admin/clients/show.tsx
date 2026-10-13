@@ -1,6 +1,8 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { CalendarDays, Plus } from 'lucide-react';
 
+import type { ClientBilling } from '@/components/clients/billing-card';
+import { BillingCard } from '@/components/clients/billing-card';
 import { PlanCard } from '@/components/clients/plan-card';
 import { EmptyState } from '@/components/shared/empty-state';
 import { FormField } from '@/components/shared/form-field';
@@ -46,6 +48,7 @@ export default function ShowClient({
     plans,
     planHistory,
     team,
+    billing,
 }: {
     client: Resource<Client>;
     events: Paginated<Event>;
@@ -55,6 +58,8 @@ export default function ShowClient({
     plans: Option[];
     planHistory: StaffActivity[] | null;
     team: { data: ClientUser[] };
+    /** Only for staff with billing.read. */
+    billing: ClientBilling | null;
 }) {
     const can = useStaffCan();
 
@@ -193,6 +198,7 @@ export default function ShowClient({
                         history={planHistory}
                         canEdit={can('clients.plan')}
                     />
+                    {billing && <BillingCard billing={billing} />}
                     <TeamCard members={team.data} usage={plan} />
                     {can('clients.update') ? (
                         <EditClientCard client={client} />

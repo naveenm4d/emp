@@ -183,6 +183,16 @@ export function initials(name: string): string {
         .toUpperCase();
 }
 
+/** An amount in minor units: "Rs. 1,490" (LKR) or "USD 12.50". */
+export function formatMoney(amount: number, currency = 'LKR'): string {
+    const value = new Intl.NumberFormat('en-LK', {
+        minimumFractionDigits: amount % 100 === 0 ? 0 : 2,
+        maximumFractionDigits: 2,
+    }).format(amount / 100);
+
+    return currency === 'LKR' ? `Rs. ${value}` : `${currency} ${value}`;
+}
+
 /** A template's price label: its display price, else e.g. "Rs. 1,490" (LKR) from minor units. */
 export function templatePrice(template: {
     display_price: string | null;

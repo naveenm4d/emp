@@ -11,6 +11,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 
+import { ExtraGuestsBanner } from '@/components/billing/extra-guests-banner';
 import { GuestActions } from '@/components/guests/guest-actions';
 import { GuestFormDialog } from '@/components/guests/guest-form';
 import { GuestDetailsSheet } from '@/components/guests/guest-details-sheet';
@@ -165,6 +166,8 @@ export default function GuestsIndex({
                     )
                 }
             />
+
+            <ExtraGuestsBanner event={event} guests={summary.total} />
 
             <GuestFormDialog
                 key={`add-${addKey}`}

@@ -23,6 +23,9 @@ class UpdateClientPlanRequest extends FormRequest
             'plan_expires_at' => ['nullable', 'date'],
             'event_credits' => ['required', 'integer', 'min:0', 'max:1000'],
             'user_limit' => ['nullable', 'integer', 'min:1', 'max:1000', Rule::requiredIf($this->input('plan') === ClientPlan::Enterprise->value)],
+            // Enterprise: the price and length of an online renewal (empty = staff renew by hand).
+            'renewal_price' => ['nullable', 'numeric', 'min:10', 'max:100000000', 'decimal:0,2', 'required_with:renewal_months'],
+            'renewal_months' => ['nullable', 'integer', 'min:1', 'max:36', 'required_with:renewal_price'],
             'note' => ['required', 'string', 'max:500'],
         ];
     }
@@ -33,6 +36,9 @@ class UpdateClientPlanRequest extends FormRequest
         return [
             'note.required' => 'Add a note: why the plan changed (e.g. the payment reference).',
             'user_limit.required' => 'Enterprise accounts need a user limit.',
+            'renewal_price.min' => 'PayHere takes at least Rs. 10.',
+            'renewal_price.required_with' => 'Set the price of a renewal too.',
+            'renewal_months.required_with' => 'Set how many months a renewal covers.',
         ];
     }
 

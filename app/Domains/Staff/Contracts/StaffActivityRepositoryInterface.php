@@ -16,8 +16,11 @@ interface StaffActivityRepositoryInterface extends RepositoryInterface
     /** @return LengthAwarePaginator<int, StaffActivity> newest first */
     public function paginateFiltered(ActivityFilters $filters, int $perPage): LengthAwarePaginator;
 
-    /** @return Collection<int, StaffActivity> newest first */
-    public function forClient(string $clientId, ?string $action = null, int $limit = 50): Collection;
+    /**
+     * @param  string|list<string>|null  $action  only these actions
+     * @return Collection<int, StaffActivity> newest first
+     */
+    public function forClient(string $clientId, string|array|null $action = null, int $limit = 50): Collection;
 
     /** @return list<string> actions that were logged, for the filter */
     public function actions(): array;

@@ -99,7 +99,7 @@ it('adds extra guests to an event and logs it', function () {
     Guest::factory()->for($event)->count(700)->create();
     $this->actingAs($this->client->owner, 'client')
         ->post("/app/events/{$event->id}/guests", ['name' => 'One more', 'phone' => '+15550109999'])
-        ->assertSessionHas('error', 'This event allows up to 700 guests on the Celebration plan. Add more guests: Rs. 1,000 per 100.');
+        ->assertSessionHas('error', 'This event allows up to 700 guests on the Celebration plan. Buy more guests: Rs. 1,000 per 100.');
 });
 
 it('refuses extra guests on plans without them', function (string $plan) {

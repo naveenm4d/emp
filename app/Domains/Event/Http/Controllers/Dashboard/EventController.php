@@ -65,6 +65,7 @@ class EventController extends InertiaController
 
         return Inertia::render('client/events/create', [
             'templates' => TemplateResource::collection($this->templates->available($client)),
+            'ownedTemplateIds' => $this->templates->ownedIds($client),
             'eventTypes' => EventType::options(),
             'registrationTypes' => RegistrationType::detailedOptions(),
             'defaultInvitationMessage' => RsvpMessage::DEFAULT,

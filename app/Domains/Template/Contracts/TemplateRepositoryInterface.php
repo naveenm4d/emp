@@ -32,4 +32,13 @@ interface TemplateRepositoryInterface extends RepositoryInterface
 
     /** Whether any event is designed with one of the template's versions. */
     public function isInUse(Template $template): bool;
+
+    /** The client bought the template, or one of their events (deleted ones included) already uses it. */
+    public function isOwnedBy(Template $template, string $clientId): bool;
+
+    /** @return list<string> ids of the templates the client bought or one of their events uses */
+    public function ownedIds(string $clientId): array;
+
+    /** Records that the client bought the template (once; buying again changes nothing). */
+    public function grant(string $templateId, string $clientId, ?string $paymentId): void;
 }

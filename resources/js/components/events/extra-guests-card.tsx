@@ -9,16 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { extraGuests } from '@/routes/admin/clients/events';
 import type { Client, Event } from '@/types';
 
-/** Guests sold per block, and the block's price (config emp.extra_guests_*). */
+/** Guests per block (config emp.extra_guests_block). */
 const BLOCK = 100;
-const BLOCK_PRICE = 1000;
-
-const rupees = (amount: number) =>
-    `Rs. ${new Intl.NumberFormat('en-LK').format(amount)}`;
 
 /**
  * Staff only: extra guests on top of the plan's limit (Celebration, Business),
- * sold in blocks of 100 for Rs. 1,000 each. A note is required; it's logged.
+ * in blocks of 100. Clients buy them online; staff set the total here when
+ * paid otherwise. A note is required; it's logged.
  */
 export function ExtraGuestsCard({
     event,
@@ -47,7 +44,7 @@ export function ExtraGuestsCard({
             <CardContent>
                 <p className="mb-3 text-sm text-muted-foreground">
                     {client.plan_label}: {base} guests, plus {BLOCK} per extra
-                    block ({rupees(BLOCK_PRICE)} each). Now allowed:{' '}
+                    block. Now allowed:{' '}
                     <span className="font-medium text-foreground">
                         {event.guest_limit} guests
                     </span>
@@ -61,7 +58,7 @@ export function ExtraGuestsCard({
                         label="Extra blocks"
                         htmlFor="extra_blocks"
                         error={form.errors.blocks}
-                        hint={`= ${base + blocks * BLOCK} guests · ${rupees(blocks * BLOCK_PRICE)}`}
+                        hint={`= ${base + blocks * BLOCK} guests`}
                     >
                         <Input
                             id="extra_blocks"

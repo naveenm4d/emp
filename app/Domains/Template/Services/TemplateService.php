@@ -3,6 +3,7 @@
 namespace App\Domains\Template\Services;
 
 use App\Core\Services\BaseService;
+use App\Domains\Client\Models\Client;
 use App\Domains\Template\Contracts\TemplateRepositoryInterface;
 use App\Domains\Template\Contracts\TemplateServiceInterface;
 use App\Domains\Template\DTOs\UpdateTemplateData;
@@ -16,6 +17,11 @@ class TemplateService extends BaseService implements TemplateServiceInterface
     public function __construct(
         private readonly TemplateRepositoryInterface $templates,
     ) {}
+
+    public function grantToClient(Template $template, Client $client, ?string $paymentId): void
+    {
+        $this->templates->grant($template->id, $client->id, $paymentId);
+    }
 
     public function update(Template $template, UpdateTemplateData $data): Template
     {

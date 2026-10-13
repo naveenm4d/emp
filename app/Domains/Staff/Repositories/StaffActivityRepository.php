@@ -31,12 +31,12 @@ class StaffActivityRepository extends BaseRepository implements StaffActivityRep
             ->withQueryString();
     }
 
-    public function forClient(string $clientId, ?string $action = null, int $limit = 50): Collection
+    public function forClient(string $clientId, string|array|null $action = null, int $limit = 50): Collection
     {
         return $this->query()
             ->with('staffMember')
             ->where('client_id', $clientId)
-            ->when($action, fn ($q, string $action) => $q->where('action', $action))
+            ->when($action, fn ($q, string|array $action) => $q->whereIn('action', (array) $action))
             ->latest('created_at')
             ->limit($limit)
             ->get();

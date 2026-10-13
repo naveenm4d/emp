@@ -5,8 +5,9 @@ namespace App\Domains\Client\Enums;
 use App\Core\Enums\Concerns\HasValues;
 
 /**
- * What a client pays for and what it includes. Staff set it after payment
- * (there is no online payment yet); new sign-ups start on Starter.
+ * What a client pays for and what it includes. Clients buy Celebration and
+ * Business online (PayHere); staff set any plan by hand, Enterprise always.
+ * New sign-ups start on Starter.
  */
 enum ClientPlan: string
 {

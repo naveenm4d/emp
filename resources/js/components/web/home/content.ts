@@ -1,3 +1,5 @@
+import type { PriceCatalogue } from '@/types';
+
 /**
  * Every word on the homepage lives here, so copy and prices can change
  * without touching layout code. Prices are in Sri Lankan rupees (LKR).
@@ -249,6 +251,35 @@ export const faqs = [
 ];
 
 /** Sri Lankan rupees, written the local way: "Rs. 14,990". */
+/** The plans with the prices staff set (minor units → rupees); the defaults above otherwise. */
+export function plansWithPrices(prices: PriceCatalogue | undefined): Plan[] {
+    if (!prices) {
+        return plans;
+    }
+
+    const rupees = (amount: number) => Math.round(amount / 100);
+
+    return plans.map((plan) => {
+        switch (plan.id) {
+            case 'business':
+                return {
+                    ...plan,
+                    price: {
+                        monthly: rupees(prices.business_monthly.amount),
+                        yearly: rupees(prices.business_yearly.amount),
+                    },
+                };
+            case 'celebration': {
+                const event = rupees(prices.celebration_event.amount);
+
+                return { ...plan, price: { monthly: event, yearly: event } };
+            }
+            default:
+                return plan;
+        }
+    });
+}
+
 export function formatLkr(amount: number): string {
     return `Rs. ${new Intl.NumberFormat('en-LK', {
         maximumFractionDigits: 0,

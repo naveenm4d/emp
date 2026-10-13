@@ -47,6 +47,7 @@ class EventService extends BaseService implements EventServiceInterface
 
         // The event is pinned to the template's current version.
         $template = $this->templates->findSelectable($data->template_id, $client);
+        $this->templates->ensureUsable($template, $client);
 
         return $this->transaction(function () use ($data, $slug, $client, $template) {
             // Celebration: each event uses one paid event credit.
@@ -89,6 +90,7 @@ class EventService extends BaseService implements EventServiceInterface
         // same template again keeps the pinned version (see upgradeTemplate).
         if ($data->has('template_id') && $data->get('template_id') !== $event->templateVersion->template_id) {
             $template = $this->templates->findSelectable((string) $data->get('template_id'), $event->client);
+            $this->templates->ensureUsable($template, $event->client);
             $attributes['template_version_id'] = $template->latest_version_id;
         }
 
@@ -213,6 +215,29 @@ class EventService extends BaseService implements EventServiceInterface
                 clientId: $event->client_id,
                 changes: ['before' => ['extra_guests' => $before], 'after' => ['extra_guests' => $event->extra_guests]],
                 note: $note,
+            );
+
+            return $event;
+        });
+    }
+
+    public function addExtraGuests(Event $event, int $blocks, string $reference): Event
+    {
+        return $this->transaction(function () use ($event, $blocks, $reference) {
+            $locked = $this->events->findAndLock($event->id);
+            $before = $locked->extra_guests;
+
+            /** @var Event $event */
+            $event = $this->events->update($locked, ['extra_guests' => $before + $blocks * (int) config('emp.extra_guests_block')]);
+
+            $this->activities->record(
+                staff: null,
+                action: 'billing.extra-guests',
+                description: "Extra guests bought for {$event->title}: {$before} → {$event->extra_guests} (limit {$event->guestLimit()})",
+                subject: $event,
+                clientId: $event->client_id,
+                changes: ['before' => ['extra_guests' => $before], 'after' => ['extra_guests' => $event->extra_guests]],
+                note: $reference,
             );
 
             return $event;

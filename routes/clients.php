@@ -9,6 +9,13 @@
 | "client." name prefix.
 */
 
+use App\Domains\Billing\Http\Controllers\Dashboard\CheckoutController;
+use App\Domains\Billing\Http\Controllers\Dashboard\MockCheckoutController;
+use App\Domains\Billing\Http\Controllers\Dashboard\PaymentController;
+use App\Domains\Billing\Http\Controllers\Dashboard\PaymentMethodController;
+use App\Domains\Billing\Http\Controllers\Dashboard\PlanChangeController;
+use App\Domains\Billing\Http\Controllers\Dashboard\PurchaseController;
+use App\Domains\Billing\Http\Controllers\Dashboard\SubscriptionController;
 use App\Domains\Client\Http\Controllers\Dashboard\AuthController;
 use App\Domains\Client\Http\Controllers\Dashboard\InvitationController;
 use App\Domains\Client\Http\Controllers\Dashboard\MembershipController;
@@ -127,6 +134,37 @@ Route::middleware('auth:client')->group(function () {
 
     // Membership: the client's plan and what it includes
     Route::get('membership', MembershipController::class)->name('membership');
+
+    // Billing (PayHere): buying, saved cards, the Business subscription and payment history.
+    // Prices come from the server; a purchase never carries an amount.
+    Route::prefix('billing')->name('billing.')->group(function () {
+        Route::middleware('throttle:10,1')->group(function () {
+            Route::post('subscription', [PurchaseController::class, 'subscribe'])->name('subscribe');
+            Route::post('event-credits', [PurchaseController::class, 'eventCredits'])->name('event-credits');
+            Route::post('events/{event}/extra-guests', [PurchaseController::class, 'extraGuests'])->name('extra-guests');
+            Route::post('templates/{template}', [PurchaseController::class, 'template'])->name('template');
+            Route::post('cards', [PaymentMethodController::class, 'store'])->name('cards.store');
+            Route::post('enterprise-renewal', [PurchaseController::class, 'renewEnterprise'])->name('enterprise-renewal');
+        });
+        // Downgrade from Business when it ends, or keep it
+        Route::post('plan-change', [PlanChangeController::class, 'store'])->name('plan-change.store');
+        Route::delete('plan-change', [PlanChangeController::class, 'destroy'])->name('plan-change.destroy');
+        Route::patch('subscription', [SubscriptionController::class, 'update'])->name('subscription.update');
+        Route::put('details', [PurchaseController::class, 'details'])->name('details');
+        Route::patch('cards/{card}', [PaymentMethodController::class, 'update'])->name('cards.update');
+        Route::delete('cards/{card}', [PaymentMethodController::class, 'destroy'])->name('cards.destroy');
+
+        // A checkout goes to PayHere; PayHere returns the payer to the order, which shows the
+        // payment once PayHere processed it. Only processed payments are billing history.
+        Route::get('checkouts/{checkout}/pay', [CheckoutController::class, 'pay'])->name('checkouts.pay');
+        Route::get('orders/{order}', [CheckoutController::class, 'show'])->name('orders.show');
+        Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+        Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
+
+        // The mock gateway's checkout page (no PayHere credentials, never in production)
+        Route::get('mock/{checkout}', [MockCheckoutController::class, 'show'])->name('mock.show');
+        Route::post('mock/{checkout}', [MockCheckoutController::class, 'complete'])->name('mock.complete');
+    });
 
     // Team: who else signs in to the account, what they can do and which events they see
     Route::get('team', [TeamController::class, 'index'])->name('team.index');

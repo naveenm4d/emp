@@ -7,6 +7,7 @@ import {
     CalendarDays,
     LayoutDashboard,
     LayoutTemplate,
+    Receipt,
     Search,
     Shield,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ import { APP_TIME_ZONE } from '@/lib/format';
 import { useStaffCan } from '@/lib/permissions';
 import { dashboard, logout } from '@/routes/admin';
 import { index as activityIndex } from '@/routes/admin/activity';
+import { index as paymentsIndex } from '@/routes/admin/billing/payments';
 import { index as clientsIndex } from '@/routes/admin/clients';
 import { index as eventsIndex } from '@/routes/admin/events';
 import { failed } from '@/routes/admin/notifications';
@@ -65,6 +67,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             href: templatesIndex.url(),
             icon: LayoutTemplate,
             permission: 'templates.read',
+        },
+        {
+            label: 'Payments',
+            href: paymentsIndex.url(),
+            icon: Receipt,
+            permission: 'billing.read',
         },
         {
             label: 'Notifications',

@@ -12,8 +12,11 @@ interface StaffActivityQueryServiceInterface
     /** @return LengthAwarePaginator<int, StaffActivity> */
     public function paginate(ActivityFilters $filters): LengthAwarePaginator;
 
-    /** @return Collection<int, StaffActivity> the client's history, newest first (optionally one action) */
-    public function forClient(string $clientId, ?string $action = null): Collection;
+    /**
+     * @param  string|list<string>|null  $action  only these actions
+     * @return Collection<int, StaffActivity> the client's history, newest first
+     */
+    public function forClient(string $clientId, string|array|null $action = null): Collection;
 
     /** @return list<string> */
     public function actions(): array;

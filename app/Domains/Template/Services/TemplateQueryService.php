@@ -8,6 +8,7 @@ use App\Domains\Template\Contracts\TemplateRepositoryInterface;
 use App\Domains\Template\DTOs\TemplateFilters;
 use App\Domains\Template\Enums\TemplateType;
 use App\Domains\Template\Exceptions\TemplateNotAvailableException;
+use App\Domains\Template\Exceptions\TemplatePurchaseRequiredException;
 use App\Domains\Template\Models\Template;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -38,6 +39,25 @@ class TemplateQueryService implements TemplateQueryServiceInterface
         }
 
         return $template->load('latestVersion');
+    }
+
+    public function isUsableBy(Template $template, Client $client): bool
+    {
+        return $template->isFree()
+            || $template->client_id === $client->id
+            || $this->templates->isOwnedBy($template, $client->id);
+    }
+
+    public function ensureUsable(Template $template, Client $client): void
+    {
+        if (! $this->isUsableBy($template, $client)) {
+            throw TemplatePurchaseRequiredException::for($template);
+        }
+    }
+
+    public function ownedIds(Client $client): array
+    {
+        return $this->templates->ownedIds($client->id);
     }
 
     public function count(): int

@@ -8,7 +8,9 @@ use App\Domains\Client\DTOs\ClientFilters;
 use App\Domains\Client\Models\Client;
 use App\Domains\Client\Models\ClientUser;
 use App\Domains\Event\Models\Event;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 /**
  * @extends BaseRepository<Client>
@@ -34,6 +36,15 @@ class ClientRepository extends BaseRepository implements ClientRepositoryInterfa
     public function usersCount(string $clientId): int
     {
         return ClientUser::query()->where('client_id', $clientId)->count();
+    }
+
+    public function dueForScheduledChange(CarbonImmutable $now): Collection
+    {
+        return $this->query()
+            ->whereNotNull('scheduled_plan')
+            ->whereNotNull('plan_expires_at')
+            ->where('plan_expires_at', '<=', $now)
+            ->get();
     }
 
     public function findByEmail(string $email): ?Client

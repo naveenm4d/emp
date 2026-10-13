@@ -38,6 +38,9 @@ enum StaffRole: string
                 StaffPermission::NotificationsRead,
                 StaffPermission::NotificationsRetry,
                 StaffPermission::ActivityRead,
+                StaffPermission::BillingRead,
+                StaffPermission::BillingPrices,
+                StaffPermission::BillingRefund,
             ],
             self::Viewer => [
                 StaffPermission::ClientsRead,

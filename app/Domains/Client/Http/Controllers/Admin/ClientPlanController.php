@@ -10,8 +10,9 @@ use App\Domains\Staff\Models\StaffMember;
 use Illuminate\Http\RedirectResponse;
 
 /**
- * Staff set a client's plan, its end date and event credits after payment
- * (there is no online payment yet). Every change is logged with a note.
+ * Staff set a client's plan, its end date and event credits by hand (Enterprise,
+ * or payments made outside PayHere). Every change is logged with a note; a
+ * running subscription follows the change (see FollowStaffPlanChange).
  */
 class ClientPlanController extends InertiaController
 {

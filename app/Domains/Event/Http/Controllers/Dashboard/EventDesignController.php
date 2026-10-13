@@ -51,6 +51,7 @@ class EventDesignController extends InertiaController
             ],
             'editor' => $this->designs->editorPreview($event),
             'templates' => TemplateResource::collection($templates->available($event->client)),
+            'ownedTemplateIds' => $templates->ownedIds($event->client),
             'schema' => $schema->toArray(),
             'values' => $schema->resolve($event->customizations ?? []),
         ]);

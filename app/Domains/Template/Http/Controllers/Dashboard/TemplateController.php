@@ -28,6 +28,8 @@ class TemplateController extends InertiaController
     {
         return Inertia::render('client/templates/index', [
             'templates' => TemplateResource::collection($this->templates->available($this->client($request))),
+            // Paid designs the account can use already (bought, or used by one of its events).
+            'ownedTemplateIds' => $this->templates->ownedIds($this->client($request)),
         ]);
     }
 
