@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Core\Console\Commands\FinishDeploymentCommand;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -18,7 +19,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Not only in the console: /webhooks/deploy/finish calls it too.
+        $this->commands([FinishDeploymentCommand::class]);
     }
 
     /**

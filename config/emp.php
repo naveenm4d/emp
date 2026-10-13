@@ -73,4 +73,21 @@ return [
 
     'per_page' => 25,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Shared hosting (cPanel)
+    |--------------------------------------------------------------------------
+    |
+    | deploy_token        bearer token for /webhooks/deploy/* (the deploy
+    |                     workflow calls them around the FTP upload). Empty
+    |                     disables those routes.
+    | queue_from_scheduler no long-running worker: the scheduler (cron, every
+    |                     minute) drains the queue instead.
+    |
+    */
+
+    'deploy_token' => env('EMP_DEPLOY_TOKEN'),
+
+    'queue_from_scheduler' => (bool) env('EMP_QUEUE_FROM_SCHEDULER', false),
+
 ];

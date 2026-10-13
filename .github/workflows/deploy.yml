@@ -1,0 +1,117 @@
+name: deploy
+
+# Ships main to cPanel over FTP once the tests workflow passes (or on demand).
+#
+# Repository secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, DEPLOY_TOKEN
+#   (DEPLOY_TOKEN = EMP_DEPLOY_TOKEN in the server's .env).
+# Repository variables: APP_URL (https://example.com), FTP_SERVER_DIR (the app
+#   folder relative to the FTP root, ending in /, e.g. emp/), and optionally
+#   FTP_PROTOCOL (ftps by default, or ftp) and FTP_PORT (21).
+
+on:
+  workflow_run:
+    workflows: [tests]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      # The Vite build runs `php artisan wayfinder:generate`, so the app must boot.
+      - name: Build frontend
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          cp .env.example .env
+          php artisan key:generate
+          npm ci
+          npm run build
+
+      - name: Install production PHP dependencies
+        run: |
+          composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
+          rm .env
+
+      # Fails harmlessly on the first deploy, before the endpoint exists.
+      - name: Enter maintenance mode
+        continue-on-error: true
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          curl --fail-with-body -sS -X POST -H "Authorization: Bearer $DEPLOY_TOKEN" "$APP_URL/webhooks/deploy/down"
+
+      # Uploads only what changed since the last deploy (the state file lives on
+      # the server). Files the app writes on the server (uploads, logs, caches,
+      # .env) were never uploaded, so they're never deleted.
+      - name: Upload over FTP
+        uses: SamKirkland/FTP-Deploy-Action@a51268f67f6605236975928ae28b0f7e9971d50a # v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          port: ${{ vars.FTP_PORT || 21 }}
+          server-dir: ${{ vars.FTP_SERVER_DIR }}
+          exclude: |
+            **/.git/**
+            .gitignore
+            .gitattributes
+            .github/**
+            **/node_modules/**
+            .env
+            .env.example
+            .editorconfig
+            .npmrc
+            docker/**
+            docker-compose.yml
+            tests/**
+            output/**
+            tmp/**
+            resources/js/**
+            resources/css/**
+            package.json
+            package-lock.json
+            pnpm-workspace.yaml
+            tsconfig.json
+            vite.config.ts
+            phpunit.xml
+            phpstan.neon
+            pint.json
+
+      - name: Migrate, cache and leave maintenance mode
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          curl --fail-with-body -sS --max-time 300 -X POST -H "Authorization: Bearer $DEPLOY_TOKEN" "$APP_URL/webhooks/deploy/finish"

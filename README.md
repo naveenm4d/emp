@@ -153,3 +153,23 @@ vendor/bin/phpstan analyse
 vendor/bin/pint --test
 npm run types:check && npm run check
 ```
+
+## Deploying to cPanel
+
+`.github/workflows/deploy.yml` deploys `main` after the `tests` workflow passes (or when run by hand). It builds the assets and production `vendor/` on GitHub, puts the site into maintenance mode, uploads only the files that changed over FTP(S), then calls `/webhooks/deploy/finish`. That endpoint migrates, rebuilds the caches, restarts the queue and brings the site back up (`php artisan app:finish-deployment` does the same from cPanel's Terminal).
+
+One-time setup:
+
+1. **PHP:** in MultiPHP Manager, pick PHP 8.4+ with `pdo_mysql`, `mbstring`, `intl`, `zip`, `gd`/`fileinfo`, `bcmath`.
+2. **Database:** in MySQL Databases, create a database and user, and give the user all privileges on it.
+3. **Folder:** create the app folder outside `public_html` (e.g. `~/emp`) and point the domain's document root at `emp/public`. If the plan can't change the document root, upload into the document root itself: the root `.htaccess` sends every request to `public/`.
+4. **`.env`:** create `~/emp/.env` from `.env.example` by hand (the pipeline never uploads it). Set:
+    - `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, and a fresh `APP_KEY` (`php artisan key:generate --show` locally).
+    - the `DB_*` values.
+    - `EMP_DEPLOY_TOKEN`: a long random string.
+    - `EMP_QUEUE_FROM_SCHEDULER=true`.
+    - real mail, WhatsApp and PayHere credentials.
+5. **Cron:** in Cron Jobs, run every minute: `cd ~/emp && php artisan schedule:run >> /dev/null 2>&1`. This runs the scheduled commands and works through the queue.
+6. **GitHub:** add a `production` environment with secrets `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD` and `DEPLOY_TOKEN` (the same value as `EMP_DEPLOY_TOKEN`), and variables `APP_URL` and `FTP_SERVER_DIR` (relative to the FTP account's root, ending in `/`, e.g. `emp/`). Optional: `FTP_PROTOCOL` (`ftps` by default, or `ftp`) and `FTP_PORT`.
+
+The first deploy uploads everything, including `vendor/`, so it takes a while. Its "Enter maintenance mode" step fails harmlessly because the endpoint doesn't exist on the server yet. Seed starter content once from Terminal with `php artisan db:seed --force` if wanted. If a deploy fails after the upload, the site stays in maintenance mode: fix the cause and re-run the workflow, or run `php artisan app:finish-deployment` on the server.
