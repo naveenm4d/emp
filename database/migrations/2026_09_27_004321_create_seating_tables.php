@@ -25,7 +25,7 @@ return new class extends Migration
             $table->index(['event_id', 'sort_order']);
         });
 
-        DB::statement('CREATE UNIQUE INDEX event_tables_event_name_unique ON event_tables (event_id, lower(name))');
+        DB::statement('CREATE UNIQUE INDEX event_tables_event_name_unique ON event_tables (event_id, (lower(name)))');
 
         Schema::create('seat_assignments', function (Blueprint $table) {
             $table->uuid('id')->primary();

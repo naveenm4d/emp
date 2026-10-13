@@ -160,7 +160,7 @@ class EventRepository extends BaseRepository implements EventRepositoryInterface
     private function ordered(Builder $query, EventFilters $filters): Builder
     {
         return match ($filters->period) {
-            EventPeriod::Upcoming => $query->orderByRaw('event_date asc nulls last')->latest(),
+            EventPeriod::Upcoming => $query->orderByRaw('event_date is null, event_date asc')->latest(),
             EventPeriod::Past => $query->orderByDesc('event_date')->latest(),
             null => $query->latest(),
         };

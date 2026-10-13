@@ -118,10 +118,10 @@ Invitations work like WordPress themes. The template code is fixed, and the clie
 
 ## Getting started
 
-Requires PHP 8.4+ (with `pdo_pgsql`), Node 22+ and Docker. On this machine Homebrew's current PHP is at `/opt/homebrew/bin/php`. The `php` first on `PATH` is `php@8.2`, so put `/opt/homebrew/bin` ahead of it: `export PATH=/opt/homebrew/bin:$PATH`.
+Requires PHP 8.4+ (with `pdo_mysql`), Node 22+ and Docker. On this machine Homebrew's current PHP is at `/opt/homebrew/bin/php`. The `php` first on `PATH` is `php@8.2`, so put `/opt/homebrew/bin` ahead of it: `export PATH=/opt/homebrew/bin:$PATH`.
 
 ```bash
-docker compose up -d                  # Postgres 16 on :5433 (plus the emp_testing database)
+docker compose up -d                  # MySQL 8.4 on :3306 (plus the emp_testing database)
 composer install && npm install
 cp .env.example .env && php artisan key:generate
 php artisan migrate --seed          # also imports the starter templates
@@ -148,7 +148,7 @@ WhatsApp:
 ## Checks
 
 ```bash
-php artisan test          # Pest, against the Postgres emp_testing database
+php artisan test          # Pest, against the MySQL emp_testing database
 vendor/bin/phpstan analyse
 vendor/bin/pint --test
 npm run types:check && npm run check

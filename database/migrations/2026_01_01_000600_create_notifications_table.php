@@ -27,7 +27,7 @@ return new class extends Migration
             $table->index(['event_id', 'created_at']);
         });
 
-        DB::statement("CREATE INDEX notifications_pending_idx ON notifications (created_at) WHERE status = 'pending'");
+        DB::statement('CREATE INDEX notifications_pending_idx ON notifications (status, created_at)');
 
         Schema::create('message_deliveries', function (Blueprint $table) {
             $table->uuid('id')->primary();

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
@@ -16,7 +17,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('author');
             $table->string('category', 32);
-            $table->jsonb('tags')->default('[]');
+            $table->jsonb('tags')->default(new Expression('(json_array())'));
             $table->unsignedInteger('price')->default(0); // minor units
             $table->char('currency', 3);
             $table->string('display_price', 64)->nullable();

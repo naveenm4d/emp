@@ -27,9 +27,9 @@ return new class extends Migration
             $table->index(['event_id', 'rsvp_status']);
         });
 
-        // A guest's email / phone must be unique within an event.
-        DB::statement('CREATE UNIQUE INDEX guests_event_email_unique ON guests (event_id, lower(email)) WHERE email IS NOT NULL');
-        DB::statement('CREATE UNIQUE INDEX guests_event_phone_unique ON guests (event_id, phone) WHERE phone IS NOT NULL');
+        // A guest's email / phone must be unique within an event. Null keys never collide.
+        DB::statement('CREATE UNIQUE INDEX guests_event_email_unique ON guests (event_id, (lower(email)))');
+        DB::statement('CREATE UNIQUE INDEX guests_event_phone_unique ON guests (event_id, phone)');
     }
 
     public function down(): void

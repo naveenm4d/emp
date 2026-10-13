@@ -9,7 +9,7 @@ use App\Domains\Event\Enums\RegistrationType;
 
 /**
  * What an event asks guests for when they register (public link) or RSVP
- * (personal link), besides their name and attendance. Stored as jsonb in
+ * (personal link), besides their name and attendance. Stored as JSON in
  * events.event_registration_settings; custom questions live in
  * registration_questions.
  *

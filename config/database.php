@@ -59,6 +59,10 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // Same zone as the app (config/app.php, Asia/Colombo): Laravel writes timestamps
+            // without an offset, so the session zone must match for timestamp columns to be
+            // right. An offset, because named zones need MySQL's time zone tables loaded.
+            'timezone' => env('DB_TIMEZONE', '+05:30'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

@@ -86,16 +86,16 @@ class NotificationRepository extends BaseRepository implements NotificationRepos
         // Each guest's most recent message: a resend replaces an older failure.
         $latest = $this->query()
             ->toBase()
-            ->selectRaw('distinct on (guest_id) event_id, status')
+            ->select('event_id', 'status')
+            ->selectRaw('row_number() over (partition by guest_id order by created_at desc) as position')
             ->whereIn('event_id', $eventIds)
-            ->whereNotNull('guest_id')
-            ->orderBy('guest_id')
-            ->orderByDesc('created_at');
+            ->whereNotNull('guest_id');
 
         $counts = [];
 
         DB::query()
             ->fromSub($latest, 'latest')
+            ->where('position', 1)
             ->selectRaw('event_id, status, count(*) as aggregate')
             ->groupBy('event_id', 'status')
             ->get()

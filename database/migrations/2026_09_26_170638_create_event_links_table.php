@@ -28,8 +28,9 @@ return new class extends Migration
             $table->index('event_id');
         });
 
-        DB::statement('CREATE UNIQUE INDEX event_links_guest_unique ON event_links (guest_id) WHERE guest_id IS NOT NULL');
-        DB::statement('CREATE UNIQUE INDEX event_links_event_public_unique ON event_links (event_id) WHERE guest_id IS NULL');
+        // One link per guest, and one public link (no guest) per event. Null keys never collide.
+        DB::statement('CREATE UNIQUE INDEX event_links_guest_unique ON event_links (guest_id)');
+        DB::statement('CREATE UNIQUE INDEX event_links_event_public_unique ON event_links ((case when guest_id is null then event_id end))');
 
         Schema::table('events', function (Blueprint $table) {
             $table->dropUnique(['slug']);

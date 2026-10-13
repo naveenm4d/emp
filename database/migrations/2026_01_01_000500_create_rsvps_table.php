@@ -23,8 +23,8 @@ return new class extends Migration
             $table->index(['event_id', 'status']);
         });
 
-        // Only one active (pending / sent) RSVP link per guest.
-        DB::statement("CREATE UNIQUE INDEX rsvps_guest_active_unique ON rsvps (guest_id) WHERE status IN ('pending', 'sent')");
+        // Only one active (pending / sent) RSVP link per guest; inactive ones index as null.
+        DB::statement("CREATE UNIQUE INDEX rsvps_guest_active_unique ON rsvps ((case when status in ('pending', 'sent') then guest_id end))");
     }
 
     public function down(): void

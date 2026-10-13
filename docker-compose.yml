@@ -1,21 +1,22 @@
 services:
-    postgres:
-        image: postgres:16-alpine
+    mysql:
+        image: mysql:8.4
         environment:
-            POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: postgres
-            POSTGRES_DB: emp
+            MYSQL_ROOT_PASSWORD: password
+            MYSQL_DATABASE: emp
+            MYSQL_USER: emp
+            MYSQL_PASSWORD: password
         ports:
-            - '${FORWARD_DB_PORT:-5433}:5432'
+            - '${FORWARD_DB_PORT:-3306}:3306'
         volumes:
-            - emp_pgdata:/var/lib/postgresql/data
-            - ./docker/postgres/create-testing-database.sql:/docker-entrypoint-initdb.d/10-create-testing-database.sql
+            - emp_mysql:/var/lib/mysql
+            - ./docker/mysql/create-testing-database.sql:/docker-entrypoint-initdb.d/10-create-testing-database.sql
         healthcheck:
-            test: ['CMD-SHELL', 'pg_isready -U postgres']
+            test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-ppassword']
             interval: 5s
             timeout: 5s
-            retries: 5
+            retries: 10
         restart: unless-stopped
 
 volumes:
-    emp_pgdata:
+    emp_mysql:

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
@@ -14,7 +15,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('password');
             $table->string('role', 32)->default('viewer');
-            $table->jsonb('permissions')->default('[]');
+            $table->jsonb('permissions')->default(new Expression('(json_array())'));
             $table->boolean('is_active')->default(true);
             $table->rememberToken();
             $table->timestampTz('last_login_at')->nullable();

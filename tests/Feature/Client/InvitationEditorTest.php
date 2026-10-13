@@ -50,7 +50,7 @@ it('saves text and colour changes and re-renders the invitation', function () {
         'colors' => ['accent' => '#1D4ED8'],
     ])->assertRedirect()->assertSessionHas('success', 'Invitation saved.');
 
-    // jsonb does not keep key order.
+    // JSON columns do not keep key order.
     expect($this->event->fresh()->customizations)->toEqualCanonicalizing([
         'texts' => ['intro' => 'Join <us>', 'note' => "Line one\nLine two"],
         'colors' => ['accent' => '#1d4ed8'],

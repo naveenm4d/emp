@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -26,7 +27,7 @@ return new class extends Migration
             $table->string('password')->nullable();
             $table->rememberToken();
             $table->string('role', 16)->default('member');
-            $table->jsonb('permissions')->default('[]');
+            $table->jsonb('permissions')->default(new Expression('(json_array())'));
             $table->boolean('all_events')->default(false);
             $table->timestampTz('invited_at')->nullable();
             $table->timestampTz('joined_at')->nullable();
@@ -36,8 +37,8 @@ return new class extends Migration
             $table->index('client_id');
         });
 
-        // One owner per account.
-        DB::statement("create unique index client_users_one_owner on client_users (client_id) where role = 'owner'");
+        // One owner per account (members index as null, which never collides).
+        DB::statement("create unique index client_users_one_owner on client_users ((case when role = 'owner' then client_id end))");
 
         Schema::create('client_user_event', function (Blueprint $table) {
             $table->foreignUuid('client_user_id')->constrained('client_users')->cascadeOnDelete();

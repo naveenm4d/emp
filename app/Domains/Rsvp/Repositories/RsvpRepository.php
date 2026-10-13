@@ -73,7 +73,7 @@ class RsvpRepository extends BaseRepository implements RsvpRepositoryInterface
         $bindings = [];
 
         foreach (RsvpStatus::cases() as $status) {
-            $select[] = "count(*) filter (where status = ?) as {$status->value}";
+            $select[] = "count(case when status = ? then 1 end) as {$status->value}";
             $bindings[] = $status->value;
         }
 
